@@ -7,7 +7,8 @@ Lose a round, pick one of three power cards, and out-adapt your opponent.
 - **Maps:** Sunset Town, Freight Yard, Harvest Farm, Atomic Acres, Rust (plus Random), day or night
 - **Weapons:** Rifle, SMG, Shotgun, Sniper
 - **Rules:** Classic, Chaos (random power every round), One Shot
-- **Powers:** 66 power cards and 18 combos, plus a Locker with hats, tracers and gun skins
+- **Powers:** 84 power cards (26 of them abilities) and 18 combos. Cards are drawn with weighted odds, powerful ones are rare, and the odds are shown on each card. Plus a Locker with hats, tracers and gun skins
+- **Sound:** fully synthesized audio with a reverb room, per-ability sounds, map ambience and a procedural music track
 - **Controls:** keyboard + mouse, gamepad, or touch
 
 ## Layout
