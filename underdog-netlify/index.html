@@ -2559,6 +2559,14 @@ function stairs(x0,z0,dirX,dirZ,width,top,steps,mat){ // run of solid steps risi
     const w=dirX?run:width, d=dirX?width:run; BX(w,h,d,mat,cx,h/2,cz); col(cx,cz,w,d,h); }
   STAIRS.push({bx:x0+dirX*run*steps,bz:z0+dirZ*run*steps,tx:x0-dirX*.4,tz:z0-dirZ*.4,top});
 }
+function stairsOpen(x0,z0,dirX,dirZ,width,top,steps,mat,rail){ // same collision as stairs(), but drawn as open treads on two steel stringers
+  const run=.46, rise=top/(steps+1);
+  for(let i=0;i<steps;i++){ const h=top-rise*(i+1), cx=x0+dirX*(run*(i+.5)), cz=z0+dirZ*(run*(i+.5));
+    const w=dirX?run:width, d=dirX?width:run; BX(w,.1,d,mat,cx,h-.05,cz); BX(dirX?.05:width,rise,dirX?width:.05,mat,cx+dirX*run*.47,h-rise/2,cz+dirZ*run*.47,{cast:false}); col(cx,cz,w,d,h); }
+  const ex=x0+dirX*run*steps, ez=z0+dirZ*run*steps;
+  for(const e of [-1,1]){ const ox=dirX?0:e*(width/2-.05), oz=dirX?e*(width/2-.05):0; beam(x0+ox,top-.05,z0+oz,ex+ox,top-rise*steps-.05,ez+oz,.1,rail||MT.darkMetal); beam(x0+ox,top-.4,z0+oz,ex+ox,top-rise*steps-.4,ez+oz,.06,rail||MT.darkMetal); }
+  STAIRS.push({bx:ex,bz:ez,tx:x0-dirX*.4,tz:z0-dirZ*.4,top});
+}
 function nightLight(x,y,z,c,i,d){ const L=new THREE.PointLight(LC(c),0,d||16,2); L.position.set(x,y,z); NIGHTL.push({L,i,kind:'night',prio:Math.hypot(x,z*1.5)}); return L; }
 function dayLight(x,y,z,c,i,d){ const L=new THREE.PointLight(LC(c),i,d||16,2); L.position.set(x,y,z); NIGHTL.push({L,i,kind:'day',prio:Math.hypot(x,z*1.5)-200}); return L; }
 // how many point lights a shader may use on this device (too many and heavy materials fail to compile on weaker GPUs)
@@ -2858,7 +2866,7 @@ function container(x,z,alongX,paint,y){ y=y||0; const L=6.1,H=2.6,W=2.44, w=alon
   for(const s of [-1,1]){ if(alongX) decal(MT.stencil,1.8,.68,x-w*.22*s,y+H-.62,z+s*(d/2+.012),s>0?0:Math.PI); else decal(MT.stencil,1.8,.68,x+s*(w/2+.012),y+H-.62,z-d*.22*s,s>0?Math.PI/2:-Math.PI/2); }
   // depth: corrugated ribs, corner castings, forklift pockets
   const rb=paintMat(shade(paint,.78)), nr=Math.floor((alongX?w:d)/.32)-1;
-  for(const sg of [-1,1]) for(let i=0;i<nr;i++){ const o=-(nr-1)*.16+i*.32; BX(alongX?.14:.07,H-.46,alongX?.07:.14,rb,alongX?x+o:x+sg*(w/2+.005),y+H/2,alongX?z+sg*(d/2+.005):z+o,{cast:false}); }
+  for(const sg of [-1,1]) for(let i=0;i<nr;i++){ const o=-(nr-1)*.16+i*.32; BX(alongX?.17:.16,H-.4,alongX?.16:.17,rb,alongX?x+o:x+sg*(w/2+.03),y+H/2,alongX?z+sg*(d/2+.03):z+o,{cast:false}); }
   for(const sx of [-1,1]) for(const sz of [-1,1]) for(const yy of [y+.12,y+H-.12]) BX(.26,.24,.26,MT.darkMetal,x+sx*(w/2-.1),yy,z+sz*(d/2-.1),{cast:false});
   for(const sg of [-1,1]) for(const o of [-1.1,1.1]) BX(alongX?.5:.06,.1,alongX?.06:.5,MT.darkMetal,alongX?x+o*1.3:x+sg*(w/2+.02),y+.3,alongX?z+sg*(d/2+.02):z+o*1.3,{cast:false});
   col(x,z,w,d,y+H,y); }
@@ -3083,7 +3091,7 @@ MAPDEFS.farm={name:'Harvest Farm',desc:'A big barn with a hayloft, silos and hay
 
 /* ================= MAP 4: Atomic Acres (a love letter to a certain nuclear test town) ================= */
 function contLite(x,z,alongX,c,y,face){ y=y||0; const L=6.1,H=2.6,W=2.44, w=alongX?L:W, d=alongX?W:L; BX(w,H,d,contMat(c),x,y+H/2,z,{cast:false});
-  if(face){ const rb=paintMat(shade(c,.78)), fr=paintMat(shade(c)), n=Math.floor((alongX?w:d)/.4)-1; for(let i=0;i<n;i++){ const o=-(n-1)*.2+i*.4; BX(alongX?.16:.08,H-.4,alongX?.08:.16,rb,alongX?x+o:x+face*(w/2+.01),y+H/2,alongX?z+face*(d/2+.01):z+o,{cast:false}); }
+  if(face){ const rb=paintMat(shade(c,.78)), fr=paintMat(shade(c)), n=Math.floor((alongX?w:d)/.4)-1; for(let i=0;i<n;i++){ const o=-(n-1)*.2+i*.4; BX(alongX?.22:.16,H-.4,alongX?.16:.22,rb,alongX?x+o:x+face*(w/2+.03),y+H/2,alongX?z+face*(d/2+.03):z+o,{cast:false}); }
     for(const e of [-1,1]) BX(alongX?.2:.12,H,alongX?.12:.2,fr,alongX?x+e*(w/2-.1):x+face*(w/2+.02),y+H/2,alongX?z+face*(d/2+.02):z+e*(d/2-.1),{cast:false});
     for(const yy of [y+.08,y+H-.08]) BX(alongX?w:.14,.16,alongX?.14:d,fr,alongX?x:x+face*(w/2+.02),yy,alongX?z+face*(d/2+.02):z,{cast:false}); } for(const s of [-1,1]) BX(alongX?.05:W-.2,H-.2,alongX?W-.2:.05,doorMat(c),alongX?x+s*(w/2+.01):x,y+H/2,alongX?z:z+s*(d/2+.01),{cast:false}); }
 function openingsWall(axis,fixed,a0,a1,y0,y1,holes,mat,T,trim){ // axis 'x': wall runs along x at z=fixed; 'z': runs along z at x=fixed
@@ -3328,7 +3336,7 @@ MAPDEFS.rust={name:'Rust',desc:'A cramped desert oil yard: a central derrick wit
     for(const x of [-18,-3,14]){ BX(.9,.02,.3,MT.grating,x,.06,sg*15.75,{cast:false}); }
     for(const x of [-22,-8,9,23]){ BX(.5,.03,.5,MT.darkMetal,x,.064,sg*18.6,{cast:false}); BX(.4,.02,.4,plain(0x5a5e68,.5,.6),x,.08,sg*18.6,{cast:false}); } // manholes
     // the slab carries on under the outer container walls (z) so they stand on concrete, not sand
-    plane(56,4.75,conc,0,.058,sg*22.325,2); for(let x=-27.5;x<=27.5;x+=2.2) BX(.04,.012,4.75,plain(0x8e877d,.95),x,.062,sg*22.325,{cast:false});
+    plane(96,4.75,conc,0,.058,sg*22.325,2); for(let x=-47;x<=47;x+=2.2) BX(.04,.012,4.75,plain(0x8e877d,.95),x,.062,sg*22.325,{cast:false});
     nog(-29,sg*15.3,29,sg*25);
   }
 
@@ -3347,7 +3355,7 @@ MAPDEFS.rust={name:'Rust',desc:'A cramped desert oil yard: a central derrick wit
     const n=Math.max(1,Math.round(d/1.4)); for(let i=0;i<=n;i++) BX(.1,1,.1,Y,x,top+.5,z1+d*i/n,{cast:false}); const c=col(x,cz,.16,d,top+1.05,top); c.nb=true; };
   for(const sd of [-1,1]){ rl(-DK,DK,sd*(DK-.08)); for(const e of [-1,1]) rlz(e*(DK-.08),sd*1.15,sd*(DK-.08)); }
   crate(2,-1.8,1,top); vox('barrelR',-2,top,2); vox('barrelB',-1.4,top,2.6);
-  stairs(-DK,0,-1,0,2,top,16,MT.grating); stairs(DK,0,1,0,2,top,16,MT.grating);
+  stairsOpen(-DK,0,-1,0,2,top,16,MT.grating); stairsOpen(DK,0,1,0,2,top,16,MT.grating);
   for(const sx of [-1,1]) for(const sd of [-1,1]){ const xt=sx*DK, xb=sx*(DK+7.36), zz=sd*1.06; beam(xt,top+1,zz,xb,1.25,zz,.1,Y); beam(xt,top-.05,zz,xb,.05,zz,.2,MT.darkMetal);
     for(const t of [0,.33,.66,1]){ const px=lerp(xt,xb,t), fy=lerp(top,.3,t); BX(.1,1,.1,Y,px,fy+.5,zz,{cast:false}); } }
   nightLight(0,top+3,0,0xffb860,8,18);
@@ -3372,33 +3380,33 @@ MAPDEFS.rust={name:'Rust',desc:'A cramped desert oil yard: a central derrick wit
     BX(bw*.42,.6,.06,MT.freight,bx-bw*.2,bh-.65,fz+fd*.06,{cast:false});
     for(const e of [-1,1]) CY(.08,.08,bh,6,MT.metal,bx+e*(bw/2-.05),bh/2+.2,fz+fd*.12,{cast:false});
     vox('acunit',bx-s*2,bh,bz,1,s>0?0:Math.PI); crate(bx+s*1.5,bz+s*.6,1,bh); vox('barrelB',bx+s*3,bh,bz-s*.8);
-    const ex=bx+s*bw/2; stairs(ex,bz,s,0,2,bh,10,MT.grating);
+    const ex=bx+s*bw/2; stairsOpen(ex,bz,s,0,2,bh,10,MT.grating);
     for(const sd of [-1,1]){ const zz=bz+sd*1.06, xb=ex+s*4.6; beam(ex,bh+1,zz,xb,1.25,zz,.1,Y); beam(ex,bh-.05,zz,xb,.05,zz,.2,MT.darkMetal); for(const t of [0,.5,1]) BX(.1,1,.1,Y,lerp(ex,xb,t),lerp(bh,.3,t)+.5,zz,{cast:false}); }
     // container walls and lanes
     container(s*9,s*-9,true,C[0]); container(s*9,s*-9,true,C[3],2.6); container(s*19,s*-3,false,C[2]); container(s*18,s*10.5,true,C[1]);
-    crate(s*13.6,s*-5.2,1.4); crate(s*13.6,s*-5.2+1.4,1.4); crate(s*12.9,s*-5.9,1.2,1.4);
+    crate(s*14.4,s*-5.2,1.4); crate(s*14.4,s*-5.2+1.4,1.4); crate(s*14.4,s*-5.2,1.2,1.4);
     // fuel tank
     { const tx=s*23, tz=s*-12.4, tk=MT.tank, dk=MT.darkMetal, inw=-Math.sign(tz); // fuel tank: seams, hoops, domed top, walkway, ladder, plumbing
       CY(2.4,2.4,5,20,tk,tx,2.5,tz); CY(2.65,2.65,.22,20,dk,tx,.11,tz,{cast:false});
       for(let i=0;i<10;i++){ const a=i/10*Math.PI*2; BX(.12,4.9,.1,dk,tx+Math.cos(a)*2.42,2.55,tz+Math.sin(a)*2.42,{ry:Math.PI/2-a,cast:false}); }
       for(const y of [1.2,3.8]) CY(2.46,2.46,.12,20,dk,tx,y,tz,{cast:false});
-      CY(2.5,2.5,.3,20,dk,tx,5.1,tz); CY(1.9,2.3,.5,20,tk,tx,5.45,tz,{cast:false}); CY(1.2,1.6,.35,16,dk,tx,5.85,tz,{cast:false}); BX(.5,.4,.5,MT.tail,tx,6.2,tz,{cast:false});
+      CY(2.5,2.5,.3,20,dk,tx,5.1,tz); BX(.7,.14,.7,MT.tail,tx-.9,5.43,tz-inw*.4,{cast:false}); CY(.45,.45,.12,10,dk,tx+.8,5.42,tz+inw*.2,{cast:false});
       CY(2.62,2.62,.08,20,dk,tx,5.32,tz,{cast:false});
-      for(let i=0;i<14;i++){ const a=i/14*Math.PI*2; BX(.06,.7,.06,dk,tx+Math.cos(a)*2.6,5.68,tz+Math.sin(a)*2.6,{cast:false}); }
+      for(let i=0;i<16;i++){ const a=i/16*Math.PI*2; if(Math.sin(a)*inw>.8) continue; BX(.06,.7,.06,dk,tx+Math.cos(a)*2.6,5.72,tz+Math.sin(a)*2.6,{cast:false}); }
       CY(2.62,2.62,.06,20,dk,tx,6.02,tz,{cast:false});
-      for(const dx of [-.35,.35]) BX(.07,5.6,.07,dk,tx+dx,2.9,tz+inw*2.62,{cast:false}); for(let y=.4;y<5.6;y+=.42) BX(.7,.05,.07,dk,tx,y,tz+inw*2.62,{cast:false});
+      for(const dx of [-.35,.35]) BX(.07,5.7,.07,dk,tx+dx,2.85,tz+inw*2.7,{cast:false}); for(let y=.4;y<5.4;y+=.36) BX(.7,.05,.07,dk,tx,y,tz+inw*2.7,{cast:false});
       CY(.16,.16,2,8,MT.metal,tx-1.4,.9,tz-inw*2.5,{rx:Math.PI/2,cast:false}); CY(.3,.3,.14,8,MT.tail,tx-1.4,.9,tz-inw*3.55,{rx:Math.PI/2,cast:false});
-      col(tx,tz,4.9,4.9,5.4); }
+      col(tx,tz,4.8,3.0,5.36); col(tx,tz,3.0,4.8,5.36); col(tx,tz,4.0,4.0,5.36); MAP.LADDERS.push({x:tx,z:tz+inw*2.7,dx:0,dz:inw,top:5.36,y0:0}); }
     // low pipe run and barriers (jump over or slide past)
-    { const cx=s*-9, cz=s*5.5, belt=plain(0x26262c,.9), dk=MT.darkMetal; // conveyor belt: legs, yellow side rails, rubber belt with cleats, end rollers, motor, cargo
-      for(let i=0;i<6;i++){ const lx=cx-4.6+i*1.84; for(const e of [-1,1]) BX(.12,.9,.1,dk,lx,.45,cz+e*.4,{cast:false}); BX(.1,.08,.9,dk,lx,.3,cz,{cast:false}); }
-      for(const e of [-1,1]) BX(10.2,.24,.09,Y,cx,.98,cz+e*.44,{cast:false}); BX(10,.12,.78,dk,cx,.9,cz);
-      BX(9.8,.06,.68,belt,cx,1.0,cz,{cast:false}); for(let i=0;i<19;i++) BX(.07,.05,.64,MT.darkMetal,cx-4.5+i*.5,1.05,cz,{cast:false});
-      for(const e of [-1,1]) CY(.17,.17,.8,10,MT.metal,cx+e*4.95,1.0,cz,{rx:Math.PI/2,cast:false});
-      for(let i=1;i<10;i++) CY(.05,.05,.78,6,MT.metal,cx-5+i*1,.9,cz,{rx:Math.PI/2,cast:false});
-      BX(.7,.5,.5,Y,cx+3.6,.55,cz+s*.75); CY(.16,.16,.3,8,dk,cx+3.6,.55,cz+s*1.1,{rx:Math.PI/2,cast:false}); BX(.5,.3,.05,MT.bulb,cx+3.6,.6,cz+s*(.75+.26),{cast:false});
-      BX(.6,.45,.55,MT.crate,cx-2.6,1.3,cz,{cast:false}); BX(.5,.4,.5,MT.crate,cx+.4,1.28,cz,{ry:.3,cast:false}); vox('sack',cx+2.4,1.03,cz,1,s+2,null,true);
-      col(cx,cz,10.2,.95,1.4); }
+    { const cx=s*-8.5, cz=s*5.5, belt=plain(0x26262c,.9), dk=MT.darkMetal; // conveyor belt: legs, yellow side rails, rubber belt with cleats, end rollers, motor, cargo
+      for(let i=0;i<5;i++){ const lx=cx-3.7+i*1.84; for(const e of [-1,1]) BX(.12,.9,.1,dk,lx,.45,cz+e*.4,{cast:false}); BX(.1,.08,.9,dk,lx,.3,cz,{cast:false}); }
+      for(const e of [-1,1]) BX(8.2,.24,.09,Y,cx,.98,cz+e*.44,{cast:false}); BX(8,.12,.78,dk,cx,.9,cz);
+      BX(7.8,.06,.68,belt,cx,1.0,cz,{cast:false}); for(let i=0;i<15;i++) BX(.07,.05,.64,MT.darkMetal,cx-3.5+i*.5,1.05,cz,{cast:false});
+      for(const e of [-1,1]) CY(.17,.17,.8,10,MT.metal,cx+e*3.95,1.0,cz,{rx:Math.PI/2,cast:false});
+      for(let i=1;i<8;i++) CY(.05,.05,.78,6,MT.metal,cx-4+i*1,.9,cz,{rx:Math.PI/2,cast:false});
+      BX(.7,.5,.5,Y,cx+2.8,.55,cz+s*.75); CY(.16,.16,.3,8,dk,cx+2.8,.55,cz+s*1.1,{rx:Math.PI/2,cast:false}); BX(.5,.3,.05,MT.bulb,cx+2.8,.6,cz+s*(.75+.26),{cast:false});
+      BX(.6,.45,.55,MT.crate,cx-2.2,1.3,cz,{cast:false}); BX(.5,.4,.5,MT.crate,cx+.2,1.28,cz,{ry:.3,cast:false}); vox('sack',cx+1.8,1.03,cz,1,s+2,null,true);
+      col(cx,cz,8.2,.95,1.4); }
     jersey(s*7,s*4.5,3); jersey(s*3.5,s*-4.2,2);
     for(const [dx,dz] of [[0,0],[.95,.2],[.4,.9]]) vox((dx+dz)>.9?'barrelR':'barrelB',s*-6+dx,0,s*-3.2+dz,1,dx*7+dz*3);
     // pump jack
