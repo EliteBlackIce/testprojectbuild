@@ -15,8 +15,7 @@ Lose a round, pick one of three power cards, and out-adapt your opponent.
 ```
 underdog-netlify/          <- the site (deploy this folder)
   index.html               <- the whole game
-  vendor/                  <- three.js r128 + post-processing add-ons (MIT), self-hosted
-  fonts/                   <- Pixelify Sans (SIL OFL), self-hosted
+  (three.js r128, MIT, and Pixelify Sans, SIL OFL, are embedded in index.html)
   netlify.toml             <- headers/caching
 underdog-netlify.zip       <- the same folder, zipped for drag-and-drop Netlify deploys
 ```
@@ -25,7 +24,7 @@ underdog-netlify.zip       <- the same folder, zipped for drag-and-drop Netlify 
 
 Drag `underdog-netlify.zip` (or the `underdog-netlify` folder) onto Netlify, or point a Netlify
 site at this repo with the publish directory set to `underdog-netlify`.
-Everything is self-contained, so the game works without any third-party CDN.
+Everything (three.js, fonts) is embedded in index.html, so it works from a single file.
 
 ## Run locally
 
