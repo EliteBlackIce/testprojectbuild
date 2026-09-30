@@ -2856,6 +2856,11 @@ function container(x,z,alongX,paint,y){ y=y||0; const L=6.1,H=2.6,W=2.44, w=alon
     if(s>0) for(const k of [-.36,-.14,.14,.36]){ const o=k*ac; BX(alongX?.07:.06,H-.3,alongX?.06:.07,MT.darkMetal,alongX?ex+.03:x+o,y+H/2,alongX?z+o:ez+.03,{cast:false});
       BX(alongX?.1:.24,.08,alongX?.24:.1,MT.chrome,alongX?ex+.06:x+o,y+H*.45,alongX?z+o:ez+.06,{cast:false}); } }
   for(const s of [-1,1]){ if(alongX) decal(MT.stencil,1.8,.68,x-w*.22*s,y+H-.62,z+s*(d/2+.012),s>0?0:Math.PI); else decal(MT.stencil,1.8,.68,x+s*(w/2+.012),y+H-.62,z-d*.22*s,s>0?Math.PI/2:-Math.PI/2); }
+  // depth: corrugated ribs, corner castings, forklift pockets
+  const rb=paintMat(shade(paint,.78)), nr=Math.floor((alongX?w:d)/.32)-1;
+  for(const sg of [-1,1]) for(let i=0;i<nr;i++){ const o=-(nr-1)*.16+i*.32; BX(alongX?.14:.07,H-.46,alongX?.07:.14,rb,alongX?x+o:x+sg*(w/2+.005),y+H/2,alongX?z+sg*(d/2+.005):z+o,{cast:false}); }
+  for(const sx of [-1,1]) for(const sz of [-1,1]) for(const yy of [y+.12,y+H-.12]) BX(.26,.24,.26,MT.darkMetal,x+sx*(w/2-.1),yy,z+sz*(d/2-.1),{cast:false});
+  for(const sg of [-1,1]) for(const o of [-1.1,1.1]) BX(alongX?.5:.06,.1,alongX?.06:.5,MT.darkMetal,alongX?x+o*1.3:x+sg*(w/2+.02),y+.3,alongX?z+sg*(d/2+.02):z+o*1.3,{cast:false});
   col(x,z,w,d,y+H,y); }
 function warehouse(x,z,w,d,h,face,sign){ const fz=z+face*d/2, ry=face>0?0:Math.PI;
   BX(w+.4,.4,d+.4,MT.curb,x,.2,z); BX(w,h,d,MT.whWall,x,.4+h/2,z);
@@ -3077,7 +3082,10 @@ MAPDEFS.farm={name:'Harvest Farm',desc:'A big barn with a hayloft, silos and hay
 }};
 
 /* ================= MAP 4: Atomic Acres (a love letter to a certain nuclear test town) ================= */
-function contLite(x,z,alongX,c,y){ y=y||0; const L=6.1,H=2.6,W=2.44, w=alongX?L:W, d=alongX?W:L; BX(w,H,d,contMat(c),x,y+H/2,z,{cast:false}); for(const s of [-1,1]) BX(alongX?.05:W-.2,H-.2,alongX?W-.2:.05,doorMat(c),alongX?x+s*(w/2+.01):x,y+H/2,alongX?z:z+s*(d/2+.01),{cast:false}); }
+function contLite(x,z,alongX,c,y,face){ y=y||0; const L=6.1,H=2.6,W=2.44, w=alongX?L:W, d=alongX?W:L; BX(w,H,d,contMat(c),x,y+H/2,z,{cast:false});
+  if(face){ const rb=paintMat(shade(c,.78)), fr=paintMat(shade(c)), n=Math.floor((alongX?w:d)/.4)-1; for(let i=0;i<n;i++){ const o=-(n-1)*.2+i*.4; BX(alongX?.16:.08,H-.4,alongX?.08:.16,rb,alongX?x+o:x+face*(w/2+.01),y+H/2,alongX?z+face*(d/2+.01):z+o,{cast:false}); }
+    for(const e of [-1,1]) BX(alongX?.2:.12,H,alongX?.12:.2,fr,alongX?x+e*(w/2-.1):x+face*(w/2+.02),y+H/2,alongX?z+face*(d/2+.02):z+e*(d/2-.1),{cast:false});
+    for(const yy of [y+.08,y+H-.08]) BX(alongX?w:.14,.16,alongX?.14:d,fr,alongX?x:x+face*(w/2+.02),yy,alongX?z+face*(d/2+.02):z,{cast:false}); } for(const s of [-1,1]) BX(alongX?.05:W-.2,H-.2,alongX?W-.2:.05,doorMat(c),alongX?x+s*(w/2+.01):x,y+H/2,alongX?z:z+s*(d/2+.01),{cast:false}); }
 function openingsWall(axis,fixed,a0,a1,y0,y1,holes,mat,T,trim){ // axis 'x': wall runs along x at z=fixed; 'z': runs along z at x=fixed
   const put=(p0,p1,q0,q1)=>{ if(p1-p0<.02||q1-q0<.02) return; const c=(p0+p1)/2, len=p1-p0, hh=q1-q0;
     if(axis==='x'){ BX(len,hh,T,mat,c,q0+hh/2,fixed); col(c,fixed,len,T,q1,q0); } else { BX(T,hh,len,mat,fixed,q0+hh/2,c); col(fixed,c,T,len,q1,q0); } };
@@ -3319,10 +3327,9 @@ MAPDEFS.rust={name:'Rust',desc:'A cramped desert oil yard: a central derrick wit
     for(let x=-25;x<=25;x+=6.5) BX(2.4,.02,.34,(((x+25)/6.5|0)%2)?MT.paintY:plain(0xd8d0c0,.8),x,.212,zk,{cast:false});
     for(const x of [-18,-3,14]){ BX(.9,.02,.3,MT.grating,x,.06,sg*15.75,{cast:false}); }
     for(const x of [-22,-8,9,23]){ BX(.5,.03,.5,MT.darkMetal,x,.064,sg*18.6,{cast:false}); BX(.4,.02,.4,plain(0x5a5e68,.5,.6),x,.08,sg*18.6,{cast:false}); } // manholes
-    for(const [x0,x1] of [[-28,-26.3],[26.3,28]]) BX(x1-x0,.2,4.4,kerb,(x0+x1)/2,.1,zc,{cast:false}); // end kerbs
     // the slab carries on under the outer container walls (z) so they stand on concrete, not sand
-    plane(96,5,conc,0,.057,sg*22.3,2); for(let x=-46;x<=46;x+=2.4) BX(.04,.012,5,plain(0x8e877d,.95),x,.0615,sg*22.3,{cast:false});
-    plane(5,46,conc,sg*30.3,.056,0,2); for(let z=-22;z<=22;z+=2.4) BX(5,.012,.04,plain(0x8e877d,.95),sg*30.3,.0605,z,{cast:false});
+    plane(56,4.75,conc,0,.058,sg*22.325,2); for(let x=-27.5;x<=27.5;x+=2.2) BX(.04,.012,4.75,plain(0x8e877d,.95),x,.062,sg*22.325,{cast:false});
+    nog(-29,sg*15.3,29,sg*25);
   }
 
   // --- the derrick: walk under it, or climb either ramp to the catwalk ---
@@ -3371,10 +3378,27 @@ MAPDEFS.rust={name:'Rust',desc:'A cramped desert oil yard: a central derrick wit
     container(s*9,s*-9,true,C[0]); container(s*9,s*-9,true,C[3],2.6); container(s*19,s*-3,false,C[2]); container(s*18,s*10.5,true,C[1]);
     crate(s*13.6,s*-5.2,1.4); crate(s*13.6,s*-5.2+1.4,1.4); crate(s*12.9,s*-5.9,1.2,1.4);
     // fuel tank
-    CY(2.4,2.4,5,16,MT.tank,s*23,2.5,s*-14); CY(2.5,2.5,.3,16,MT.darkMetal,s*23,5.1,s*-14); BX(.4,.4,.4,MT.tail,s*23,5.4,s*-14,{cast:false}); col(s*23,s*-14,4.7,4.7,5.2);
-    for(const dz of [-1.4,1.4]) BX(.3,.5,.3,MT.darkMetal,s*23+dz,.25,s*-14+dz,{cast:false});
+    { const tx=s*23, tz=s*-12.4, tk=MT.tank, dk=MT.darkMetal, inw=-Math.sign(tz); // fuel tank: seams, hoops, domed top, walkway, ladder, plumbing
+      CY(2.4,2.4,5,20,tk,tx,2.5,tz); CY(2.65,2.65,.22,20,dk,tx,.11,tz,{cast:false});
+      for(let i=0;i<10;i++){ const a=i/10*Math.PI*2; BX(.12,4.9,.1,dk,tx+Math.cos(a)*2.42,2.55,tz+Math.sin(a)*2.42,{ry:Math.PI/2-a,cast:false}); }
+      for(const y of [1.2,3.8]) CY(2.46,2.46,.12,20,dk,tx,y,tz,{cast:false});
+      CY(2.5,2.5,.3,20,dk,tx,5.1,tz); CY(1.9,2.3,.5,20,tk,tx,5.45,tz,{cast:false}); CY(1.2,1.6,.35,16,dk,tx,5.85,tz,{cast:false}); BX(.5,.4,.5,MT.tail,tx,6.2,tz,{cast:false});
+      CY(2.62,2.62,.08,20,dk,tx,5.32,tz,{cast:false});
+      for(let i=0;i<14;i++){ const a=i/14*Math.PI*2; BX(.06,.7,.06,dk,tx+Math.cos(a)*2.6,5.68,tz+Math.sin(a)*2.6,{cast:false}); }
+      CY(2.62,2.62,.06,20,dk,tx,6.02,tz,{cast:false});
+      for(const dx of [-.35,.35]) BX(.07,5.6,.07,dk,tx+dx,2.9,tz+inw*2.62,{cast:false}); for(let y=.4;y<5.6;y+=.42) BX(.7,.05,.07,dk,tx,y,tz+inw*2.62,{cast:false});
+      CY(.16,.16,2,8,MT.metal,tx-1.4,.9,tz-inw*2.5,{rx:Math.PI/2,cast:false}); CY(.3,.3,.14,8,MT.tail,tx-1.4,.9,tz-inw*3.55,{rx:Math.PI/2,cast:false});
+      col(tx,tz,4.9,4.9,5.4); }
     // low pipe run and barriers (jump over or slide past)
-    BX(10,.9,.9,pipeM,s*-9,.9,s*5.5); for(const px of [-13,-9,-5]) BX(.3,.5,.9,MT.darkMetal,s*px,.25,s*5.5,{cast:false}); col(s*-9,s*5.5,10,.9,1.35);
+    { const cx=s*-9, cz=s*5.5, belt=plain(0x26262c,.9), dk=MT.darkMetal; // conveyor belt: legs, yellow side rails, rubber belt with cleats, end rollers, motor, cargo
+      for(let i=0;i<6;i++){ const lx=cx-4.6+i*1.84; for(const e of [-1,1]) BX(.12,.9,.1,dk,lx,.45,cz+e*.4,{cast:false}); BX(.1,.08,.9,dk,lx,.3,cz,{cast:false}); }
+      for(const e of [-1,1]) BX(10.2,.24,.09,Y,cx,.98,cz+e*.44,{cast:false}); BX(10,.12,.78,dk,cx,.9,cz);
+      BX(9.8,.06,.68,belt,cx,1.0,cz,{cast:false}); for(let i=0;i<19;i++) BX(.07,.05,.64,MT.darkMetal,cx-4.5+i*.5,1.05,cz,{cast:false});
+      for(const e of [-1,1]) CY(.17,.17,.8,10,MT.metal,cx+e*4.95,1.0,cz,{rx:Math.PI/2,cast:false});
+      for(let i=1;i<10;i++) CY(.05,.05,.78,6,MT.metal,cx-5+i*1,.9,cz,{rx:Math.PI/2,cast:false});
+      BX(.7,.5,.5,Y,cx+3.6,.55,cz+s*.75); CY(.16,.16,.3,8,dk,cx+3.6,.55,cz+s*1.1,{rx:Math.PI/2,cast:false}); BX(.5,.3,.05,MT.bulb,cx+3.6,.6,cz+s*(.75+.26),{cast:false});
+      BX(.6,.45,.55,MT.crate,cx-2.6,1.3,cz,{cast:false}); BX(.5,.4,.5,MT.crate,cx+.4,1.28,cz,{ry:.3,cast:false}); vox('sack',cx+2.4,1.03,cz,1,s+2,null,true);
+      col(cx,cz,10.2,.95,1.4); }
     jersey(s*7,s*4.5,3); jersey(s*3.5,s*-4.2,2);
     for(const [dx,dz] of [[0,0],[.95,.2],[.4,.9]]) vox((dx+dz)>.9?'barrelR':'barrelB',s*-6+dx,0,s*-3.2+dz,1,dx*7+dz*3);
     // pump jack
@@ -3389,8 +3413,8 @@ MAPDEFS.rust={name:'Rust',desc:'A cramped desert oil yard: a central derrick wit
   for(const s of [-1,1]){ BX(9,3.4,.12,signMat,0,3.4,s*20.7,{cast:false}); for(let i=-5;i<=5;i++) BX(.7,.35,.05,i%2?MT.paintY:MT.darkMetal,i*.9,1.5,s*20.75,{cast:false}); }
   // walls around the yard: stacked containers, plus dunes and towers beyond
   const CC=[0xa83a26,0xc88a1a,0x2a5a8a,0x8a5a3a,0x3a7a44,0xd8d0c6,0x6a3a26,0x8a2a2a];
-  for(const s of [-1,1]) for(let x=-44;x<=44;x+=6.4){ const h=2+((hash2(x|0,s+5)*2)|0); for(let k=0;k<h;k++) contLite(x,s*22.2,true,CC[(hash2(x*3|0,k+s)*CC.length)|0],k*2.6); }
-  for(const s of [-1,1]) for(let z=-20;z<=20;z+=6.4){ const h=2+((hash2(z|0,s+9)*2)|0); for(let k=0;k<h;k++) contLite(s*30.2,z,false,CC[(hash2(z*3|0,k+s*3)*CC.length)|0],k*2.6); }
+  for(const s of [-1,1]) for(let x=-44;x<=44;x+=6.4){ const h=2+((hash2(x|0,s+5)*2)|0); for(let k=0;k<h;k++) contLite(x,s*22.2,true,CC[(hash2(x*3|0,k+s)*CC.length)|0],k*2.6,-s); }
+  for(const s of [-1,1]) for(let z=-20;z<=20;z+=6.4){ const h=2+((hash2(z|0,s+9)*2)|0); for(let k=0;k<h;k++) contLite(s*30.2,z,false,CC[(hash2(z*3|0,k+s*3)*CC.length)|0],k*2.6,-s); }
   for(let i=0;i<26;i++){ const x=RR(-110,110), z=(rand()<.5?-1:1)*RR(34,90), w=RR(14,34), h=RR(2,7); BX(w,h,RR(12,26),RK([0xd8a868,0xc99658,0xe0b478][i%3]),x,h/2-.4,z,{cast:false}); }
   for(const [x,z,h] of [[-46,-40,26],[44,42,22],[52,-34,20],[-52,36,24]]){ for(const [dx,dz] of [[-1.6,-1.6],[1.6,-1.6],[-1.6,1.6],[1.6,1.6]]) BX(.4,h,.4,MT.darkMetal,x+dx,h/2,z+dz,{cast:false}); for(let y=4;y<h;y+=4) for(const sd of [-1,1]){ BX(3.4,.16,.16,MT.darkMetal,x,y,z+sd*1.6,{cast:false}); BX(.16,.16,3.4,MT.darkMetal,x+sd*1.6,y,z,{cast:false}); } BX(4,2.4,4,MT.metal,x,h+1.2,z,{cast:false}); nightLight(x,h+3,z,0xff3030,2,8); }
   waterTower(-40,-30);
@@ -3485,11 +3509,12 @@ MAPDECOR.rust=function(){
   }
   // --- ground detail: tyre tracks, dust drifts, pebbles, dry scrub (all flat or tiny, so nothing catches the player) ---
   for(let i=0;i<10;i++) blob(RR(2.5,4.5),RR(2.2,3.6),dust,RR(-25,25),(rand()<.5?-1:1)*RR(6,14),rand()*6.28,.037);
-  for(let i=0;i<70;i++){ const x=RR(-27,27), z=RR(-19,19); if(free(x,z,.3)) vox('rock',x,0,z,RR(.18,.42),rand()*6,null,true); }
+  const onConc=(x,z)=>Math.abs(z)>15.1&&Math.abs(x)<28.6;
+  for(let i=0;i<70;i++){ const x=RR(-27,27), z=RR(-19,19); if(!onConc(x,z)&&free(x,z,.3)) vox('rock',x,0,z,RR(.18,.42),rand()*6,null,true); }
   { const cross=mergeGeos([new THREE.PlaneGeometry(.7,.8).translate(0,.4,0),new THREE.PlaneGeometry(.7,.8).rotateY(Math.PI/2).translate(0,.4,0)]); const nrm=cross.attributes.normal; for(let i=0;i<nrm.count;i++) nrm.setXYZ(i,0,1,0);
-    const tf=[]; for(let i=0;i<4000&&tf.length<120;i++){ const x=RR(-27,27), z=RR(-19,19); if(Math.abs(z)<4.5&&Math.abs(x)<26) continue; if(!free(x,z,.25)) continue; tf.push([x,0,z,RR(.5,1),rand()*6,0,[RR(1.3,1.7),RR(1.0,1.3),RR(.45,.7)]]); }
+    const tf=[]; for(let i=0;i<4000&&tf.length<120;i++){ const x=RR(-27,27), z=RR(-19,19); if(Math.abs(z)<4.5&&Math.abs(x)<26) continue; if(onConc(x,z)||!free(x,z,.25)) continue; tf.push([x,0,z,RR(.5,1),rand()*6,0,[RR(1.3,1.7),RR(1.0,1.3),RR(.45,.7)]]); }
     inst(cross,MT.tuft,tf,false,1,MAP.root); }
-  for(let i=0;i<5;i++){ const x=RR(-24,24), z=(rand()<.5?-1:1)*RR(5.5,17); place('cactus',x,z,RR(.55,.9),rand()*6,false,.5); }
+  for(let i=0;i<5;i++){ const x=RR(-24,24), z=(rand()<.5?-1:1)*RR(5.5,14.5); place('cactus',x,z,RR(.55,.9),rand()*6,false,.5); }
   for(const [x,z] of [[-12,-11.3],[13,11.3]]) flag(x,z,3.4,0xc83a22);
 };
 function pipeM_(){ return plain(0x8a5a3a,.55,.5); }
