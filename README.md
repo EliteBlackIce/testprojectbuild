@@ -8,6 +8,7 @@ Lose a round, pick one of three power cards, and out-adapt your opponent.
 - **Weapons:** Rifle, SMG, Shotgun, Sniper
 - **Rules:** Classic, Chaos (random power every round), One Shot
 - **Powers:** 84 power cards (26 of them abilities) and 18 combos. Cards are drawn with weighted odds, powerful ones are rare, and the odds are shown on each card. Plus a Locker with hats, tracers and gun skins
+- **Lobby:** a map vote before every round (toggle in Settings), organized Video / Audio / Gameplay settings with crosshair, shake, view bob, invert-Y and more
 - **Sound:** fully synthesized audio with a reverb room, per-ability sounds, map ambience and a procedural music track
 - **Controls:** keyboard + mouse, gamepad, or touch
 
