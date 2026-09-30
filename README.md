@@ -4,7 +4,7 @@ A free pixel-art 1v1 first-person duel that runs in the browser (three.js, no bu
 Lose a round, pick one of three power cards, and out-adapt your opponent.
 
 - **Modes:** vs bot (4 bot styles, 3 difficulties) or split screen with controllers
-- **Maps:** Sunset Town, Freight Yard, Harvest Farm, Atomic Acres, Rust Canyon (plus Random), day or night
+- **Maps:** Sunset Town, Freight Yard, Harvest Farm, Atomic Acres, Rust (plus Random), day or night
 - **Weapons:** Rifle, SMG, Shotgun, Sniper
 - **Rules:** Classic, Chaos (random power every round), One Shot
 - **Powers:** 66 power cards and 18 combos, plus a Locker with hats, tracers and gun skins
