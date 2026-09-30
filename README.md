@@ -1,1 +1,37 @@
-# testprojectbuild
+# Underdog
+
+A free pixel-art 1v1 first-person duel that runs in the browser (three.js, no build step).
+Lose a round, pick one of three power cards, and out-adapt your opponent.
+
+- **Modes:** vs bot (4 bot styles, 3 difficulties) or split screen with controllers
+- **Maps:** Sunset Town, Freight Yard, Harvest Farm, Atomic Acres, Rust Canyon (plus Random), day or night
+- **Weapons:** Rifle, SMG, Shotgun, Sniper
+- **Rules:** Classic, Chaos (random power every round), One Shot
+- **Powers:** 66 power cards and 18 combos, plus a Locker with hats, tracers and gun skins
+- **Controls:** keyboard + mouse, gamepad, or touch
+
+## Layout
+
+```
+underdog-netlify/          <- the site (deploy this folder)
+  index.html               <- the whole game
+  vendor/                  <- three.js r128 + post-processing add-ons (MIT), self-hosted
+  fonts/                   <- Pixelify Sans (SIL OFL), self-hosted
+  netlify.toml             <- headers/caching
+underdog-netlify.zip       <- the same folder, zipped for drag-and-drop Netlify deploys
+```
+
+## Deploy
+
+Drag `underdog-netlify.zip` (or the `underdog-netlify` folder) onto Netlify, or point a Netlify
+site at this repo with the publish directory set to `underdog-netlify`.
+Everything is self-contained, so the game works without any third-party CDN.
+
+## Run locally
+
+```
+cd underdog-netlify
+python3 -m http.server 8000
+```
+
+Then open http://localhost:8000. Press F3 in game for the debug overlay.
