@@ -104,6 +104,7 @@ button{cursor:var(--curP)}
 #pause{backdrop-filter:blur(2px)}
 #paneHelp .howto,#paneHelp .controls,#paneHelp .padmap{background:rgba(14,8,16,.84);box-shadow:0 0 0 3px var(--edge);padding:12px 18px;width:min(1000px,92vw);box-sizing:border-box} #paneHelp .padmap{margin:0}
 #useHint{position:absolute;left:50%;bottom:24%;transform:translateX(-50%);padding:8px 18px;background:rgba(10,6,12,.82);box-shadow:0 0 0 3px var(--gold);font-size:22px;z-index:5;pointer-events:none;color:var(--ink)}
+body.freecam .h-bl,body.freecam .h-br,body.freecam .h-cross{opacity:.15}
 #recap{position:absolute;left:50%;top:60%;transform:translateX(-50%);display:none;flex-direction:column;align-items:center;gap:4px;padding:10px 18px;background:rgba(10,6,12,.72);box-shadow:0 0 0 3px var(--edge);z-index:25;text-align:center;pointer-events:none}
 #recap.on{display:flex} #recap b{font-size:20px} #recap span{font-size:15px;color:var(--muted)}
 #touch{position:absolute;inset:0;z-index:30;display:none;touch-action:none;pointer-events:none}
@@ -2848,8 +2849,8 @@ function vox(key,x,y,z,sc,ry,p,nocol){ const geo=voxModel(key), m=mesh(geo,MT.vo
   if(!p&&!nocol&&!NOCOL_VOX[key]&&!NOCOL_VOX[key.split(':')[0]]&&Math.abs(x)<=AW+.5&&Math.abs(z)<=AD+.5){ if(!geo.boundingBox) geo.computeBoundingBox(); const bb=geo.boundingBox, k=sc||1, w=(bb.max.x-bb.min.x)*k, d=(bb.max.z-bb.min.z)*k, h=(bb.max.y-bb.min.y)*k;
     if(h>.3){ const c=Math.abs(Math.cos(ry||0)), sn=Math.abs(Math.sin(ry||0)); col(x,z,w*c+d*sn,w*sn+d*c,y+h,y); } }
   return m; }
-function colOBB(x,z,len,wid,h,ry){ const n=Math.max(1,Math.ceil(len/.9)), c=Math.cos(ry), sn=Math.sin(ry), seg=len/n;
-  for(let i=0;i<n;i++){ const t=-len/2+seg*(i+.5), cx=x+c*t, cz=z-sn*t, ac=Math.abs(c), as=Math.abs(sn); col(cx,cz,seg*ac+wid*as,seg*as+wid*ac,h); } }
+function colOBB(x,z,len,wid,h,ry,y0){ const n=Math.max(1,Math.ceil(len/.9)), c=Math.cos(ry), sn=Math.sin(ry), seg=len/n;
+  for(let i=0;i<n;i++){ const t=-len/2+seg*(i+.5), cx=x+c*t, cz=z-sn*t, ac=Math.abs(c), as=Math.abs(sn); col(cx,cz,seg*ac+wid*as,seg*as+wid*ac,h,y0); } }
 function beam(x1,y1,z1,x2,y2,z2,th,mat){ const L=Math.hypot(x2-x1,y2-y1,z2-z1), a=Math.atan2(y2-y1,Math.hypot(x2-x1,z2-z1)), ry=-Math.atan2(z2-z1,x2-x1);
   const m=new THREE.Mesh(new THREE.BoxGeometry(L,th,th),mat); m.position.set((x1+x2)/2,(y1+y2)/2,(z1+z2)/2); m.rotation.order='YZX'; m.rotation.set(0,ry,a); m.receiveShadow=true; SR.add(m); return m; }
 function crate(x,z,s,y,addCol){ y=y||0; vox('crate',x,y,z,s,((x*7+z*3)|0)%2?Math.PI/2:0); if(addCol!==false) col(x,z,s,s,y+s); }
@@ -4002,10 +4003,10 @@ function buildShip(){
     nightLight(-47.5,8.6,0,0x88e8ff,3,18); dayLight(-47.5,8.5,0,0xffe8d0,.45,15);
     // ---- captain's quarters (furniture reused from the house maps) ----
     fv('rug',0x7a2a2e,-53.0,5.4,FL+.03,0); fv('bed',0x2a4a7a,-54.0,8.9,FL+.02,Math.PI); fv('nightstand',0,-55.2,9.9,FL+.02,0); fv('nightstand',0,-52.8,9.9,FL+.02,0); fv('lamp',0,-55.2,9.9,FL+.82,0);
-    fv('wardrobe',0,-55.3,4.9,FL+.02,Math.PI/2); fv('dresser',0,-51.0,7.6,FL+.02,-Math.PI/2); fv('bookshelf',0,-51.0,9.6,FL+.02,-Math.PI/2); fv('armchair',0x3a4a6a,-54.7,2.3,FL+.02,Math.PI*0.5); fv('coffeetable',0,-53.9,3.4,FL+.02,0); fv('plant',0,-51.0,1.0,FL+.02,0);
-    fv('counter',0,-52.0,0.9,FL+.02,Math.PI); fv('counter',0,-53.1,0.9,FL+.02,Math.PI); screen(-52.6,FL+1.4,.55,.7,.45,.05,0x38e8ff,0); fv('chair',0xa8683a,-52.6,1.75,FL+.02,Math.PI); vox('lamp:0',-53.4,FL+.9,.9,1,0,null,true);
-    BX(.3,.12,.22,plain(0xf8f8ff,.9),-52.6,FL+.9,.9,{cast:false}); BX(.34,.1,.34,plain(0x1a2a5a,.8),-52.1,FL+.92,.9,{cast:false});
-    { mesh(SG(.22),plain(0x3a6aa8,.5),-51.7,FL+.98,.9,{cast:false}); CY(.04,.04,.12,6,chrome,-51.7,FL+.9,.9,{cast:false}); }
+    fv('wardrobe',0,-55.3,4.9,FL+.02,Math.PI/2); fv('dresser',0,-51.0,7.6,FL+.02,-Math.PI/2); fv('bookshelf',0,-51.0,9.6,FL+.02,-Math.PI/2); fv('armchair',0x3a4a6a,-52.3,3.3,FL+.02,Math.PI*0.75); fv('coffeetable',0,-53.3,3.9,FL+.02,0); fv('plant',0,-51.0,1.0,FL+.02,0);
+    fv('counter',0,-55.1,2.2,FL+.02,Math.PI/2); fv('counter',0,-55.1,3.3,FL+.02,Math.PI/2); screen(-55.52,FL+1.4,2.75,.05,.45,.7,0x38e8ff,0); fv('chair',0xa8683a,-54.2,2.75,FL+.02,-Math.PI/2); vox('lamp:0',-55.1,FL+.9,3.5,1,0,null,true);
+    BX(.22,.12,.3,plain(0xf8f8ff,.9),-55.1,FL+.9,2.2,{cast:false}); BX(.34,.1,.34,plain(0x1a2a5a,.8),-55.1,FL+.92,2.7,{cast:false});
+    { mesh(SG(.22),plain(0x3a6aa8,.5),-55.1,FL+1.0,2.2,{cast:false}); CY(.04,.04,.12,6,chrome,-55.1,FL+.9,2.2,{cast:false}); }
     BX(.05,.9,1.0,plain(0x3a4a6a,.8),-55.7,FL+1.9,.95,{cast:false}); BX(.04,.7,.8,plain(0x9ab8d8,.8),-55.68,FL+1.9,.95,{cast:false});
     for(let i=0;i<3;i++) BX(.3,.06,2.2,glow(0xfff0d0,1.6),-54+i*1.6,CE-.1,5.4,{cast:false});
     // ---- chart room at the stair head ----
@@ -4096,18 +4097,15 @@ function buildShip(){
   // ---- gantry crane straddling the centre bay: four lattice legs, a walkway on top and an operator's cab, climbed by ladders ----
   // the lifted container: it hangs on the crane walkway under an overhead trolley, open at both ends so you can walk right through it
   function crane2(TOP,ZE,cm,cd){
-    const hz=-8.2, xo=.6, W=2.44, L=6.1, H2=2.6, fl=TOP+.04, cc=0x2a7a7a, ZL=hz;
-    // overhead gantry: four posts, two rails along z and a cross-beam with the trolley
-    for(const sx of [-1,1]) for(const z of [-11.8,-4.6]){ pipeAx('y',TOP,TOP+6.2,xo+sx*2.55,0,z,.1,cm); beamC(xo+sx*2.55,TOP+3.0,z,xo+sx*2.55,TOP+6.2,z,.12,cm); }
-    for(const sx of [-1,1]) BX(.3,.4,8.0,cm,xo+sx*2.55,TOP+6.3,hz,{cast:false});
-    BX(5.4,.5,.9,cd,xo,TOP+6.1,hz,{cast:false}); BX(1.6,.6,1.3,cm,xo,TOP+6.8,hz,{cast:false}); for(const sx of [-1,1]) for(const sz of [-1,1]) BX(.3,.3,.3,dkS,xo+sx*1.1,TOP+6.5,hz+sz*.5,{cast:false});
-    for(const sx of [-1,1]) col(xo+sx*2.55,-11.8,.3,.3,TOP+6.2,TOP), col(xo+sx*2.55,-4.6,.3,.3,TOP+6.2,TOP);
+    const hz=-7.25, xo=.6, W=2.44, L=6.1, H2=2.6, fl=5.4, cc=0x2a7a7a;
+    // the trolley rides on the walkway; four cables drop through to the spreader on the container roof
+    BX(3.4,.9,2.2,cm,xo,TOP+.55,hz,{cast:false}); col(xo,hz,3.4,2.2,TOP+1.0,TOP); for(const [dx,dz] of [[-1.3,-.8],[1.3,-.8],[-1.3,.8],[1.3,.8]]) BX(.2,.3,.2,dkS,xo+dx,TOP+1.1,hz+dz,{cast:false}); BX(1.0,.6,.3,dkS,xo,TOP+1.3,hz,{cast:false});
     // container shell, open ends, interior lit and furnished
     const cm2=contMat(cc), fr=paintMat(shade(cc)), rb=paintMat(shade(cc,.78)), dm=doorMat(cc), T=.1, ox=xo, ey=fl+H2;
     for(const sx of [-1,1]){ const x=ox+sx*(W/2-T/2); BX(T,H2,L,cm2,x,fl+H2/2,hz); col(x,hz,T+.04,L,ey,fl);
       for(let k=0;k<15;k++) BX(.06,H2-.5,.14,rb,ox+sx*(W/2+.02),fl+H2/2,hz-L/2+.2+k*.4,{cast:false});
       for(const z of [-L/2+.08,L/2-.08]) BX(.2,H2,.16,fr,ox+sx*(W/2-.08),fl+H2/2,hz+z,{cast:false}); BX(.14,.16,L,fr,ox+sx*(W/2-.06),fl+.08,hz,{cast:false}); BX(.14,.16,L,fr,ox+sx*(W/2-.06),ey-.08,hz,{cast:false}); }
-    BX(W,T,L,cm2,ox,ey-T/2,hz); col(ox,hz,W,L,ey+.0,ey-T); BX(W-.2,.05,L,plankMat(0x8a6a4a),ox,fl+.025,hz,{cast:false});
+    BX(W,T,L,cm2,ox,ey-T/2,hz); col(ox,hz,W,L,ey+.0,ey-T); BX(W,.2,L,cm2,ox,fl-.1,hz,{cast:false}); col(ox,hz,W,L,fl,fl-.2); BX(W-.2,.05,L,plankMat(0x8a6a4a),ox,fl+.025,hz,{cast:false});
     for(const e of [-1,1]){ const z=hz+e*(L/2-.04); BX(W,.2,.2,fr,ox,fl+.1,z,{cast:false}); BX(W,.2,.2,fr,ox,ey-.1,z,{cast:false});
       for(const sx of [-1,1]){ BX(.24,.24,.24,dkS,ox+sx*(W/2-.1),fl+.12,z,{cast:false}); BX(.24,.24,.24,dkS,ox+sx*(W/2-.1),ey-.12,z,{cast:false});
         const dx=ox+sx*(W/2-.02); BX(.05,H2-.5,.3,dm,dx,fl+H2/2,hz+e*(L/2+.12),{ry:0,cast:false}); } }
@@ -4115,10 +4113,10 @@ function buildShip(){
     for(const z of [-1.8,0,1.8]){ BX(.5,.08,.2,glow(0xfff0c8,2.2),ox,ey-.14,hz+z,{cast:false}); }
     nightLight(ox,ey-.5,hz,0xffe0b0,2.6,9); dayLight(ox,ey-.5,hz,0xffe8d0,.5,7);
     // cables from the spreader frame to the roof corners
-    BX(W+.6,.25,L+.4,cd,ox,ey+.55,hz,{cast:false}); for(const sx of [-1,1]) for(const sz of [-1,1]){ BX(.2,.5,.2,dkS,ox+sx*(W/2),ey+.1,hz+sz*(L/2-.2),{cast:false}); BX(.05,TOP+6.2-ey-.8,.05,steelD,ox+sx*(W/2),(TOP+6.2+ey+.8)/2,hz+sz*(L/2-.2),{cast:false}); }
+    BX(W+.6,.25,L+.4,cd,ox,ey+.55,hz,{cast:false}); for(const sx of [-1,1]) for(const sz of [-1,1]){ BX(.2,.5,.2,dkS,ox+sx*(W/2),ey+.1,hz+sz*(L/2-.2),{cast:false}); BX(.05,TOP-ey-.8,.05,steelD,ox+sx*(W/2),(TOP+ey+.8)/2,hz+sz*(L/2-.2),{cast:false}); }
     // contents: it's somebody's hideout
     const woodC=plain(0x8a6a4a,.85);
-    for(let k=0;k<3;k++) BX(.5,.05,1.5,woodC,ox-W/2+.45,fl+.5+k*.6,hz+.1,{cast:false}); for(const z of [-.6,.8]) BX(.5,1.5,.05,steelD,ox-W/2+.45,fl+.85,hz+z,{cast:false});
+    for(let k=0;k<3;k++) BX(.5,.05,1.6,woodC,ox-W/2+.45,fl+.5+k*.6,hz-L/2+1.4+.0,{cast:false});
     for(const [z,c] of [[-2.4,0xb84a3a],[-1.6,0x3a6aa8],[-.8,0x4a8a58]]){ BX(.7,.6,.7,woodC,ox+W/2-.45,fl+.3,hz+z,{cast:true}); col(ox+W/2-.45,hz+z,.7,.7,fl+.6,fl); BX(.62,.04,.62,plain(c,.7),ox+W/2-.45,fl+.62,hz+z,{cast:false}); }
     // camp bed against the left wall near the south end
     BX(.7,.14,1.8,plain(0x4a5a3a,.9),ox-W/2+.45,fl+.32,hz+1.9,{cast:false}); BX(.7,.06,1.8,plain(0x2a3a5a,.9),ox-W/2+.45,fl+.42,hz+1.9,{cast:false}); BX(.5,.1,.4,plain(0xf0eee0,.9),ox-W/2+.45,fl+.5,hz+2.55,{cast:false}); for(const [dx,dz] of [[-.3,-.85],[.3,-.85],[-.3,.85],[.3,.85]]) BX(.06,.26,.06,steelD,ox-W/2+.45+dx,fl+.13,hz+1.9+dz,{cast:false}); col(ox-W/2+.45,hz+1.9,.7,1.8,fl+.5,fl);
@@ -4133,9 +4131,11 @@ function buildShip(){
       const gold=plain(0xffcc30,.3,.8); BX(.34,.26,.44,gold,dx,fl+.5,dz,{cast:false}); BX(.24,.26,.24,gold,dx,fl+.75,dz+.14,{cast:false}); BX(.14,.08,.16,plain(0xff8a18,.5),dx,fl+.72,dz+.3,{cast:false}); BX(.06,.06,.04,plain(0x101010),dx+.07,fl+.8,dz+.26,{cast:false}); BX(.06,.06,.04,plain(0x101010),dx-.07,fl+.8,dz+.26,{cast:false});
       BX(.2,.14,.12,gold,dx,fl+.6,dz-.24,{cast:false}); BX(1.0,.04,.05,glow(0xff5ac8,2),dx+.0,fl+1.5,dz,{ry:0,cast:false}); BX(.05,1.0,.05,glow(0x58e8ff,2),dx+.0,fl+1.0,dz+.35,{cast:false});
       // boxes that hide it
-      BX(.5,.5,.5,woodC,ox-W/2+.35,fl+.25,dz-.75); col(ox-W/2+.35,dz-.75,.5,.5,fl+.5,fl); BX(.4,.3,.4,woodC,ox-W/2+.35,fl+.65,dz-.75,{cast:false});
+      for(const [z2,y2] of [[-1.2,0],[-.8,0],[-1.0,.6]]) { BX(.62,.58,.5,woodC,ox-W/2+.5,fl+.3+y2,hz-1.9+z2*.0+ (z2<0?.0:0)-0.0+ z2*.0,{cast:false}); }
       nightLight(dx,fl+1.2,dz,0xff9ae8,1.6,6);
       MAP.secrets=MAP.secrets||[]; MAP.secrets.push({x:dx,z:dz,y:fl,r:1.8,fn:f=>{ const sc=MAP.secrets[0]; if(!sc.found){ sc.found=true; G.duck=(G.duck||0)+1; toast('You found the Captain\'s secret stash: the Golden Duck!'); } else toast('Quack.'); if(window.confettiBurst) confettiBurst(dx,fl+1.2,dz,60,0); if(SFX.pop) SFX.pop(); if(SFX.combo) SFX.combo(); if(f.human) addCoins(sc.found&&G.duck===1?25:0); } }); }
+      // the north door opens straight onto the second-floor walkway (the container hangs level with it)
+    BX(W+.2,.06,.5,steelD,xo,fl-.02,hz-L/2-.18,{cast:false});
   }
   function crane(){
     const LX=[-1.7,2.9], TOP=16, cm=plain(0xe8b01c,.5,.3), cd=plain(0x3a3e48,.5,.4), w=.9, ZE=14.2;
@@ -4249,7 +4249,7 @@ function buildShip(){
   // ---- the second floor wraps round the back of the tower: side walkways, a rear deck, rails, ladders down to the stern deck ----
   { const rail=(x1,z1,x2,z2)=>{ const len=Math.hypot(x2-x1,z2-z1); if(len<.2) return; const ang=Math.atan2(z2-z1,x2-x1);
       for(const y of [.35,.72,1.1]) BX(len,.05,.05,white,(x1+x2)/2,GY+y,(z1+z2)/2,{ry:-ang,cast:false}); BX(len,.14,.04,plain(0xd8b020,.6),(x1+x2)/2,GY+.12,(z1+z2)/2,{ry:-ang,cast:false});
-      for(let t=0;t<=len+.01;t+=1.9){ const u=Math.min(1,t/len); BX(.07,1.1,.07,white,x1+(x2-x1)*u,GY+.55,z1+(z2-z1)*u,{cast:false}); } colOBB((x1+x2)/2,(z1+z2)/2,len,.12,GY+1.1,-ang); };
+      for(let t=0;t<=len+.01;t+=1.9){ const u=Math.min(1,t/len); BX(.07,1.1,.07,white,x1+(x2-x1)*u,GY+.55,z1+(z2-z1)*u,{cast:false}); } colOBB((x1+x2)/2,(z1+z2)/2,len,.12,GY+1.1,-ang,GY); };
     for(const s of [-1,1]){ galSeg(-58.6,-44,s*11.0,s*16.0); rail(-58.5,s*15.9,-41.4,s*15.9);
       for(const x of [-58.3,-52,-46]){ BX(.3,GY,.3,steelD,x,GY/2,s*15.7,{cast:false}); col(x,s*15.7,.3,.3,GY); }
       // wall lamps and lifebuoys on the tower side, benches and a tool cabinet
@@ -4300,7 +4300,7 @@ function buildShip(){
   }
   // rails across the crane gap so nobody steps off the second floor into it
   { const gr=(x1,z1,x2,z2)=>{ const len=Math.hypot(x2-x1,z2-z1), ang=Math.atan2(z2-z1,x2-x1); for(const y of [.38,.76,1.12]) BX(len,.05,.05,white,(x1+x2)/2,GY+y,(z1+z2)/2,{ry:-ang,cast:false}); BX(len,.14,.04,plain(0xd8b020,.6),(x1+x2)/2,GY+.12,(z1+z2)/2,{ry:-ang,cast:false});
-      for(let t=0;t<=len+.01;t+=Math.max(1.6,len/Math.ceil(len/1.8))){ const u=Math.min(1,t/len); BX(.07,1.12,.07,white,x1+(x2-x1)*u,GY+.56,z1+(z2-z1)*u,{cast:false}); } colOBB((x1+x2)/2,(z1+z2)/2,len,.14,GY+1.12,-ang); };
+      for(let t=0;t<=len+.01;t+=Math.max(1.6,len/Math.ceil(len/1.8))){ const u=Math.min(1,t/len); BX(.07,1.12,.07,white,x1+(x2-x1)*u,GY+.56,z1+(z2-z1)*u,{cast:false}); } colOBB((x1+x2)/2,(z1+z2)/2,len,.14,GY+1.12,-ang,GY); };
     for(const s of [-1,1]){ gr(CRG[0],s*11.72,CRG[1],s*11.72); gr(CRG[0]-.1,s*11.72,CRG[0]-.1,s*15.95); gr(CRG[1]+.1,s*11.72,CRG[1]+.1,s*15.95); } }
   // ---- lifeboats: open boats with plank hulls, benches, canopies and davits; stand in one, press the use key and it rides up (or down) between the main deck and the second floor ----
   const LIFTS=[]; MAP.lifts=LIFTS;
@@ -4428,9 +4428,6 @@ function buildShip(){
   // mooring bitts, capstans, fire monitors and life-raft canisters: voxel-round, with plates, rims and hardware
   const bol=(x,z)=>{ BX(1.0,.14,.9,dkS,x,.07,z); BX(.9,.22,.8,steelD,x,.24,z,{cast:false}); for(const e of [-1,1]){ pipeAx('y',.3,1.15,x+e*.28,0,z,.2,dkS,{cast:true}); BX(.5,.1,.5,steelD,x+e*.28,1.2,z,{cast:false}); } BX(.9,.14,.3,steelD,x,.86,z,{cast:false}); for(const e of [-1,1]) BX(.06,.1,.06,chrome,x+e*.46,.2,z+.38,{cast:false}); col(x,z,1.0,.9,1.25); };
   for(const sg of [-1,1]){ bol(47,sg*14.4); bol(54.5,sg*13.4); bol(62,sg*10.9); bol(66.2,sg*5.6);
-    // capstan: a flared voxel-round drum on a motor housing with a rope turn and bars
-    { const cx=60.8, cz=sg*9.2; sol(cx,cz,1.5,1.5,0,.5,dkS); BX(1.6,.1,1.6,steelD,cx,.55,cz,{cast:false}); pipeAx('y',.5,1.5,cx,0,cz,.46,steelD,{cast:true}); pipeAx('y',.5,.7,cx,0,cz,.62,orange); pipeAx('y',1.3,1.6,cx,0,cz,.62,orange); BX(.5,.14,.5,dkS,cx,1.66,cz,{cast:false});
-      for(const [dx,dz] of [[.8,0],[-.8,0],[0,.8],[0,-.8]]) BX(dx?.5:.1,.1,dz?.5:.1,chrome,cx+dx,1.2,cz+dz,{cast:false}); for(let k=0;k<3;k++) pipeAx('y',.82+k*.18,.9+k*.18,cx,0,cz,.54,plain(0xc8b078,.9)); BX(.3,.3,.3,glow(0xffb040,1.6),cx+.7,.7,cz+.7,{cast:false}); }
     // fire monitor: round base, swivel head, elbow, barrel with nozzle ring, hand wheel and gauge
     { const mx=56.8, mz=sg*12.0, rd=plain(0xc42a1a,.45,.2); sol(mx,mz,1.0,1.0,0,.4,dkS); pipeAx('y',.4,1.2,mx,0,mz,.3,rd,{cast:true}); BX(.8,.12,.8,steelD,mx,.42,mz,{cast:false}); pipeAx('y',1.2,1.4,mx,0,mz,.38,steelD); pipeAx('x',mx-.1,mx+1.3,0,1.55,mz,.2,rd,{cast:true}); pipeAx('x',mx+1.3,mx+1.5,0,1.55,mz,.27,dkS);
       pipeAx('y',1.2,1.6,mx-.2,0,mz,.14,rd); BX(.4,.06,.4,chrome,mx-.2,1.62,mz,{cast:false}); mesh(TG(.17,.04),plain(0xd82a1e,.5),mx+.2,.8,mz+.34,{cast:false}); BX(.14,.14,.06,glow(0xf4f4f0,1.2),mx-.2,.8,mz+.32,{cast:false}); BX(.5,.06,.06,chrome,mx+.6,1.75,mz,{cast:false}); }
@@ -4456,12 +4453,14 @@ function buildShip(){
     // roof: a slab with an overhang, a raised parapet and an access hatch; a plinth round the base
     sol(cx,cz,w+.7,d+.7,H,H+.18,roof); for(const [px,pz,pw,pd] of [[cx,cz-d/2-.3,w+.7,.1],[cx,cz+d/2+.3,w+.7,.1],[cx-w/2-.3,cz,.1,d+.7],[cx+w/2+.3,cz,.1,d+.7]]) BX(pw,.22,pd,plain(0x3a4252,.5,.4),px,H+.28,pz,{cast:false});
     BX(1.0,.34,1.0,steelD,cx-w/4,H+.35,cz,{cast:false}); BX(.8,.1,.8,dkS,cx-w/4,H+.54,cz,{cast:false}); BX(.5,.5,.5,steelD,cx+w/4,H+.43,cz+ds*.5,{cast:false});
-    BX(w+.2,.3,d+.2,plain(0x6a707c,.8),cx,.15,cz,{cast:false});
+    for(const [px,pz,pw,pd] of [[cx,cz-d/2-.17,w+.5,.16],[cx,cz+d/2+.17,w+.5,.16],[cx-w/2-.17,cz,.16,d+.1],[cx+w/2+.17,cz,.16,d+.1]]) BX(pw,.26,pd,plain(0x6a707c,.8),px,.13,pz,{cast:false});
     // interior: planks, a hatch of light, shelving on the back wall, two lockers, a workbench with a vice, a stool and boxes
-    BX(w-.5,.05,d-.5,plankMat(0x8a6a4a),cx,.08,cz,{cast:false});
-    const fvv=(k,c,x,z,ry)=>fv(k,c,x,z,.1,ry);
-    fvv('bookshelf',0,cx-1.2,zBack+ds*.55,ds>0?0:Math.PI); fvv('bookshelf',0,cx+.2,zBack+ds*.55,ds>0?0:Math.PI);
-    lockerU(cx+w/2-.5,.1,cz-ds*.1,-Math.PI/2*ds*-1,0x4a6a8a);
+    BX(w-.3,.04,d-.3,plankMat(0x8a6a4a),cx,.06,cz,{cast:false}); for(let k=0;k<6;k++) BX(w-.3,.012,.05,plain(0x4a3220,.9),cx,.082,cz-d/2+.5+k*(d-1)/5,{cast:false});
+    const fvv=(k,c,x,z,ry)=>fv(k,c,x,z,.09,ry);
+    for(const [k,c] of [[-1.55,0x4a6a8a],[-.35,0x8a4a3a],[.85,0x4a8a58]]) lockerU(cx+k,.09,zBack+ds*.45,ds>0?0:Math.PI,c);
+    fvv('bookshelf',0,cx+w/2-.6,cz+ds*.2,ds>0?-Math.PI/2:Math.PI/2); fvv('bookshelf',0,cx+w/2-.6,cz-ds*.9,ds>0?-Math.PI/2:Math.PI/2);
+    for(const [dx,c,y] of [[-1.9,0xd82a1e,1.9],[-1.55,0x2a5ac8,1.9],[-1.2,0xe8a41c,1.9]]){ BX(.5,.62,.22,plain(c,.8),cx+dx,y,cz+ds*.0+(-ds*d/2+.35*ds),{cast:false}); } 
+    BX(.12,.12,.6,steelD,cx-w/2+.2,2.15,cz-ds*.9,{cast:false}); for(const [dz,c] of [[-1.2,0xe8a41c],[-.8,0xd82a1e],[-.4,0x2a5ac8]]) BX(.1,.7,.26,plain(c,.8),cx-w/2+.2,1.75,cz-ds*.9+dz*.0+dz*.35+.0,{cast:false});
     sol(cx-w/2+.55,cz+ds*.2,.9,1.7,.1,.95,woodD); BX(.34,.12,.3,dkS,cx-w/2+.55,1.05,cz+ds*.7,{cast:false}); BX(.1,.3,.1,steelD,cx-w/2+.55,1.2,cz+ds*.7,{cast:false}); papers(cx-w/2+.3,cx-w/2+.8,cz-ds*.4,cz+ds*1.0,.96,5);
     fvv('chair',0xa8683a,cx-w/2+1.4,cz+ds*.4,ds>0?-Math.PI/2:Math.PI/2);
     crate(cx+w/2-.9,cz+ds*.9,.8,.1,true); BX(.3,.3,.3,plain(0xc42a1a,.6),cx+w/2-.9,1.0,cz+ds*.9,{cast:false});
@@ -5425,6 +5424,7 @@ canvas.addEventListener('contextmenu',e=>e.preventDefault());
 addEventListener('mousemove',e=>{
   if(Math.abs(e.movementX)+Math.abs(e.movementY)>2) G.lastInput='kbm';
   if(!live()||!P.input||!P.input.kbm||(!isLocked()&&!G.noLock)) return;
+  if(DEV.on&&DEV.freecam){ const sf=.0022*G.sens; FC.yaw-=e.movementX*sf; FC.pitch=clamp(FC.pitch-e.movementY*sf*(G.invY?-1:1),-1.5,1.5); return; }
   const s=.0022*G.sens;
   const sk=1-.66*(P.scopeK||0); P.yaw-=e.movementX*s*sk; P.pitch=clamp(P.pitch-e.movementY*s*sk*(G.invY?-1:1),-1.45,1.45);
   P.fx.mdx+=e.movementX; P.fx.mdy+=e.movementY;
@@ -5863,9 +5863,12 @@ function replayTick(rdt){ if(!KC) return;
   if(W.rig){ W.rig.g.visible=!W.dead; W.rig.blob.visible=true; }
   const eye=new THREE.Vector3(W.x,W.y+1.55,W.z), tgt=new THREE.Vector3(V.x,V.y+1.2,V.z);
   const fw=new THREE.Vector3(-Math.sin(W.yaw),0,-Math.cos(W.yaw)).normalize(), rt=new THREE.Vector3(-fw.z,0,fw.x);
-  let want=null; for(const [bk,up,sd] of [[3.4,.55,.7],[2.7,.5,.6],[2.1,.45,.5],[1.6,.4,.35]]){ const p=eye.clone().addScaledVector(fw,-bk).addScaledVector(rt,sd); p.y=eye.y+up; if(hasLOS(p,eye)){ want=p; break; } }
-  if(!want) want=eye.clone().addScaledVector(fw,-1.1).add(new THREE.Vector3(0,.35,0));
-  if(!KC.ready){ KC.cp.copy(want); KC.ready=true; } else KC.cp.lerp(want,1-Math.exp(-6*rdt));
+  const solidAt=(x,y,z)=>{ for(const o of COL){ if(o.nb) continue; if(y>o.y0-.3&&y<o.h+.3&&x>o.minX-.3&&x<o.maxX+.3&&z>o.minZ-.3&&z<o.maxZ+.3) return true; } return false; };
+  // march from the killer's eyes toward the ideal spot and stop short of anything solid (with a margin)
+  const safeSpot=(tx,ty,tz)=>{ const dx=tx-eye.x, dy=ty-eye.y, dz=tz-eye.z, L=Math.hypot(dx,dy,dz), n=Math.max(1,Math.ceil(L/.08)); let last=0; for(let i=1;i<=n;i++){ const t=i/n; if(solidAt(eye.x+dx*t,eye.y+dy*t,eye.z+dz*t)) break; last=t; } const t=Math.max(0,last-.04); return new THREE.Vector3(eye.x+dx*t,eye.y+dy*t,eye.z+dz*t); };
+  const want=safeSpot(eye.x-fw.x*3.2+rt.x*.7,eye.y+.6,eye.z-fw.z*3.2+rt.z*.7);
+  if(want.distanceTo(eye)<.5) want.copy(eye).addScaledVector(fw,.1);
+  if(!KC.ready){ KC.cp.copy(want); KC.ready=true; } else { KC.cp.lerp(want,1-Math.exp(-8*rdt)); const pull=safeSpot(KC.cp.x,KC.cp.y,KC.cp.z); KC.cp.copy(pull); }
   const aim=eye.clone().addScaledVector(new THREE.Vector3(-Math.sin(W.yaw)*Math.cos(W.pitch),Math.sin(W.pitch),-Math.cos(W.yaw)*Math.cos(W.pitch)),12);
   camera.position.copy(KC.cp); camera.fov=lerp(70,56,zoom); camera.updateProjectionMatrix(); camera.lookAt(aim.x,aim.y,aim.z); camera.updateMatrixWorld(); }
 function afterRound(){ if(G.winner.score>=G.target) gameOver(G.winner); else startPick(other(G.winner)); }
@@ -6070,6 +6073,7 @@ function syncRig(f,dt){
   r.blob.position.set(f.x,(f.podY||0)+.05,f.z); const bs=1/(1+(f.y-(f.podY||0))*.6); r.blob.scale.setScalar(bs*(f.dead?1.6:1)); r.blob.material.opacity=bs;
 }
 function placeCamera(f,cam){
+  if(DEV.on&&DEV.freecam&&f===P&&cam===CAMS[0]){ cam.position.set(FC.x,FC.y,FC.z); cam.rotation.set(FC.pitch,FC.yaw,0); cam.fov=80; cam.updateProjectionMatrix(); cam.updateMatrixWorld(); if(f.view) f.view.vm.visible=false; return; }
   const F=f.fx; F.shake*=Math.exp(-8*(1/60));
   if(F.camY===undefined||!f.onGround||Math.abs(F.camY-f.y)>1.2) F.camY=f.y; else F.camY+=(f.y-F.camY)*Math.min(1,(1/60)*12);
   F.slideLow=lerp(F.slideLow||0,f.slideT>0?.75:0,.28);
@@ -6102,7 +6106,7 @@ function syncViewmodel(f,cam,rdt){
   const sh=VM.shield.material; sh.opacity=lerp(sh.opacity,(f.blockT>0||f.shieldPop>0)?.85:0,1-Math.exp(-20*rdt)); VM.shield.visible=sh.opacity>.01; { const k=Math.min(1,sh.opacity/.85), pop=f.shieldPop>0?.06:0; VM.shield.position.set(VM.shieldBase.x+F.swayX*.4,VM.shieldBase.y+F.swayY*.4-(1-k)*.06,VM.shieldBase.z+pop); VM.shield.scale.setScalar(.8+.2*k+pop*2); }
   for(const s of VM.shells){ if(!s.alive) continue; s.life-=rdt; s.v.y-=9.8*rdt; s.m.position.addScaledVector(s.v,rdt); s.m.rotation.x+=s.w.x*rdt; s.m.rotation.y+=s.w.y*rdt; if(s.life<=0){ s.alive=false; s.m.visible=false; } }
   if(f.inspectT>0){ f.inspectT-=rdt; { const q=1-f.inspectT/2.2, e=Math.sin(Math.min(1,q)*Math.PI); vm.rotation.y+=e*1.1; vm.rotation.z+=e*.5; vm.rotation.x+=Math.sin(q*Math.PI*2)*.15*e; vm.position.x-=e*.08; vm.position.y+=e*.03; } }
-  vm.visible=!f.dead&&(f.scopeK||0)<.55;
+  vm.visible=!f.dead&&(f.scopeK||0)<.55&&!(DEV.on&&DEV.freecam&&f===P);
 }
 let FAULTS=0;
 function renderFault(e,fx){ const o=DOC.cur; const msg=((e&&e.message)||String(e)).slice(0,110);
@@ -6184,12 +6188,12 @@ function loop(now){
   }
   if(isLive){
     if(G.state==='playing'){
-      for(const f of FIGHTERS){ if(f.human) controlHuman(f,dt); else if(DEV.on&&DEV.freeze){ f.mx=f.mz=0; } else botThink(f,dt); }
+      for(const f of FIGHTERS){ if(f.human&&DEV.on&&DEV.freecam&&f===P){ f.mx=f.mz=0; fcTick(dt); } else if(f.human) controlHuman(f,dt); else if(DEV.on&&DEV.freeze){ f.mx=f.mz=0; } else botThink(f,dt); }
       G.roundT=(G.roundT||0)+rdt;
       if(G.roundT>SUDDEN_AT){ if(!G.sudden){ G.sudden=true; showBanner('Sudden death','Everyone bleeds until one of you drops','var(--bad)'); G.bannerT=2; SFX.combo(); }
         const bleed=(3+(G.roundT-SUDDEN_AT)*.2)*dt; for(const f of (Math.random()<.5?FIGHTERS:[B,P])) if(!f.dead&&G.state==='playing'){ f.lastHit=null; damage(f,bleed,null,false,true); } }
       for(const f of humans()){ const o=other(f); if(hasLOS(eyePos(f),new THREE.Vector3(o.x,o.y+1.2,o.z))) o.seenT=Math.max(o.seenT,1.2); }
-    } else { jumpQ=blockQ=reloadQ=slideQ=false; abilQ.fill(false); for(const f of FIGHTERS){ f.mx=f.mz=0; if(f.human&&G.state==='countdown'){ const p=getPad(f.input.pad); if(p){ const [rx,ry]=dz(p.axes[2]||0,p.axes[3]||0,.14); f.yaw-=curve(rx)*3.4*(f.padSens||G.padSens)*dt; f.pitch=clamp(f.pitch-curve(ry)*2.3*(f.padSens||G.padSens)*dt,-1.45,1.45); } } } }
+    } else { jumpQ=blockQ=reloadQ=slideQ=false; abilQ.fill(false); if(DEV.on&&DEV.freecam) fcTick(dt); for(const f of FIGHTERS){ f.mx=f.mz=0; if(f.human&&G.state==='countdown'){ const p=getPad(f.input.pad); if(p){ const [rx,ry]=dz(p.axes[2]||0,p.axes[3]||0,.14); f.yaw-=curve(rx)*3.4*(f.padSens||G.padSens)*dt; f.pitch=clamp(f.pitch-curve(ry)*2.3*(f.padSens||G.padSens)*dt,-1.45,1.45); } } } }
     for(const f of FIGHTERS) updateFighter(f,dt);
     liftTick(dt);
     updateBullets(dt);
@@ -6381,7 +6385,7 @@ SAVE.coins=SAVE.coins||0; SAVE.set=SAVE.set||{}; SAVE.own=SAVE.own||{hat:['none'
 if(!SAVE.eq.skins){ const o=SAVE.eq.skin&&SAVE.eq.skin!=='std'?SAVE.eq.skin:'std'; SAVE.eq.skins={rifle:o,smg:o,shotgun:o,sniper:o}; } SAVE.own.skin=SAVE.own.skin||['std']; if(!SAVE.own.skin.includes('std')) SAVE.own.skin.push('std');
 function persist(){ try{ localStorage.setItem(SAVE_KEY,JSON.stringify(SAVE)); }catch(e){} }
 /* ================= developer options (unlocked with a code in Settings) ================= */
-const DEV={on:!!SAVE.dev,god:false,ammo:false,cd:false,freeze:false,oneshot:false,pickAny:false,tab:'opt',target:'P',ret:'menu'};
+const FC={x:0,y:3,z:0,yaw:0,pitch:0}, DEV={on:!!SAVE.dev,freecam:false,god:false,ammo:false,cd:false,freeze:false,oneshot:false,pickAny:false,tab:'opt',target:'P',ret:'menu'};
 const CODES={ devmode:()=>{ SAVE.dev=true; DEV.on=true; persist(); syncDevUI(); return 'Developer options unlocked. Open them from Settings or the pause menu (F2 in a match).'; },
   underdogdev:()=>CODES.devmode(), devoff:()=>{ SAVE.dev=false; DEV.on=false; for(const k of ['god','ammo','cd','freeze','oneshot','pickAny']) DEV[k]=false; persist(); syncDevUI(); return 'Developer options locked.'; },
   unlockall:()=>{ unlockEverything(); return 'Every hat, tracer and gun skin is unlocked.'; }, rich:()=>{ addCoins(9999); return '+9999 coins.'; } };
@@ -6391,12 +6395,12 @@ function syncDevUI(){ const b=$('#setDev'), p=$('#pauseDev'); if(b) b.style.disp
 function grantCard(l,c){ c.apply(l.stats); clampStats(l.stats); l.cards.push(c); const ids=l.cards.map(k=>k.id);
   for(const k of COMBOS) if(!l.combos.includes(k.id)&&comboMet(ids,k)){ l.combos.push(k.id); if(l.human) setTimeout(()=>SFX.combo(),350); setTimeout(()=>toast(`${l.isBot?'Bot':l.name} unlocked a combo: ${k.name}. ${k.desc}`),300); }
   if(l.human) renderCards(l); }
-const DEV_TOGGLES=[['god','God mode','You take no damage'],['ammo','Infinite ammo','Never reload'],['cd','No cooldowns','Block, slide and ability always ready'],['freeze','Freeze the bot','It stands still'],['oneshot','One-hit kills','Your shots kill instantly'],['pickAny','Pick any card','Every power pick shows all cards']];
+const DEV_TOGGLES=[['god','God mode','You take no damage'],['ammo','Infinite ammo','Never reload'],['cd','No cooldowns','Block, slide and ability always ready'],['freeze','Freeze the bot','It stands still'],['oneshot','One-hit kills','Your shots kill instantly'],['pickAny','Pick any card','Every power pick shows all cards'],['freecam','Free camera (F4)','Fly around the map: WASD, Space up, C down, Shift fast. You stand still and take no damage']];
 function renderDev(){ const box=$('#devBox'); $('#dTabOpt').classList.toggle('on',DEV.tab==='opt'); $('#dTabCards').classList.toggle('on',DEV.tab==='cards');
   if(DEV.tab==='opt'){
     box.innerHTML='<h4>Toggles</h4>'+DEV_TOGGLES.map(([k,n,d])=>`<button class="dvb${DEV[k]?' on':''}" data-t="${k}">${n}<small>${d}</small></button>`).join('')+
       '<h4>Actions</h4>'+[['unlock','Unlock every cosmetic','Hats, tracers and gun skins'],['coins','+1000 coins',''],['win','Win this round','Only during a round'],['lose','Lose this round','Only during a round'],['heal','Full heal and reload','You'],['clear','Clear my powers','Reset your stats and cards'],['night','Toggle night','Sunset or night'],['fps','Toggle FPS counter','']].map(([k,n,d])=>`<button class="dvb" data-a="${k}">${n}<small>${d}</small></button>`).join('');
-    box.querySelectorAll('[data-t]').forEach(b=>b.addEventListener('click',()=>{ DEV[b.dataset.t]=!DEV[b.dataset.t]; renderDev(); }));
+    box.querySelectorAll('[data-t]').forEach(b=>b.addEventListener('click',()=>{ DEV[b.dataset.t]=!DEV[b.dataset.t]; if(b.dataset.t==='freecam') fcSet(DEV.freecam); renderDev(); }));
     box.querySelectorAll('[data-a]').forEach(b=>b.addEventListener('click',()=>devAction(b.dataset.a)));
   } else {
     const split=G.mode==='split';
@@ -6415,6 +6419,12 @@ function devAction(a){
   else if(a==='night'){ setNight(!G.night); syncSeg('#timeSeg',G.night?'night':'day'); }
   else if(a==='fps'){ const on=!G.showFps; G.showFps=on; document.querySelectorAll('.h-fpsBox').forEach(e=>e.style.display=on?'':'none'); syncSeg('#fpsShowSeg',on?'1':'0'); }
 }
+
+function fcSet(on){ DEV.freecam=!!on; if(on){ FC.x=P.x; FC.y=P.y+EYE; FC.z=P.z; FC.yaw=P.yaw; FC.pitch=P.pitch; DEV.god=true; toast('Free camera: WASD move, Space up, C down, Shift fast, F4 to leave'); } else toast('Free camera off'); document.body.classList.toggle('freecam',!!on); }
+function fcTick(dt){ const sp=(keys['shift']?36:12)*dt, fx=-Math.sin(FC.yaw), fz=-Math.cos(FC.yaw), rx=-fz, rz=fx;
+  let mx=0,my=0,mz=0; if(keys['w']) { mx+=fx*Math.cos(FC.pitch); mz+=fz*Math.cos(FC.pitch); my+=Math.sin(FC.pitch); } if(keys['s']) { mx-=fx*Math.cos(FC.pitch); mz-=fz*Math.cos(FC.pitch); my-=Math.sin(FC.pitch); } if(keys['d']){ mx+=rx; mz+=rz; } if(keys['a']){ mx-=rx; mz-=rz; } if(keys[' ']) my+=1; if(keys['c']) my-=1;
+  FC.x+=mx*sp; FC.y+=my*sp; FC.z+=mz*sp; }
+addEventListener('keydown',e=>{ if(e.key==='F4'&&DEV.on){ e.preventDefault(); fcSet(!DEV.freecam); } });
 function openDev(ret){ if(!DEV.on) return; DEV.ret=ret; renderDev(); showOverlay('#dev'); }
 function closeDev(){ if(DEV.ret==='pause'&&G.paused) showOverlay('#pause'); else if(DEV.ret==='pause'){ showOverlay(null); } else { showOverlay('#menu'); showPane('paneSet'); } }
 /* ================= rebindable controls ================= */
