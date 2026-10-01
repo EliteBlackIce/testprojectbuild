@@ -272,6 +272,13 @@ button:focus-visible{outline:3px solid #fff;outline-offset:6px}
 #over,#pause{background:rgba(12,6,12,.8)} #over.podiumOn{background:rgba(12,6,12,.55)}
 #pod{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:space-between;padding:4vh 16px 5vh;text-align:center;pointer-events:none;z-index:30} #pod.show{display:flex} #pod h1{margin:0;font-size:clamp(56px,10vw,120px);line-height:.9} #pod p{margin:8px 0 0;color:var(--ink);font-size:22px} #pod .row{display:flex;gap:14px;pointer-events:auto}
 #over h1,#pause h1{margin:0;font-size:clamp(64px,11vw,128px);font-weight:700;line-height:.9}
+
+#over h1.slam{animation:slamIn .7s cubic-bezier(.2,1.5,.4,1) both} @keyframes slamIn{0%{transform:scale(2.6) translateY(-60px);opacity:0}60%{opacity:1}100%{transform:none;opacity:1}}
+#over #overSub{animation:fadeUp .6s .5s both} @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+#overStats.stats{display:flex;flex-direction:column;gap:10px;min-width:min(620px,92vw);padding:14px 20px;opacity:0;transform:translateY(24px);transition:opacity .5s .9s,transform .5s .9s} #overStats.go,#over.show #overStats{opacity:1;transform:none}
+.stats .ohead,.stats .orow{flex-direction:initial;display:grid;grid-template-columns:150px 1fr 1fr;gap:14px;align-items:center} .stats .ohead b{font-size:26px;text-align:left} .stats .olab{font-size:18px;text-align:left;color:var(--muted)}
+.stats .obar{display:block;position:relative;height:30px;background:#140c12;box-shadow:0 0 0 3px var(--edge)} .obar i{position:absolute;left:0;top:0;bottom:0;width:0;transition:width 1.1s cubic-bezier(.2,.8,.2,1)} .obar.o1 i{background:var(--you)} .obar.o2 i{background:var(--bot)} .stats .obar .onum{position:absolute;right:8px;top:2px;font-size:20px;color:#fff;text-shadow:0 2px 0 #140c12}
+#overCards{animation:fadeUp .6s 2.3s both} #over .row{animation:fadeUp .6s 2.6s both}
 .stats{display:flex;gap:30px;flex-wrap:wrap;justify-content:center;padding:6px 14px}
 .stats div{display:flex;flex-direction:column;align-items:center}
 .stats b{font-size:40px;font-weight:700}
@@ -1495,9 +1502,9 @@ const CARDS=[
   {id:'ricoking',name:'Ricochet King',ic:'crown',tier:'uncommon',pros:['+1 bounce','Each bounce adds +35% damage'],cons:[],apply:s=>{s.bounces+=1;s.bounceDmg+=.35}},
   {id:'sawed',name:'Sawed Off',ic:'shotgun',tier:'rare',pros:['+6 pellets','Huge damage up close'],cons:['Massive spread','Weak at range'],apply:s=>{s.proj+=6;s.spread+=.34;s.dmg*=.4;s.falloff=1}},
   {id:'railshot',name:'Railshot',ic:'pierce',tier:'rare',pros:['Bullets pierce walls and players'],cons:['+0.8s reload','-1 ammo'],apply:s=>{s.pierce=1;s.reload+=.8;s.ammo-=1}},
-  {id:'dash',name:'Dash',ic:'dash',tier:'common',ab:'dash',pros:['Ability: quick dash (E or Y)'],cons:['3s cooldown','Replaces your ability'],apply:s=>{s.ability='dash'}},
-  {id:'blade',name:'Combat Knife',ic:'knife',tier:'uncommon',ab:'blade',pros:['Ability: slash up close, throw the knife when they are far (E or Y)','Backstabs hit twice as hard'],cons:['1.4s cooldown','Replaces your ability'],apply:s=>{s.ability='blade'}},
-  {id:'blink',name:'Blink',ic:'blink',tier:'uncommon',ab:'blink',pros:['Ability: teleport 7m where you look (E or Y)'],cons:['5s cooldown','Replaces your ability'],apply:s=>{s.ability='blink'}},
+  {id:'dash',name:'Dash',ic:'dash',tier:'common',ab:'dash',pros:['Ability: dash forward (E or Y)', '+6% move speed'],cons:['3s cooldown', 'Replaces your ability'],apply:s=>{s.ability='dash';s.speed*=1.06}},
+  {id:'blade',name:'Combat Knife',ic:'knife',tier:'uncommon',ab:'blade',pros:['Ability: slash up close, throw the knife when they are far (E or Y)', 'Backstabs hit twice as hard'],cons:['1.4s cooldown', 'Replaces your ability'],apply:s=>{s.ability='blade'}},
+  {id:'blink',name:'Blink',ic:'blink',tier:'uncommon',ab:'blink',pros:['Ability: teleport up to 8m where you look (E or Y)', 'Leaves you moving fast for a moment'],cons:['5s cooldown', '-8% max HP', 'Replaces your ability'],apply:s=>{s.ability='blink';s.maxHp*=.92}},
   {id:'heavy',name:'Heavy Feet',ic:'anvil',tier:'common',pros:['Immune to knockback','+30% max HP'],cons:['-10% move speed'],apply:s=>{s.heavy=1;s.maxHp*=1.3;s.speed*=.9}},
   {id:'sburst',name:'Shield Burst',ic:'burst',tier:'uncommon',pros:['Getting hit blocks for 0.6s'],cons:['5s cooldown'],apply:s=>{s.shieldBurst=1}},
   {id:'last',name:'Last Stand',ic:'flag',tier:'uncommon',pros:['Under 20% HP: take 70% less damage for 2.5s'],cons:['Once per round'],apply:s=>{s.lastStand=1}},
@@ -1511,10 +1518,10 @@ const CARDS=[
   {id:'rage',name:'Rage',ic:'flame',tier:'uncommon',pros:['Every hit: +12% fire rate until you miss'],cons:[],apply:s=>{s.rage=1}},
   {id:'gamble',name:'Gambler',ic:'dice',tier:'common',pros:['12% of shots deal 5x damage'],cons:['20% of shots deal 0.3x'],apply:s=>{s.gamble=1}},
   {id:'berserk',name:'Berserker',ic:'axe',tier:'uncommon',pros:['Lower HP means faster moves and shots, up to +50%'],cons:[],apply:s=>{s.berserk=1}},
-  {id:'shock',name:'Shockwave',ic:'shock',tier:'uncommon',ab:'shock',pros:['Ability: blast the enemy away and wipe nearby bullets'],cons:['7s cooldown','Replaces your ability'],apply:s=>{s.ability='shock'}},
-  {id:'grenade',name:'Grenade',ic:'grenade',tier:'uncommon',ab:'grenade',pros:['Ability: throw a bouncing grenade'],cons:['6s cooldown','Replaces your ability'],apply:s=>{s.ability='grenade'}},
-  {id:'overcharge',name:'Overcharge',ic:'overcharge',tier:'rare',ab:'overcharge',pros:['Ability: your next 3 shots deal +55% damage'],cons:['9s cooldown','Replaces your ability'],apply:s=>{s.ability='overcharge'}},
-  {id:'healp',name:'Heal Pulse',ic:'healp',tier:'uncommon',ab:'healp',pros:['Ability: instantly heal 22 HP'],cons:['11s cooldown','Replaces your ability'],apply:s=>{s.ability='healp'}},
+  {id:'shock',name:'Shockwave',ic:'shock',tier:'uncommon',ab:'shock',pros:['Ability: blast the enemy back, wipe nearby bullets and slow them for 1s'],cons:['7s cooldown', 'Short range (7m)', 'Replaces your ability'],apply:s=>{s.ability='shock'}},
+  {id:'grenade',name:'Grenade',ic:'grenade',tier:'uncommon',ab:'grenade',pros:['Ability: lob a bouncing grenade that explodes on contact', '+1 max ammo'],cons:['6s cooldown', 'Replaces your ability'],apply:s=>{s.ability='grenade';s.ammo+=1}},
+  {id:'overcharge',name:'Overcharge',ic:'overcharge',tier:'rare',ab:'overcharge',pros:['Ability: your next 3 shots deal +50% damage and glow gold'],cons:['9s cooldown', '-10% fire rate', 'Replaces your ability'],apply:s=>{s.ability='overcharge';s.fireDelay*=1.1}},
+  {id:'healp',name:'Heal Pulse',ic:'healp',tier:'uncommon',ab:'healp',pros:['Ability: instantly heal 22 HP and clear bleed and poison'],cons:['11s cooldown', '-6% move speed', 'Replaces your ability'],apply:s=>{s.ability='healp';s.speed*=.94}},
   {id:'fortress',name:'Fortress',ic:'fortress',tier:'common',pros:['Block lasts twice as long','-25% block cooldown'],cons:[],apply:s=>{s.blockDur*=2;s.blockCd*=.75}},
   {id:'mirror',name:'Mirror Block',ic:'mirror',tier:'rare',pros:['Blocked bullets fly back at the shooter'],cons:[],apply:s=>{s.reflect=1}},
   {id:'parry',name:'Parry',ic:'parry',tier:'uncommon',pros:['Blocking a hit in the first 0.25s reloads you instantly'],cons:[],apply:s=>{s.parry=1}},
@@ -1538,26 +1545,26 @@ const CARDS=[
   {id:'lucky',name:'Lucky Strike',ic:'lucky',tier:'uncommon',pros:['25% of shots deal double damage'],cons:['-15% damage'],apply:s=>{s.crit=1;s.dmg*=.85}},
   {id:'slick',name:'Slick Soles',ic:'slick',tier:'common',pros:['Slide recharges 3x faster','Slides reload even faster'],cons:[],apply:s=>{s.slick=1}},
   {id:'vengeance',name:'Last Laugh',ic:'vengeance',tier:'rare',pros:['Going down triggers a blast: 36 damage within 5m'],cons:[],apply:s=>{s.vengeance=1}},
-  {id:'adrenaline',name:'Adrenaline',ic:'adrenaline',tier:'uncommon',ab:'adrenaline',pros:['Ability: +40% move speed and +35% fire rate for 3s (E or Y)'],cons:['10s cooldown','Replaces your ability'],apply:s=>{s.ability='adrenaline'}},
-  {id:'leap',name:'Leap',ic:'leap',tier:'common',ab:'leap',pros:['Ability: a huge leap forward (E or Y)'],cons:['4.5s cooldown','Replaces your ability'],apply:s=>{s.ability='leap'}},
-  {id:'stim',name:'Stim Pack',ic:'stim',tier:'common',ab:'stim',pros:['Ability: heal 40 HP over 5s'],cons:['14s cooldown','Replaces your ability'],apply:s=>{s.ability='stim'}},
-  {id:'smoke',name:'Smoke Bomb',ic:'smoke',tier:'common',ab:'smoke',pros:['Ability: a smoke cloud that blocks sight for 5s'],cons:['11s cooldown','Replaces your ability'],apply:s=>{s.ability='smoke'}},
-  {id:'fan',name:'Blade Fan',ic:'fan',tier:'uncommon',ab:'fan',pros:['Ability: throw 5 bouncing saw blades in a fan'],cons:['9s cooldown','Replaces your ability'],apply:s=>{s.ability='fan'}},
-  {id:'flash',name:'Flashbang',ic:'flash',tier:'uncommon',ab:'flash',pros:['Ability: blind an enemy who can see you'],cons:['10s cooldown','Replaces your ability'],apply:s=>{s.ability='flash'}},
-  {id:'mine',name:'Proximity Mine',ic:'mine',tier:'uncommon',ab:'mine',pros:['Ability: plant a mine that blows for 34 damage'],cons:['10s cooldown','Replaces your ability'],apply:s=>{s.ability='mine'}},
-  {id:'slam',name:'Ground Pound',ic:'slam',tier:'uncommon',ab:'slam',pros:['Ability: jump, then slam down for a shockwave'],cons:['9s cooldown','Replaces your ability'],apply:s=>{s.ability='slam'}},
-  {id:'warcry',name:'War Cry',ic:'warcry',tier:'uncommon',ab:'warcry',pros:['Ability: +35% damage and +10% speed for 4s'],cons:['13s cooldown','Replaces your ability'],apply:s=>{s.ability='warcry'}},
-  {id:'siphon',name:'Siphon',ic:'siphon',tier:'uncommon',ab:'siphon',pros:['Ability: drain 16 HP from a nearby enemy'],cons:['10s cooldown','Replaces your ability'],apply:s=>{s.ability='siphon'}},
-  {id:'grapple',name:'Grapple',ic:'grapple',tier:'uncommon',ab:'grapple',pros:['Ability: yank the enemy toward you'],cons:['10s cooldown','Replaces your ability'],apply:s=>{s.ability='grapple'}},
-  {id:'emp',name:'EMP',ic:'emp',tier:'rare',ab:'emp',pros:['Ability: stun an enemy and lock their block and ability for 4s'],cons:['14s cooldown','Replaces your ability'],apply:s=>{s.ability='emp'}},
-  {id:'aegis',name:'Aegis Dome',ic:'aegis',tier:'rare',ab:'aegis',pros:['Ability: a dome that eats enemy bullets for 3s'],cons:['14s cooldown','Replaces your ability'],apply:s=>{s.ability='aegis'}},
-  {id:'swap',name:'Phase Swap',ic:'swap',tier:'rare',ab:'swap',pros:['Ability: trade places with the enemy'],cons:['13s cooldown','Replaces your ability'],apply:s=>{s.ability='swap'}},
-  {id:'smite',name:'Smite',ic:'smite',tier:'rare',ab:'smite',pros:['Ability: call down a bolt for 32 damage (dodgeable)'],cons:['12s cooldown','Replaces your ability'],apply:s=>{s.ability='smite'}},
-  {id:'turret',name:'Sentry Turret',ic:'turret',tier:'rare',ab:'turret',pros:['Ability: deploy a turret that shoots for 7s'],cons:['15s cooldown','Replaces your ability'],apply:s=>{s.ability='turret'}},
-  {id:'timewarp',name:'Time Warp',ic:'timewarp',tier:'rare',ab:'timewarp',pros:['Ability: slow the enemy and their fire rate for 2.8s'],cons:['16s cooldown','Replaces your ability'],apply:s=>{s.ability='timewarp'}},
-  {id:'airstrike',name:'Airstrike',ic:'airstrike',tier:'rare',ab:'airstrike',pros:['Ability: bombs rain around the enemy after a warning'],cons:['19s cooldown','Replaces your ability'],apply:s=>{s.ability='airstrike'}},
-  {id:'cloak',name:'Cloak',ic:'cloak',tier:'rare',ab:'cloak',pros:['Ability: turn invisible for 3.5s (firing breaks it)'],cons:['15s cooldown','Replaces your ability'],apply:s=>{s.ability='cloak'}},
-  {id:'wall',name:'Rampart',ic:'wall',tier:'rare',ab:'wall',pros:['Ability: raise a rock wall in front of you for 4s (E or Y)'],cons:['9s cooldown','Replaces your ability'],apply:s=>{s.ability='wall'}},
+  {id:'adrenaline',name:'Adrenaline',ic:'adrenaline',tier:'uncommon',ab:'adrenaline',pros:['Ability: +40% move speed and +35% fire rate for 3s (E or Y)'],cons:['10s cooldown', 'You take +10% damage while it runs', 'Replaces your ability'],apply:s=>{s.ability='adrenaline'}},
+  {id:'leap',name:'Leap',ic:'leap',tier:'common',ab:'leap',pros:['Ability: a huge leap forward (E or Y)', '+10% jump height'],cons:['4.5s cooldown', 'Replaces your ability'],apply:s=>{s.ability='leap';s.jumpMul*=1.1}},
+  {id:'stim',name:'Stim Pack',ic:'stim',tier:'common',ab:'stim',pros:['Ability: heal 40 HP over 5s and move 10% faster while it lasts'],cons:['14s cooldown', 'Heals nothing extra if you are already at full HP', 'Replaces your ability'],apply:s=>{s.ability='stim'}},
+  {id:'smoke',name:'Smoke Bomb',ic:'smoke',tier:'common',ab:'smoke',pros:['Ability: a smoke cloud blocks sight for 5s and hides you from sight lines'],cons:['11s cooldown', 'Replaces your ability'],apply:s=>{s.ability='smoke'}},
+  {id:'fan',name:'Blade Fan',ic:'fan',tier:'uncommon',ab:'fan',pros:['Ability: throw 5 bouncing saw blades in a fan (12 damage each)'],cons:['9s cooldown', 'Blades only bounce twice', 'Replaces your ability'],apply:s=>{s.ability='fan'}},
+  {id:'flash',name:'Flashbang',ic:'flash',tier:'uncommon',ab:'flash',pros:['Ability: blind an enemy who can see you (longer if they face you)'],cons:['10s cooldown', 'Replaces your ability'],apply:s=>{s.ability='flash'}},
+  {id:'mine',name:'Proximity Mine',ic:'mine',tier:'uncommon',ab:'mine',pros:['Ability: plant a mine (up to 3) that blows for 34 damage and slows the enemy'],cons:['10s cooldown', 'Mines arm after 1s', 'Replaces your ability'],apply:s=>{s.ability='mine'}},
+  {id:'slam',name:'Ground Pound',ic:'slam',tier:'uncommon',ab:'slam',pros:['Ability: jump, then slam down for a damaging shockwave'],cons:['9s cooldown', 'Replaces your ability'],apply:s=>{s.ability='slam'}},
+  {id:'warcry',name:'War Cry',ic:'warcry',tier:'uncommon',ab:'warcry',pros:['Ability: +35% damage and +10% speed for 4s'],cons:['13s cooldown', 'Replaces your ability'],apply:s=>{s.ability='warcry'}},
+  {id:'siphon',name:'Siphon',ic:'siphon',tier:'uncommon',ab:'siphon',pros:['Ability: drain 14 HP from an enemy within 12m and heal 18 HP'],cons:['10s cooldown', 'Needs line of sight', 'Replaces your ability'],apply:s=>{s.ability='siphon'}},
+  {id:'grapple',name:'Grapple',ic:'grapple',tier:'uncommon',ab:'grapple',pros:['Ability: yank the enemy toward you for 6 damage'],cons:['10s cooldown', 'Needs line of sight', 'Replaces your ability'],apply:s=>{s.ability='grapple'}},
+  {id:'emp',name:'EMP',ic:'emp',tier:'rare',ab:'emp',pros:['Ability: stun an enemy briefly and lock their block and ability for 4s'],cons:['14s cooldown', 'Needs line of sight', 'Replaces your ability'],apply:s=>{s.ability='emp'}},
+  {id:'aegis',name:'Aegis Dome',ic:'aegis',tier:'rare',ab:'aegis',pros:['Ability: a dome that eats enemy bullets for 3s and heals you slowly'],cons:['14s cooldown', 'Dome is small (2.4m wide)', 'Replaces your ability'],apply:s=>{s.ability='aegis'}},
+  {id:'swap',name:'Phase Swap',ic:'swap',tier:'rare',ab:'swap',pros:['Ability: trade places with the enemy'],cons:['13s cooldown', '-8% max HP', 'Replaces your ability'],apply:s=>{s.ability='swap';s.maxHp*=.92}},
+  {id:'smite',name:'Smite',ic:'smite',tier:'rare',ab:'smite',pros:['Ability: call down a bolt for 32 damage (dodgeable)'],cons:['12s cooldown', 'Replaces your ability'],apply:s=>{s.ability='smite'}},
+  {id:'turret',name:'Sentry Turret',ic:'turret',tier:'rare',ab:'turret',pros:['Ability: deploy a turret that shoots for 7s (2 at a time)'],cons:['15s cooldown', 'Turrets have 40 HP', 'Replaces your ability'],apply:s=>{s.ability='turret'}},
+  {id:'timewarp',name:'Time Warp',ic:'timewarp',tier:'rare',ab:'timewarp',pros:['Ability: slow the enemy and their fire rate for 2.8s'],cons:['16s cooldown', 'Replaces your ability'],apply:s=>{s.ability='timewarp'}},
+  {id:'airstrike',name:'Airstrike',ic:'airstrike',tier:'rare',ab:'airstrike',pros:['Ability: 5 bombs rain around the enemy after a warning'],cons:['19s cooldown', 'Replaces your ability'],apply:s=>{s.ability='airstrike'}},
+  {id:'cloak',name:'Cloak',ic:'cloak',tier:'rare',ab:'cloak',pros:['Ability: turn invisible for 3.5s (firing breaks it)'],cons:['15s cooldown', '-8% max HP', 'Replaces your ability'],apply:s=>{s.ability='cloak';s.maxHp*=.92}},
+  {id:'wall',name:'Rampart',ic:'wall',tier:'rare',ab:'wall',pros:['Ability: raise a rock wall in front of you for 4s (E or Y)'],cons:['9s cooldown', 'Replaces your ability'],apply:s=>{s.ability='wall'}},
   {id:'sharp',name:'Honed Edge',ic:'kn_sharp',tier:'common',pros:['+40% knife stab damage','+25% thrown knife damage'],cons:[],apply:s=>{s.kDmg*=1.4;s.tDmg*=1.25}},
   {id:'quick',name:'Quick Hands',ic:'kn_quick',tier:'common',pros:['-40% stab cooldown'],cons:[],apply:s=>{s.kCd*=.6}},
   {id:'serrated',name:'Serrated Blade',ic:'kn_serr',tier:'common',pros:['Knife hits cause bleeding: 4 damage per second for 4s'],cons:[],apply:s=>{s.kBleed+=4}},
@@ -3656,10 +3663,10 @@ MAPDECOR.town=function(){
   const paper=plain(0xb8b0a0,.95), leaf=plain(0x9a5a22,.9), leaf2=plain(0xc88a2a,.9), oil=plain(0x0c0a0c,.25,.5), CB=[0xe8402e,0xf2d24a,0x4a7ab0,0x7ab04a,0xffffff];
   for(let x=-24;x<=24;x+=8) for(const s of [-1,1]) place('bench',x+RR(-.8,.8),s*5.3,1,s>0?0:Math.PI,true,1.1);
   for(const s of [-1,1]) scatterProps([['trash',1,true,.7],['flowerpot',1,false,.5],['mailbox',1,true,.6]],4,[-28,s*4.6,28,s*6.0]);
-  scatterProps([['bush',1.1,false,.6],['flowerpot',1,false,.5]],9,[-28,-13,28,-7.4]);
-  scatterProps([['bush',1.1,false,.6],['flowerpot',1,false,.5]],9,[-28,7.4,28,13]);
+  scatterProps([['flowerpot',1,false,.5],['trash',1,true,.6]],8,[-28,-13,28,-7.4]);
+  scatterProps([['flowerpot',1,false,.5],['trash',1,true,.6]],8,[-28,7.4,28,13]);
   for(const x of [-18,0,18]) bunting(x,-6.7,6.7,5.5,CB);
-  litter(26,[-28,-6.0,28,6.0],[paper,paper,leaf,leaf2]); stains(3,[-24,-3.4,24,3.4],oil);
+  litter(26,[-28,-6.0,28,6.0],[paper,paper,plain(0x6a6a74,.9)]); stains(3,[-24,-3.4,24,3.4],oil);
   for(const [x,z] of [[-10.5,-6.6],[12,6.6],[19,-6.6]]) flag(x,z,3.2,[0xe8402e,0x4a7ab0,0xf2d24a][(Math.abs(x)|0)%3]);
   bike(-9.6,-5.6,0,0xe8402e); bike(22.6,5.7,Math.PI,0x2a8ad8); bike(-24.6,6.0,0.1,0x7ab04a);
 };
@@ -3685,7 +3692,7 @@ MAPDECOR.nuke=function(){
     flag(s*-11.8,s*-9.2,3.4,0xd82a1e); flag(s*-11.8,s*9.2,3.4,0x2a5aa8); bike(s*-20.5,s*-3.2,rand()*6,s>0?0xe8402e:0x2a8ad8); bike(s*-14.4,s*16.4,rand()*6,0x7ab04a);
     if(free(s*-25.5,s*16.5,1.2)){ CY(1.1,1.1,.3,14,plain(0x4ab0d8,.3),s*-25.5,.15,s*16.5,{cast:false}); CY(.95,.95,.02,14,plain(0x2a8ad8,.15,.3),s*-25.5,.3,s*16.5,{cast:false}); col(s*-25.5,s*16.5,2.2,2.2,.3); _dp.push([s*-25.5,s*16.5,1.3]); } }
   for(const bx of [[-28,-19,-11.5,19],[11.5,-19,28,19]]) scatterProps([['flowerpot',1,false,.5],['trash',1,true,.7],['lawnchair',1,false,.7],['crate',.8,true,.8]],8,bx);
-  litter(40,[-9,-20,9,20],[paper,paper,leaf]);
+  litter(40,[-9,-20,9,20],[paper,paper,plain(0x6a6a74,.9)]);
   { // tall grass that sways (same wind as the farm), kept to the yard rims and away from paving, houses and fences
     const cross=mergeGeos([new THREE.PlaneGeometry(.8,1.2).translate(0,.6,0),new THREE.PlaneGeometry(.8,1.2).rotateY(Math.PI/2).translate(0,.6,0)]); const nrm=cross.attributes.normal; for(let i=0;i<nrm.count;i++) nrm.setXYZ(i,0,1,0);
     const inHouse=(x,z)=>x<0?(x>-22.8&&x<-12.4&&z>-14.8&&z<7.8):(x>12.4&&x<22.8&&z>-7.8&&z<14.8);
@@ -4237,14 +4244,14 @@ function doAbility(f){ const s=f.stats, a=s.ability; if(!a||f.dead||f.frozenT>0|
     for(let i=0;i<6;i++) FXA.add({x:f.x,y:f.y+.9,z:f.z,vx:-dx/l*RR(1,3),vy:RR(0,1),vz:-dz2/l*RR(1,3),life:.35,s0:.25,s1:.05,r:f.color[0],g:f.color[1],b:f.color[2],a:.8}); }
   else if(a==='shock'){ ringFX(f.x,f.y+.2,f.z,7,[1.6,2.4,4.5]); ringFX(f.x,f.y+1,f.z,5,[2,3,5]); sparks(f.x,f.y+1,f.z,24,[1.6,2.4,4.5],8);
     for(let i=G.bullets.length-1;i>=0;i--){ const b=G.bullets[i]; if(b.owner!==f&&Math.hypot(b.x-f.x,b.z-f.z)<5.5){ sparks(b.x,b.y,b.z,4,[1.6,2.4,4.5],3); scene.remove(b.m); G.bullets.splice(i,1); } }
-    const d=Math.hypot(o.x-f.x,o.z-f.z); if(!o.dead&&d<7&&Math.abs(o.y-f.y)<2.5){ damage(o,12,f,false); if(!o.stats.heavy){ const n=d||1; o.vx+=(o.x-f.x)/n*16; o.vz+=(o.z-f.z)/n*16; o.vy=7; } } }
+    const d=Math.hypot(o.x-f.x,o.z-f.z); if(!o.dead&&d<7&&Math.abs(o.y-f.y)<2.5){ damage(o,12,f,false); o.slowT=Math.max(o.slowT,1); o.slowStack=Math.max(o.slowStack,.3); if(!o.stats.heavy){ const n=d||1; o.vx+=(o.x-f.x)/n*16; o.vz+=(o.z-f.z)/n*16; o.vy=7; } } }
   else if(a==='grenade'){ const e=eyePos(f), v=fwd(f.yaw,f.pitch+.22); spawnBullet(f,e.clone().addScaledVector(v,.7),v,null,{grenade:true,dmg:10,spd:17,size:.2,bounces:6,life:1.5}); }
   else if(a==='overcharge'){ f.overShots=3; sparks(f.x,f.y+1.2,f.z,18,[5,4,1.2],5); }
   else if(a==='adrenaline'){ f.adrT=hasCombo(f,'junkie')?5:3; sparks(f.x,f.y+1,f.z,22,[4,3.2,.8],6); ringFX(f.x,f.y+.2,f.z,2.6,[4,3,.8]); }
   else if(a==='wall'){ if(!raiseWall(f)) return; }
   else if(a==='blade'){ if(bladeUse(f,o)===false) return; }
   else if(ABIL[a]){ if(ABIL[a](f,o)===false) return; }
-  else if(a==='healp'){ heal(f,22); ringFX(f.x,f.y+.2,f.z,3,[1,4,1.4]); sparks(f.x,f.y+1,f.z,18,[1,4,1.4],4); }
+  else if(a==='healp'){ f.bleedT=f.poisonT=0; heal(f,22); ringFX(f.x,f.y+.2,f.z,3,[1,4,1.4]); sparks(f.x,f.y+1,f.z,18,[1,4,1.4],4); }
   SFX.ability(f); f.abilCd=AB_CD[a]; if(hasCombo(f,'phantom')) f.ghostT=Math.max(f.ghostT,.5);
   rumble(f,.2,.3,80);
 }
@@ -4263,9 +4270,9 @@ function bladeUse(f,o){ // close: a slash combo hit; far: the knife is thrown
   if(o.dead||d>Math.max(3.2,f.stats.kRange+1.3)){ if(f.stats.tCd) doThrow(f); else doMelee(f); } else doMelee(f); return true; }
 const ABIL={
   leap(f){ const d=fwd(f.yaw,0); f.vy=13; f.vx=d.x*14; f.vz=d.z*14; f.wjT=.4; f.onGround=false; f.slideT=0; puff(f.x,f.y+.1,f.z,8,FXC.dust,.4,1.2,.6,.4); },
-  stim(f){ f.stimT=5; ringFX(f.x,f.y+.2,f.z,2.4,[1,4,1.6]); sparks(f.x,f.y+1,f.z,16,[1,4,1.4],4); },
+  stim(f){ f.stimT=5; f.stimSpd=5; ringFX(f.x,f.y+.2,f.z,2.4,[1,4,1.6]); sparks(f.x,f.y+1,f.z,16,[1,4,1.4],4); },
   smoke(f){ SMOKES.push({x:f.x,z:f.z,r:3.6,t:5,acc:0}); puff(f.x,f.y+.6,f.z,12,[.75,.75,.78],.8,2.2,1.4,.5); },
-  fan(f){ const o=new THREE.Vector3(f.x,f.y+1.2,f.z); for(let i=0;i<5;i++){ const a=f.yaw+(i-2)*.26, v=new THREE.Vector3(-Math.sin(a),0,-Math.cos(a)); spawnBullet(f,o.clone().addScaledVector(v,.9),v,null,{saw:true,dmg:14,spd:24,size:.3,bounces:3,life:2.6}); } },
+  fan(f){ const o=new THREE.Vector3(f.x,f.y+1.2,f.z); for(let i=0;i<5;i++){ const a=f.yaw+(i-2)*.26, v=new THREE.Vector3(-Math.sin(a),0,-Math.cos(a)); spawnBullet(f,o.clone().addScaledVector(v,.9),v,null,{saw:true,dmg:12,spd:24,size:.3,bounces:2,life:2.4}); } },
   flash(f,o){ if(o.dead) return false; const d=Math.hypot(o.x-f.x,o.z-f.z); if(d>26||!hasLOS(eyePos(f),new THREE.Vector3(o.x,o.y+1.2,o.z))) return false;
     const fw=fwd(o.yaw,0), k=((f.x-o.x)*fw.x+(f.z-o.z)*fw.z)/(d||1), t=k>-.15?2.3:.7; o.blindT=t*(1-d/60); ringFX(o.x,o.y+1.5,o.z,1.4,[5,5,5]); sparks(o.x,o.y+1.6,o.z,24,[6,6,6],5); SFX.boom(o.x,o.z); },
   mine(f){ while(MINES.length>=3){ const g=MINES.shift(); scene.remove(g.m); }
@@ -4273,12 +4280,12 @@ const ABIL={
     led.position.y=.12; m.add(base); m.add(led); m.position.set(f.x,f.y+.08,f.z); scene.add(m); MINES.push({m,led,x:f.x,y:f.y,z:f.z,owner:f,arm:.9,t:40}); sparks(f.x,f.y+.2,f.z,8,teamFX(f),3); },
   slam(f){ f.vy=15; f.slam=true; f.slamT=2.4; f.onGround=false; f.slideT=0; ringFX(f.x,f.y+.1,f.z,2,[3,2.4,1]); },
   warcry(f){ f.wcT=4; ringFX(f.x,f.y+.2,f.z,2.6,[5,2,.6]); sparks(f.x,f.y+1,f.z,22,[5,2,.6],6); },
-  siphon(f,o){ if(o.dead) return false; const d=Math.hypot(o.x-f.x,o.z-f.z); if(d>10||!hasLOS(eyePos(f),new THREE.Vector3(o.x,o.y+1.2,o.z))) return false;
-    damage(o,16,f,false); heal(f,16); beamFX({x:o.x,y:o.y+1.2,z:o.z},{x:f.x,y:f.y+1.2,z:f.z},[4,.6,.9],14); },
+  siphon(f,o){ if(o.dead) return false; const d=Math.hypot(o.x-f.x,o.z-f.z); if(d>12||!hasLOS(eyePos(f),new THREE.Vector3(o.x,o.y+1.2,o.z))) return false;
+    damage(o,14,f,false); heal(f,18); beamFX({x:o.x,y:o.y+1.2,z:o.z},{x:f.x,y:f.y+1.2,z:f.z},[4,.6,.9],14); },
   grapple(f,o){ if(o.dead) return false; const d=Math.hypot(o.x-f.x,o.z-f.z); if(d>22||d<2.5||!hasLOS(eyePos(f),new THREE.Vector3(o.x,o.y+1.2,o.z))) return false;
-    if(!o.stats.heavy){ const n=d||1; o.vx=(f.x-o.x)/n*24; o.vz=(f.z-o.z)/n*24; o.vy=Math.max(o.vy,3.5); o.wjT=.3; } beamFX({x:f.x,y:f.y+1.2,z:f.z},{x:o.x,y:o.y+1.1,z:o.z},[3,3,3.4],16); },
+    damage(o,6,f,false); if(!o.stats.heavy){ const n=d||1; o.vx=(f.x-o.x)/n*24; o.vz=(f.z-o.z)/n*24; o.vy=Math.max(o.vy,3.5); o.wjT=.3; } beamFX({x:f.x,y:f.y+1.2,z:f.z},{x:o.x,y:o.y+1.1,z:o.z},[3,3,3.4],16); },
   emp(f,o){ if(o.dead) return false; const d=Math.hypot(o.x-f.x,o.z-f.z); if(d>20||!hasLOS(eyePos(f),new THREE.Vector3(o.x,o.y+1.2,o.z))) return false;
-    o.frozenT=Math.max(o.frozenT,.6); o.blockT=0; o.blockCd=Math.max(o.blockCd,4); o.abilCd=Math.max(o.abilCd,4); o.empT=4; ringFX(o.x,o.y+1,o.z,2.2,[2,3,6]); sparks(o.x,o.y+1.2,o.z,26,[2,3,6],7); beamFX({x:f.x,y:f.y+1.2,z:f.z},{x:o.x,y:o.y+1.2,z:o.z},[2,3,6],12); },
+    o.frozenT=Math.max(o.frozenT,.5); o.blockT=0; o.blockCd=Math.max(o.blockCd,4); o.abilCd=Math.max(o.abilCd,4); o.empT=4; ringFX(o.x,o.y+1,o.z,2.2,[2,3,6]); sparks(o.x,o.y+1.2,o.z,26,[2,3,6],7); beamFX({x:f.x,y:f.y+1.2,z:f.z},{x:o.x,y:o.y+1.2,z:o.z},[2,3,6],12); },
   aegis(f){ if(!DOME_MAT) DOME_MAT=new THREE.ShaderMaterial({uniforms:{col:{value:new THREE.Color(1.2,2.4,4)}},
       vertexShader:`varying vec3 vN; varying vec3 vV; void main(){ vec4 mv=modelViewMatrix*vec4(position,1.); vN=normalize(normalMatrix*normal); vV=normalize(-mv.xyz); gl_Position=projectionMatrix*mv; }`,
       fragmentShader:`uniform vec3 col; varying vec3 vN; varying vec3 vV; void main(){ float f=pow(1.-abs(dot(vN,vV)),2.); f=floor(f*5.)/5.; gl_FragColor=vec4(col*(f+.15),(f*.8+.12)); }`,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide});
@@ -4292,7 +4299,7 @@ const ABIL={
     add(.8,.18,.8,dk,0,.09,0); add(.22,.5,.22,dk,0,.43,0); const head=new THREE.Group(); head.position.set(0,.8,0); m.add(head); add(.5,.34,.5,tm,0,0,0,head); add(.6,.1,.1,dk,.4,0,0,head); add(.1,.1,.1,std({color:0,emissive:0xff3030,emissiveIntensity:5}),.3,.22,0,head);
     m.position.set(x,f.y,z); scene.add(m); TURRETS.push({m,head,x,y:f.y,z,owner:f,t:7,cd:.6,hp:40}); sparks(x,f.y+.5,z,14,teamFX(f),4); },
   timewarp(f,o){ if(o.dead) return false; o.tsT=2.8; ringFX(o.x,o.y+1,o.z,3,[.6,1.6,4]); ringFX(f.x,f.y+1,f.z,2,[.6,1.6,4]); sparks(o.x,o.y+1,o.z,22,[.8,1.8,4],5); },
-  airstrike(f,o){ if(o.dead) return false; const cx=o.x+o.vx*.5, cz=o.z+o.vz*.5; ringFX(cx,.1,cz,4.2,[5,1.4,.5]); for(let i=0;i<6;i++){ const a=Math.random()*6.283, r=Math.random()*3.6; DELAYED.push({t:.9+i*.12,x:cx+Math.cos(a)*r,y:.4,z:cz+Math.sin(a)*r,r:2.2,dmg:12,owner:f}); } },
+  airstrike(f,o){ if(o.dead) return false; const cx=o.x+o.vx*.5, cz=o.z+o.vz*.5; ringFX(cx,.1,cz,4.2,[5,1.4,.5]); for(let i=0;i<5;i++){ const a=Math.random()*6.283, r=Math.random()*3.6; DELAYED.push({t:.9+i*.14,x:cx+Math.cos(a)*r,y:.4,z:cz+Math.sin(a)*r,r:2.2,dmg:12,owner:f}); } },
   cloak(f){ f.cloakT=3.5; sparks(f.x,f.y+1,f.z,24,[.8,1.8,2.6],5); ringFX(f.x,f.y+.2,f.z,1.8,[.8,1.8,2.6]); }
 };
 function tickGadgets(dt){
@@ -4303,9 +4310,9 @@ function tickGadgets(dt){
       if(d<30&&hasLOS(src,tg)){ if(g.cd<=0){ g.cd=.5; const v=tg.clone().sub(src).normalize(); v.x+=RR(-.04,.04); v.y+=RR(-.03,.03); v.z+=RR(-.04,.04); v.normalize(); spawnBullet(g.owner,src.clone().addScaledVector(v,.8),v,null,{dmg:7,spd:46,size:.1,bounces:0,homing:0,turret:true}); SFX.turret(g.x,g.z); sparks(src.x+v.x*.8,src.y+v.y*.8,src.z+v.z*.8,3,[5,3,1],3); } } }
     if(g.t<=0||g.hp<=0){ sparks(g.x,g.y+.6,g.z,22,[4,2.4,.8],6); puff(g.x,g.y+.6,g.z,6,FXC.dust,.4,1.2,.7,.5); scene.remove(g.m); TURRETS.splice(i,1); } }
   for(let i=MINES.length-1;i>=0;i--){ const g=MINES[i]; g.arm-=dt; g.t-=dt; g.led.material.emissiveIntensity=g.arm>0?1.2:(Math.sin(G.time*8)>0?6:.6); const o=other(g.owner);
-    if(g.arm<=0&&!o.dead&&G.state==='playing'&&Math.hypot(o.x-g.x,o.z-g.z)<1.7&&Math.abs(o.y-g.y)<1.3){ explosionFX(g.x,g.y+.3,g.z,2.6); damage(o,34,g.owner,false); if(!o.stats.heavy){ o.vy=Math.max(o.vy,7); } scene.remove(g.m); MINES.splice(i,1); continue; }
+    if(g.arm<=0&&!o.dead&&G.state==='playing'&&Math.hypot(o.x-g.x,o.z-g.z)<1.7&&Math.abs(o.y-g.y)<1.3){ explosionFX(g.x,g.y+.3,g.z,2.6); damage(o,34,g.owner,false); o.slowT=Math.max(o.slowT,1.2); o.slowStack=Math.max(o.slowStack,.35); if(!o.stats.heavy){ o.vy=Math.max(o.vy,7); } scene.remove(g.m); MINES.splice(i,1); continue; }
     if(g.t<=0){ scene.remove(g.m); MINES.splice(i,1); } }
-  for(let i=DOMES.length-1;i>=0;i--){ const g=DOMES[i]; g.t-=dt; g.m.material=DOME_MAT; g.m.rotation.y+=dt*.6; if(g.t<=0){ sparks(g.x,g.y+1,g.z,16,[1.2,2.4,4],5); scene.remove(g.m); DOMES.splice(i,1); } }
+  for(let i=DOMES.length-1;i>=0;i--){ const g=DOMES[i]; g.t-=dt; if(!g.owner.dead&&Math.hypot(g.owner.x-g.x,g.owner.z-g.z)<g.r) heal(g.owner,5*dt); g.m.material=DOME_MAT; g.m.rotation.y+=dt*.6; if(g.t<=0){ sparks(g.x,g.y+1,g.z,16,[1.2,2.4,4],5); scene.remove(g.m); DOMES.splice(i,1); } }
 }
 const WALLS=[];
 function raiseWall(f){
@@ -4460,7 +4467,7 @@ function updateFighter(f,dt){
   const bz=s.berserk?1+.5*(1-Math.min(1,f.hp/s.maxHp)):1, slowMul=f.frozenT>0?0:(f.slowT>0?1-Math.max(.3,f.slowStack):1);
   f.slideCd-=dt; f.wallT-=dt; f.wjT-=dt;
   f.slideBuf=(f.slideBuf||0)-dt; if((f.momT-=dt)<=0) f.momN=0;
-  const spd=s.speed*bz*slowMul*(f.knifeOut?1.15:1)*(1+.12*(f.momN||0))*(1-.4*(f.scopeK||0))*(f.adrT>0?1.4:1)*(f.tsT>0?.5:1)*(f.wcT>0?1.1:1)*(1+.2*(f.bloodN||0)), k=Math.min(1,dt*(f.onGround?14:(f.wjT>0?1.2:5)));
+  const spd=s.speed*bz*slowMul*(f.stimT>0?1.1:1)*(1+.12*(f.momN||0))*(1-.4*(f.scopeK||0))*(f.adrT>0?1.4:1)*(f.tsT>0?.5:1)*(f.wcT>0?1.1:1)*(1+.2*(f.bloodN||0)), k=Math.min(1,dt*(f.onGround?14:(f.wjT>0?1.2:5)));
   if(MAP&&MAP.LADDERS&&MAP.LADDERS.length&&!f.dead) ladderUpdate(f,dt);
   if(f.ladder){ f.vx=f.vz=0; }
   else if(f.slideT>0){ f.slideT-=dt; const q=clamp(f.slideT/.7,0,1), v=lerp(s.speed*1.05,f.slideV,1-(1-q)*(1-q))*slowMul; f.vx=f.slideDX*v; f.vz=f.slideDZ*v; if(Math.random()<.5) puff(f.x,f.y+.05,f.z,1,FXC.dust,.25,.8,.5,.25); }
@@ -4495,6 +4502,7 @@ function damage(t,amt,src,head,quiet){
   if((G.rules==='oneshot'||(DEV.on&&DEV.oneshot&&src===P))&&!quiet&&src&&src!==t) amt=Math.max(amt,9999);
   if(src&&src!==t&&src.stats.execute&&t.hp<t.stats.maxHp*(hasCombo(src,'hound')?.4:.3)) amt*=1.6;
   if(t.lsT>0) amt*=.3;
+  if(t.adrT>0) amt*=1.1;
   if(t.stats.armor) amt*=1-(hasCombo(t,'bunker')?.32:t.stats.armor);
   t.hp-=amt;
   if(!quiet){
@@ -4994,15 +5002,20 @@ function choose(i){
 }
 function gameOverBuild(w){
   hideBanner(); hideRecap(); HUDS.forEach(h=>h.el.classList.remove('on')); if(isLocked()) document.exitPointerLock(); addCoins(w.human?40:15); SAVE.matches=(SAVE.matches||0)+1; persist();
-  const t=$('#overTitle'), st=f=>{ const acc=f.st.shots?Math.round(f.st.hits/f.st.shots*100):0; return {acc,hits:f.st.hits,heads:f.st.heads,cards:f.cards.length}; };
-  if(G.mode==='split'){ t.textContent=w.name+' wins'; t.style.color=w.team==='blue'?'var(--you)':'var(--bot)'; $('#overSub').textContent=`Final score ${P.score}–${B.score}`;
-    const a=st(P), b=st(B);
-    $('#overStats').innerHTML=`<div><b class="o you">${a.acc}%</b><span class="s">P1 accuracy</span></div><div><b class="o you">${a.heads}</b><span class="s">P1 headshots</span></div><div><b class="o botc">${b.acc}%</b><span class="s">P2 accuracy</span></div><div><b class="o botc">${b.heads}</b><span class="s">P2 headshots</span></div>`;
-    $('#overCards').innerHTML=w.cards.map(chipHTML).join(''); }
-  else { t.textContent=w.isBot?'Defeat':'Victory'; t.style.color=w.isBot?'var(--bot)':'var(--you)'; $('#overSub').textContent=`Final score ${P.score}–${B.score}`;
-    const a=st(P); $('#overStats').innerHTML=`<div><b class="o">${a.acc}%</b><span class="s">Accuracy</span></div><div><b class="o">${a.hits}</b><span class="s">Hits</span></div><div><b class="o">${a.heads}</b><span class="s">Headshots</span></div><div><b class="o">${a.cards}</b><span class="s">Powers taken</span></div>`;
-    $('#overCards').innerHTML=P.cards.map(chipHTML).join(''); }
-  $('#overSub').textContent+=`  ·  +${G.matchCoins||0} coins (${SAVE.coins} total)`; G.matchCoins=0;
+  const split=G.mode==='split', n1=split?'Player 1':'Player 1', n2=split?'Player 2':'Bot', t=$('#overTitle');
+  const st=f=>({acc:f.st.shots?Math.round(f.st.hits/f.st.shots*100):0,hits:f.st.hits,shots:f.st.shots,heads:f.st.heads,cards:f.cards.length,score:f.score});
+  const A=st(P), Bs=st(B), winP=w===P;
+  t.textContent=split?(winP?'Player 1 wins!':'Player 2 wins!'):(winP?'Player 1 wins!':'Bot wins!'); t.style.color=winP?'var(--you)':'var(--bot)'; if(!split&&winP) t.style.color='var(--gold)';
+  t.classList.remove('slam'); void t.offsetWidth; t.classList.add('slam');
+  $('#overSub').innerHTML=`Final score <b>${P.score}</b> – <b>${B.score}</b>  ·  +${G.matchCoins||0} coins (${SAVE.coins} total)`; G.matchCoins=0;
+  const row=(label,va,vb,suffix,max)=>`<div class="orow"><span class="olab s">${label}</span><div class="obar o1"><i data-v="${va}" data-m="${max}"></i><b class="onum" data-n="${va}" data-s="${suffix}">0${suffix}</b></div><div class="obar o2"><i data-v="${vb}" data-m="${max}"></i><b class="onum" data-n="${vb}" data-s="${suffix}">0${suffix}</b></div></div>`;
+  const mx=k=>Math.max(1,A[k],Bs[k]);
+  $('#overStats').innerHTML=`<div class="ohead"><span></span><b class="o you">${n1}${winP?' ★':''}</b><b class="o botc">${n2}${winP?'':' ★'}</b></div>`+
+    row('Accuracy',A.acc,Bs.acc,'%',100)+row('Shots hit',A.hits,Bs.hits,'',mx('hits'))+row('Headshots',A.heads,Bs.heads,'',mx('heads'))+row('Powers taken',A.cards,Bs.cards,'',mx('cards'));
+  $('#overCards').innerHTML=(split?w.cards:P.cards).map(chipHTML).join('');
+  const box=$('#overStats'); box.classList.remove('go'); setTimeout(()=>{ box.classList.add('go');
+    box.querySelectorAll('.obar i').forEach(el=>{ el.style.width=Math.max(2,(+el.dataset.v/+el.dataset.m)*100)+'%'; });
+    const t0=performance.now(); const tick=()=>{ const k=Math.min(1,(performance.now()-t0)/1100), e=1-Math.pow(1-k,3); box.querySelectorAll('.onum').forEach(el=>{ el.textContent=Math.round(+el.dataset.n*e)+el.dataset.s; }); if(k<1&&G.state==='over') requestAnimationFrame(tick); }; tick(); },1300);
 }
 
 const POD={built:false,g:null,y:300,spots:[],cn:0};
@@ -5720,7 +5733,7 @@ function hideRecap(){ if(RECAP) RECAP.classList.remove('on'); }
 
 /* ================= locker: hats, tracer colours, gun skins ================= */
 const SHOP={hat:[['none','None',0],['cap','Cap',50],['beanie','Beanie',80],['cowboy','Cowboy hat',150],['tophat','Top hat',250],['crown','Crown',400]],
-  tracer:[['team','Team colour',0],['gold','Gold',100],['toxic','Toxic green',120],['violet','Violet',150],['white','Hot white',220]],
+  tracer:[['team','Team color',0],['gold','Gold',100],['toxic','Toxic green',120],['violet','Violet',150],['white','Hot white',220]],
   skin:[['std','Standard',0],['black','Blackout',60],['desert','Desert',90],['arctic','Arctic',120],['camo','Woodland camo',150],['digital','Digital',180],['tiger','Tiger',220],['candy','Candy',250],['chrome','Chrome',300],['lava','Lava',350],['galaxy','Galaxy',450],['gold','Gold',500]]};
 const TRACER_C={gold:[6,4.4,1],toxic:[1.4,6,1],violet:[4,1.4,6],white:[6,6,6]}, SKIN_C={std:[1,1,1],black:[.35,.35,.42],desert:[1.3,1.08,.72],arctic:[1.25,1.35,1.5],gold:[1.7,1.3,.45]};
 function hatMesh(kind){ const g=new THREE.Group(), m=c=>plain(c,.6); const add=(geo,mat,x,y,z)=>{ const o=new THREE.Mesh(geo,mat); o.position.set(x,y,z); g.add(o); };
