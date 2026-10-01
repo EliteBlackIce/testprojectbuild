@@ -2704,7 +2704,7 @@ function stairs(x0,z0,dirX,dirZ,width,top,steps,mat){ // run of solid steps risi
 function stairsOpen(x0,z0,dirX,dirZ,width,top,steps,mat,rail,runIn){ // same walking as stairs(), drawn as open treads on two stringers; the high part has headroom underneath
   const run=runIn||.46, rise=top/(steps+1);
   for(let i=0;i<steps;i++){ const h=top-rise*(i+1), cx=x0+dirX*(run*(i+.5)), cz=z0+dirZ*(run*(i+.5));
-    const w=dirX?run:width, d=dirX?width:run; BX(w,.1,d,mat,cx,h-.05,cz); col(cx,cz,w,d,h,h-.16); }
+    const w=dirX?run:width, d=dirX?width:run; BX(w,.1,d,mat,cx,h-.05,cz); col(cx,cz,w,d,h,h-.11); }
   const ex=x0+dirX*run*steps, ez=z0+dirZ*run*steps;
   for(const e of [-1,1]){ const ox=dirX?0:e*(width/2-.05), oz=dirX?e*(width/2-.05):0; beam(x0+ox,top-.05,z0+oz,ex+ox,top-rise*steps-.05,ez+oz,.1,rail||MT.darkMetal); beam(x0+ox,top-.4,z0+oz,ex+ox,top-rise*steps-.4,ez+oz,.06,rail||MT.darkMetal); }
   STAIRS.push({bx:ex,bz:ez,tx:x0-dirX*.4,tz:z0-dirZ*.4,top});
@@ -3972,7 +3972,7 @@ function buildShip(){
     fv('tvstand',0,-52.2,-1.1,.02,-Math.PI/2); BX(.08,.7,1.2,glow(0x38e8ff,1.4),-52.3,1.2,-1.1,{cast:false});
     for(const x of [-54.9,-53.7,-52.5]) lockerU(x,0,-10.3,0,0x4a6a8a);
     for(let k=0;k<3;k++) BX(.06,.2,.06,glow(0x58ff88,1.5),-54.5+k*1.2,1.96+.1,-10.0,{cast:false});
-    vox('bench',-47.3,.02,10.1,1,Math.PI); BX(.03,.5,.8,glow(0xfff0c8,1.6),-55.7,3.4,-3.2,{cast:false});
+    vox('bench',-47.3,.02,10.1,1,0); BX(.03,.5,.8,glow(0xfff0c8,1.6),-55.7,3.4,-3.2,{cast:false});
     fireStation(-44.59,0,-4.6,-Math.PI/2); fireStation(-44.59,0,4.6,-Math.PI/2); fv('plant',0,-45.0,3.2,.02,0);
     for(let i=0;i<5;i++) BX(.4,.06,3.2,glow(0xfff4d0,2.2),-54+i*2.4,4.94,0,{cast:false});
     nightLight(-50,4.4,0,0xffd9a0,3,20); dayLight(-50,4.4,0,0xffe8c0,.6,16);
@@ -4001,20 +4001,20 @@ function buildShip(){
     for(let k=0;k<5;k++) BX(.5,.14,.14,glow(0xfff4d0,2),-46.5-k*1.0,CE-.12,0,{cast:false}); BX(.06,.18,15,steelD,-45.6,CE-.1,0,{cast:false});
     nightLight(-47.5,8.6,0,0x88e8ff,3,18); dayLight(-47.5,8.5,0,0xffe8d0,.45,15);
     // ---- captain's quarters (furniture reused from the house maps) ----
-    fv('rug',0x7a2a2e,-53.0,5.4,FL+.03,0); fv('bed',0x2a4a7a,-54.0,8.9,FL+.02,0); fv('nightstand',0,-55.2,9.9,FL+.02,0); fv('nightstand',0,-52.8,9.9,FL+.02,0); fv('lamp',0,-55.2,9.9,FL+.82,0);
-    fv('wardrobe',0,-55.3,4.9,FL+.02,Math.PI/2); fv('dresser',0,-51.0,7.6,FL+.02,-Math.PI/2); fv('bookshelf',0,-51.0,9.6,FL+.02,-Math.PI/2); fv('armchair',0x3a4a6a,-51.7,3.0,FL+.02,Math.PI*0.75); fv('coffeetable',0,-52.9,3.2,FL+.02,0); fv('plant',0,-51.0,1.0,FL+.02,0); fv('lamp',0,-51.0,2.2,FL+.02,0);
-    fv('counter',0,-52.0,0.9,FL+.02,Math.PI); fv('counter',0,-53.1,0.9,FL+.02,Math.PI); screen(-52.6,FL+1.4,.55,.7,.45,.05,0x38e8ff,0); fv('chair',0xa8683a,-52.6,1.75,FL+.02,Math.PI);
+    fv('rug',0x7a2a2e,-53.0,5.4,FL+.03,0); fv('bed',0x2a4a7a,-54.0,8.9,FL+.02,Math.PI); fv('nightstand',0,-55.2,9.9,FL+.02,0); fv('nightstand',0,-52.8,9.9,FL+.02,0); fv('lamp',0,-55.2,9.9,FL+.82,0);
+    fv('wardrobe',0,-55.3,4.9,FL+.02,Math.PI/2); fv('dresser',0,-51.0,7.6,FL+.02,-Math.PI/2); fv('bookshelf',0,-51.0,9.6,FL+.02,-Math.PI/2); fv('armchair',0x3a4a6a,-54.7,2.3,FL+.02,Math.PI*0.5); fv('coffeetable',0,-53.9,3.4,FL+.02,0); fv('plant',0,-51.0,1.0,FL+.02,0);
+    fv('counter',0,-52.0,0.9,FL+.02,Math.PI); fv('counter',0,-53.1,0.9,FL+.02,Math.PI); screen(-52.6,FL+1.4,.55,.7,.45,.05,0x38e8ff,0); fv('chair',0xa8683a,-52.6,1.75,FL+.02,Math.PI); vox('lamp:0',-53.4,FL+.9,.9,1,0,null,true);
     BX(.3,.12,.22,plain(0xf8f8ff,.9),-52.6,FL+.9,.9,{cast:false}); BX(.34,.1,.34,plain(0x1a2a5a,.8),-52.1,FL+.92,.9,{cast:false});
-    { mesh(SG(.28),plain(0x3a6aa8,.5),-51.2,FL+1.12,5.7,{cast:false}); CY(.04,.04,.7,6,chrome,-51.2,FL+.5,5.7,{cast:false}); }
+    { mesh(SG(.22),plain(0x3a6aa8,.5),-51.7,FL+.98,.9,{cast:false}); CY(.04,.04,.12,6,chrome,-51.7,FL+.9,.9,{cast:false}); }
     BX(.05,.9,1.0,plain(0x3a4a6a,.8),-55.7,FL+1.9,.95,{cast:false}); BX(.04,.7,.8,plain(0x9ab8d8,.8),-55.68,FL+1.9,.95,{cast:false});
     for(let i=0;i<3;i++) BX(.3,.06,2.2,glow(0xfff0d0,1.6),-54+i*1.6,CE-.1,5.4,{cast:false});
     // ---- chart room at the stair head ----
     sol(-55.3,-1.2,.7,2.4,FL,FL+1.0,steelD); for(let i=0;i<4;i++) screen(-55.0,FL+1.5+(i%2)*.55,-.4-i*.5,.06,.4,.4,[0x58ff88,0x38e8ff,0xffb040,0x58ff88][i],0);
-    sol(-54.4,-9.8,2.2,.8,FL,FL+.85,woodM); for(let k=0;k<5;k++) BX(.18,.02,.3,plain([0xd8d0b0,0xb8c8d8][k%2],.9),-55.2+k*.35,FL+.87,-9.8,{cast:false}); lockerU(-55.2,FL,-7.4,Math.PI/2,0x6a7488);
+    lockerU(-55.2,FL,-7.4,Math.PI/2,0x6a7488);
     sol(-51.8,-3,.5,.5,FL,FL+.35,carpetR);
     nightLight(-53,8.3,-5,0xffe0a8,2.4,14); dayLight(-53,8.3,-5,0xffe8d0,.35,12);
     // ---- the front balcony on the second-floor level: open to the side walkways, with rail only along the middle ----
-    sol(-42.7,0,2.6,32,FL-.2,FL,plate); for(const z of [-15,-9,9,15]) sol(-41.7,z,.3,.3,0,FL-.2,steelD);
+    sol(-42.7,0,2.6,32,FL-.2,FL,plate); 
     for(const y of [.4,.78,1.1]) vis(-41.4,0,.05,20.6,FL+y-.03,FL+y+.03,white); for(let z=-10.3;z<=10.4;z+=2.06) vis(-41.4,z,.07,.07,FL,FL+1.1,white); col(-41.4,0,.12,20.6,FL+1.1,FL);
     // upper tiers, funnel, mast
     sol(-50.4,0,10.2,20.6,CE+.2,CE+3.4,WL); sol(-51,0,9,18.4,CE+3.4,CE+6.5,WL); vis(-45.2,0,.1,19,CE+.9,CE+1.9,glow(0xffe8b0,1.4)); for(let k=-8;k<=8;k+=1.7) BX(.08,1.05,1.2,rand()<.5?MT.glassLit[(rand()*3)|0]:MT.glassDark,-45.28,CE+1.4,k,{cast:false});
@@ -4023,7 +4023,7 @@ function buildShip(){
     pipeAx('y',CE+6.5,CE+15.5,-49,0,6,.14,steel); { const rd=new THREE.Group(); rd.position.set(-49,CE+6.5+9.3,6); SR.add(rd); BX(2.6,.12,.5,steel,0,.1,0,{p:rd,cast:false}); BX(.3,.3,.3,dkS,0,0,0,{p:rd,cast:false}); rd.userData.noBake=true; MAP.radar=rd; }
     nightLight(-42.5,GY+3.2,-8,0xffd9a0,2,16); nightLight(-42.5,GY+3.2,8,0xffd9a0,2,16);
     // ---- abandoned: papers on every floor, desks and tables, plus a toppled chair or two ----
-    papers(-55,-44.8,-10,10,.1,150); papers(-49.8,-44.8,-8.4,10.3,FL+.075,90); papers(-55.4,-50.6,-10.2,10.2,FL+.075,120);
+    papers(-55,-44.8,-10,10,.1,150); papers(-49.8,-44.8,-7.6,10.3,FL+.075,70); papers(-55.4,-51.5,-8.4,10.2,FL+.075,90);
     papers(-45.7,-45.0,-8,-2.4,FL+1.0,10); papers(-45.7,-45.0,2.4,8,FL+1.0,10); papers(-52.8,-51.6,.2,1.2,FL+.84,8); papers(-55.1,-53.6,-10.2,-9.4,FL+.86,6);
     fv('chair',0xa8683a,-47.4,-8.2,.02,2.6); fv('chair',0xa8683a,-51.3,6.0,.02,.5); BX(.3,.3,.3,plain(0xf2f2f2,.6),-49.4,.86,-1.2,{cast:false});
     // ---- exterior detail: banding, sills and awnings on every window, door canopies and steps, A/C units, pipe risers, deck plaques, roof gear ----
@@ -4094,6 +4094,49 @@ function buildShip(){
       for(let h=0;h<n;h++){ [3.05,9.15].forEach((xo,i)=>{ const c=CC[(rand()*CC.length)|0], xc=bx+xo, y=h*H;
           shipCont(xc,zc,c,y,r===0?-sg:r===2?sg:0,[i?1:-1]); col(xc,zc,6.1,2.44,y+H,y); }); } } });
   // ---- gantry crane straddling the centre bay: four lattice legs, a walkway on top and an operator's cab, climbed by ladders ----
+  // the lifted container: it hangs on the crane walkway under an overhead trolley, open at both ends so you can walk right through it
+  function crane2(TOP,ZE,cm,cd){
+    const hz=-8.2, xo=.6, W=2.44, L=6.1, H2=2.6, fl=TOP+.04, cc=0x2a7a7a, ZL=hz;
+    // overhead gantry: four posts, two rails along z and a cross-beam with the trolley
+    for(const sx of [-1,1]) for(const z of [-11.8,-4.6]){ pipeAx('y',TOP,TOP+6.2,xo+sx*2.55,0,z,.1,cm); beamC(xo+sx*2.55,TOP+3.0,z,xo+sx*2.55,TOP+6.2,z,.12,cm); }
+    for(const sx of [-1,1]) BX(.3,.4,8.0,cm,xo+sx*2.55,TOP+6.3,hz,{cast:false});
+    BX(5.4,.5,.9,cd,xo,TOP+6.1,hz,{cast:false}); BX(1.6,.6,1.3,cm,xo,TOP+6.8,hz,{cast:false}); for(const sx of [-1,1]) for(const sz of [-1,1]) BX(.3,.3,.3,dkS,xo+sx*1.1,TOP+6.5,hz+sz*.5,{cast:false});
+    for(const sx of [-1,1]) col(xo+sx*2.55,-11.8,.3,.3,TOP+6.2,TOP), col(xo+sx*2.55,-4.6,.3,.3,TOP+6.2,TOP);
+    // container shell, open ends, interior lit and furnished
+    const cm2=contMat(cc), fr=paintMat(shade(cc)), rb=paintMat(shade(cc,.78)), dm=doorMat(cc), T=.1, ox=xo, ey=fl+H2;
+    for(const sx of [-1,1]){ const x=ox+sx*(W/2-T/2); BX(T,H2,L,cm2,x,fl+H2/2,hz); col(x,hz,T+.04,L,ey,fl);
+      for(let k=0;k<15;k++) BX(.06,H2-.5,.14,rb,ox+sx*(W/2+.02),fl+H2/2,hz-L/2+.2+k*.4,{cast:false});
+      for(const z of [-L/2+.08,L/2-.08]) BX(.2,H2,.16,fr,ox+sx*(W/2-.08),fl+H2/2,hz+z,{cast:false}); BX(.14,.16,L,fr,ox+sx*(W/2-.06),fl+.08,hz,{cast:false}); BX(.14,.16,L,fr,ox+sx*(W/2-.06),ey-.08,hz,{cast:false}); }
+    BX(W,T,L,cm2,ox,ey-T/2,hz); col(ox,hz,W,L,ey+.0,ey-T); BX(W-.2,.05,L,plankMat(0x8a6a4a),ox,fl+.025,hz,{cast:false});
+    for(const e of [-1,1]){ const z=hz+e*(L/2-.04); BX(W,.2,.2,fr,ox,fl+.1,z,{cast:false}); BX(W,.2,.2,fr,ox,ey-.1,z,{cast:false});
+      for(const sx of [-1,1]){ BX(.24,.24,.24,dkS,ox+sx*(W/2-.1),fl+.12,z,{cast:false}); BX(.24,.24,.24,dkS,ox+sx*(W/2-.1),ey-.12,z,{cast:false});
+        const dx=ox+sx*(W/2-.02); BX(.05,H2-.5,.3,dm,dx,fl+H2/2,hz+e*(L/2+.12),{ry:0,cast:false}); } }
+    for(let k=0;k<3;k++) BX(W-.3,.04,.1,dkS,ox,ey-.3-k*0,hz-1.6+k*1.6,{cast:false});
+    for(const z of [-1.8,0,1.8]){ BX(.5,.08,.2,glow(0xfff0c8,2.2),ox,ey-.14,hz+z,{cast:false}); }
+    nightLight(ox,ey-.5,hz,0xffe0b0,2.6,9); dayLight(ox,ey-.5,hz,0xffe8d0,.5,7);
+    // cables from the spreader frame to the roof corners
+    BX(W+.6,.25,L+.4,cd,ox,ey+.55,hz,{cast:false}); for(const sx of [-1,1]) for(const sz of [-1,1]){ BX(.2,.5,.2,dkS,ox+sx*(W/2),ey+.1,hz+sz*(L/2-.2),{cast:false}); BX(.05,TOP+6.2-ey-.8,.05,steelD,ox+sx*(W/2),(TOP+6.2+ey+.8)/2,hz+sz*(L/2-.2),{cast:false}); }
+    // contents: it's somebody's hideout
+    const woodC=plain(0x8a6a4a,.85);
+    for(let k=0;k<3;k++) BX(.5,.05,1.5,woodC,ox-W/2+.45,fl+.5+k*.6,hz+.1,{cast:false}); for(const z of [-.6,.8]) BX(.5,1.5,.05,steelD,ox-W/2+.45,fl+.85,hz+z,{cast:false});
+    for(const [z,c] of [[-2.4,0xb84a3a],[-1.6,0x3a6aa8],[-.8,0x4a8a58]]){ BX(.7,.6,.7,woodC,ox+W/2-.45,fl+.3,hz+z,{cast:true}); col(ox+W/2-.45,hz+z,.7,.7,fl+.6,fl); BX(.62,.04,.62,plain(c,.7),ox+W/2-.45,fl+.62,hz+z,{cast:false}); }
+    // camp bed against the left wall near the south end
+    BX(.7,.14,1.8,plain(0x4a5a3a,.9),ox-W/2+.45,fl+.32,hz+1.9,{cast:false}); BX(.7,.06,1.8,plain(0x2a3a5a,.9),ox-W/2+.45,fl+.42,hz+1.9,{cast:false}); BX(.5,.1,.4,plain(0xf0eee0,.9),ox-W/2+.45,fl+.5,hz+2.55,{cast:false}); for(const [dx,dz] of [[-.3,-.85],[.3,-.85],[-.3,.85],[.3,.85]]) BX(.06,.26,.06,steelD,ox-W/2+.45+dx,fl+.13,hz+1.9+dz,{cast:false}); col(ox-W/2+.45,hz+1.9,.7,1.8,fl+.5,fl);
+    // lantern, radio and a tiny desk
+    BX(.5,.5,.5,woodC,ox+W/2-.45,fl+.25,hz+1.4); col(ox+W/2-.45,hz+1.4,.5,.5,fl+.5,fl); BX(.34,.2,.2,plain(0x2a2a30,.6),ox+W/2-.45,fl+.6,hz+1.4,{cast:false}); BX(.06,.3,.06,steelD,ox+W/2-.3,fl+.8,hz+1.4,{cast:false}); BX(.14,.2,.14,glow(0xffb040,2),ox+W/2-.45,fl+.6,hz+1.1,{cast:false});
+    papers(ox-.8,ox+.8,hz-L/2+.3,hz+L/2-.3,fl+.055,22);
+    // graffiti on the inside of the right wall
+    { const c=mkCanvas(128,32), x=c.getContext('2d'); x.fillStyle='#0000'; x.clearRect(0,0,128,32); crispText(x,'I WAS HERE',64,16,'bold 22px monospace','#ffb040'); mesh(new THREE.PlaneGeometry(1.8,.45),std({map:pxTex(c),transparent:true,alphaTest:.5,roughness:.8}),ox+W/2-T-.01,fl+1.7,hz-.4,{ry:-Math.PI/2,cast:false});
+      const c2=mkCanvas(128,32), x2=c2.getContext('2d'); crispText(x2,'LOOK DOWN',64,16,'bold 22px monospace','#58ff88'); mesh(new THREE.PlaneGeometry(1.8,.45),std({map:pxTex(c2),transparent:true,alphaTest:.5,roughness:.8}),ox-W/2+T+.01,fl+1.9,hz+.6,{ry:Math.PI/2,cast:false}); }
+    // the secret: a gold duck on a velvet shrine, hidden behind a stack of boxes under the bed. Press the use key near it.
+    { const dx=ox-W/2+.45, dz=hz-1.9; BX(.8,.3,.8,plain(0x7a1a2a,.8),dx,fl+.15,dz); col(dx,dz,.8,.8,fl+.3,fl); BX(.72,.04,.72,plain(0xe8c020,.5,.6),dx,fl+.32,dz,{cast:false});
+      const gold=plain(0xffcc30,.3,.8); BX(.34,.26,.44,gold,dx,fl+.5,dz,{cast:false}); BX(.24,.26,.24,gold,dx,fl+.75,dz+.14,{cast:false}); BX(.14,.08,.16,plain(0xff8a18,.5),dx,fl+.72,dz+.3,{cast:false}); BX(.06,.06,.04,plain(0x101010),dx+.07,fl+.8,dz+.26,{cast:false}); BX(.06,.06,.04,plain(0x101010),dx-.07,fl+.8,dz+.26,{cast:false});
+      BX(.2,.14,.12,gold,dx,fl+.6,dz-.24,{cast:false}); BX(1.0,.04,.05,glow(0xff5ac8,2),dx+.0,fl+1.5,dz,{ry:0,cast:false}); BX(.05,1.0,.05,glow(0x58e8ff,2),dx+.0,fl+1.0,dz+.35,{cast:false});
+      // boxes that hide it
+      BX(.5,.5,.5,woodC,ox-W/2+.35,fl+.25,dz-.75); col(ox-W/2+.35,dz-.75,.5,.5,fl+.5,fl); BX(.4,.3,.4,woodC,ox-W/2+.35,fl+.65,dz-.75,{cast:false});
+      nightLight(dx,fl+1.2,dz,0xff9ae8,1.6,6);
+      MAP.secrets=MAP.secrets||[]; MAP.secrets.push({x:dx,z:dz,y:fl,r:1.8,fn:f=>{ const sc=MAP.secrets[0]; if(!sc.found){ sc.found=true; G.duck=(G.duck||0)+1; toast('You found the Captain\'s secret stash: the Golden Duck!'); } else toast('Quack.'); if(window.confettiBurst) confettiBurst(dx,fl+1.2,dz,60,0); if(SFX.pop) SFX.pop(); if(SFX.combo) SFX.combo(); if(f.human) addCoins(sc.found&&G.duck===1?25:0); } }); }
+  }
   function crane(){
     const LX=[-1.7,2.9], TOP=16, cm=plain(0xe8b01c,.5,.3), cd=plain(0x3a3e48,.5,.4), w=.9, ZE=14.2;
     for(const x of LX) for(const z of [-13.6,13.6]){
@@ -4104,7 +4147,7 @@ function buildShip(){
     for(const x of LX){ BX(.7,1.4,2*ZE,cm,x,TOP-.2,0); for(let z=-ZE+1;z<ZE;z+=2) BX(.72,.12,.5,cd,x,TOP+.5,z,{cast:false}); }
     BX(3.9,.2,2*ZE,plate,.6,TOP-.1,0); col(.6,0,3.9,2*ZE,TOP,TOP-.2);
     for(const x of LX) col(x,0,.7,2*ZE,TOP+1.2,TOP);
-    for(const z of [-ZE,ZE]){ BX(5.2,.45,.5,cm,.6,TOP-.1,z); col(.6,z,5.2,.5,TOP+1.2,TOP); }
+    for(const z of [-ZE,ZE]){ BX(5.2,.45,.5,cm,.6,TOP-.1,z); col(.6,z,5.2,.5,TOP-.1,TOP-.7); }
     for(const z of [-7,7]){ BX(5.2,.4,.4,cm,.6,TOP-.5,z,{cast:false}); col(.6,z,5.2,.4,TOP-.3,TOP-.7); }
     for(const x of LX) for(let z=-ZE;z<=ZE;z+=2.4){ BX(.06,.7,.06,white,x,TOP+.85,z,{cast:false}); } for(const x of LX) BX(.05,.05,2*ZE,white,x,TOP+1.15,0,{cast:false});
     // operator's cab on the walkway: a fully fitted control room with a console wall, an operator seat with joysticks, shelves, lockers and a glass floor panel
@@ -4144,27 +4187,19 @@ function buildShip(){
     for(const sx of [-1,1]) cb(.05,.06,1.4,glow(0xfff0c8,1.5),sx*(cw/2-.4),2.36,0);
     for(const z of [-1.4,0,1.4]) cb(.06,.18,.06,steelD,cw/2+.1,2.7,z);
     dayLight(CX,TOP+2.1,CZ+.4,0xffe8d0,.5,8);
-    nightLight(CX,TOP+2,CZ,0xffe0a0,2.4,12); dayLight(CX,TOP+2,CZ,0xffe8d0,.8,10); nightLight(.6,TOP+3.4,-ZE,0xf0f4ff,6,40); nightLight(.6,TOP+3.4,ZE,0xf0f4ff,6,40);
-    for(const z of [-ZE,ZE]){ pipeAx('y',TOP,TOP+3.0,.6,0,z*.97,.06,steelD); BX(.9,.5,.3,dkS,.6,TOP+3.2,z*.97,{cast:false}); BX(.6,.1,.2,glow(0xfff4d0,2),.6,TOP+3.0,z*.97-Math.sign(z)*.12,{cast:false}); }
+    nightLight(CX,TOP+2,CZ,0xffe0a0,2.4,12); dayLight(CX,TOP+2,CZ,0xffe8d0,.8,10); nightLight(-1.2,TOP+3.4,-ZE,0xf0f4ff,6,40); nightLight(2.4,TOP+3.4,ZE,0xf0f4ff,6,40);
     for(const s of [-1,1]){ ladderVis(.6,s*(ZE+.45),0,s,TOP); const L=MAP.LADDERS[MAP.LADDERS.length-1]; L.ex=.6; L.ez=s*(ZE-1.0); BX(.7,.14,.2,steelD,.6,TOP-.2,s*(ZE+.2),{cast:false}); for(const sx of [-1,1]) BX(.05,.9,.05,steelD,.6+sx*.36,TOP+.3,s*(ZE+.45),{cast:false}); }
     // guard rails along both girders (posts, two rails, kick band) and across the ends, with the ladder landing fenced either side
     { const rl=plain(0xf4f4f8,.5); const post=(x,z)=>BX(.08,1.2,.08,rl,x,TOP+.5+.6,z,{cast:false});
       for(const x of LX){ const sx=x<0?-1:1, rx=x+sx*0; for(let z=-ZE+.3;z<=ZE-.2;z+=1.4){ post(rx,z); } for(const y of [.85,1.2]) BX(.06,.06,2*ZE-.4,rl,rx,TOP+.5+y,0,{cast:false}); BX(.1,.16,2*ZE-.4,plain(0xe8c020,.5),rx,TOP+.58,0,{cast:false});
         for(let z=-ZE+.8;z<ZE-.6;z+=1.4) BX(.04,.3,1.2,plain(0x3a4048,.6),rx,TOP+.9,z+.7,{cast:false}); }
-      for(const s of [-1,1]){ for(const x of [-1.2,-.4,1.6,2.4]) post(x,s*(ZE-.1)); for(const y of [.85,1.2]) { BX(1.0,.06,.06,rl,-.75,TOP+.5+y,s*(ZE-.1),{cast:false}); BX(1.0,.06,.06,rl,2.0,TOP+.5+y,s*(ZE-.1),{cast:false}); }
-        // ladder landing: a gate frame and a warning sign over the opening
-        BX(.06,1.3,.06,rl,.1,TOP+1.15,s*(ZE-.1),{cast:false}); BX(.06,1.3,.06,rl,1.1,TOP+1.15,s*(ZE-.1),{cast:false}); BX(1.0,.06,.06,rl,.6,TOP+1.8,s*(ZE-.1),{cast:false});
-        { const c=mkCanvas(96,24), x=c.getContext('2d'); x.fillStyle='#e8c020'; x.fillRect(0,0,96,24); x.fillStyle='#14161a'; x.fillRect(2,2,92,20); crispText(x,'CLIMBING AREA',48,13,'bold 12px monospace','#e8c020'); mesh(new THREE.PlaneGeometry(1.0,.25),std({map:pxTex(c),roughness:.7}),.6,TOP+1.55,s*(ZE-.14),{ry:s>0?0:Math.PI,cast:false}); }
-        // the foot of the ladder: low side fences with a chain, so the alcove is clearly marked
-        for(const sx of [-1,1]){ const fx=.6+sx*.95; for(const z of [ZE+.35,ZE+.9,ZE+1.45]) BX(.1,1.1,.1,plain(0xe8c020,.5),fx,.55,s*z,{cast:false}); for(const y of [.5,.95]) BX(.06,.06,1.25,rl,fx,y,s*(ZE+.9),{cast:false}); col(fx,s*(ZE+.9),.12,1.3,1.1,0); }
-        BX(1.9,.1,.1,plain(0xe8c020,.5),.6,.9,s*(ZE+1.6),{cast:false}); }
+      for(const s of [-1,1]) for(const x of [-1.2,2.4]){ pipeAx('y',TOP,TOP+3.0,x,0,s*(ZE-.6),.06,steelD); BX(.9,.5,.3,dkS,x,TOP+3.2,s*(ZE-.6),{cast:false}); BX(.6,.1,.2,glow(0xfff4d0,2),x,TOP+3.0,s*(ZE-.6)-s*.12,{cast:false}); col(x,s*(ZE-.6),.14,.14,TOP+3.0,TOP); }
     }
     for(const x of LX) for(const s of [-1,1]){ for(let k=0;k<9;k++){ BX(.7,.16,.06,k%2?plain(0x14161a,.7):plain(0xe8c020,.5),x,TOP-.45,s*(ZE-.1)+.0,{cast:false}); } }
     for(const z of [-9,-4.5,0,4.5,9]) { BX(.1,.35,.1,steelD,-1.45,TOP+.5,z,{cast:false}); BX(.1,.35,.1,steelD,2.65,TOP+.5,z,{cast:false}); }
     BX(.3,.06,2*ZE,dkB,.6,TOP-.35,.0,{cast:false}); for(const z of [-ZE+1,ZE-1]) BX(.9,.2,.6,cm,.6,TOP-.3,z,{cast:false});
 
-    // a container hanging from the trolley on four cables, up in the air
-    { const hz=-6, hy=10.2, xo=.6; shipCont(xo,hz,CC[3],hy-H/2,0,[-1,1]); BX(6.4,.3,2.7,cd,xo,hy+H/2+.2,hz,{cast:false}); for(const sx of [-1,1]) for(const sz of [-1,1]) BX(.05,TOP-.9-(hy+H/2+.3),.05,steelD,xo+sx*2.4,(TOP-.9+hy+H/2+.3)/2,hz+sz*1.0,{cast:false}); BX(3.4,.9,2.2,cm,xo,TOP+.55,hz,{cast:false}); col(xo,hz,3.4,2.2,TOP+1.0,TOP); for(const [dx,dz] of [[-1.3,-.8],[1.3,-.8],[-1.3,.8],[1.3,.8]]) BX(.2,.3,.2,dkS,xo+dx,TOP+1.1,hz+dz,{cast:false}); BX(1.0,.6,.3,dkS,xo,TOP+1.3,hz,{cast:false}); }
+    crane2(TOP,ZE,cm,cd);
   }
   crane();
   // ---------- the second floor: galleries on both sides, lifeboats that lift to them, props, pipework ----------
@@ -4175,7 +4210,7 @@ function buildShip(){
     galSeg(GX0,GX1,s*10.3,s*11.6);
     for(const [a,b] of cuts([...SHAFT,CRG])) galSeg(a,b,s*11.6,s*14.8);
     for(const [a,b] of cuts([CRG])) galSeg(a,b,s*14.8,s*16.0);
-    for(const x of [-38,-20,-14,-8,10,14,30]){ const zp=s*15.7; BX(.3,GY+3.6,.3,steelD,x,(GY+3.6)/2,zp); col(x,zp,.3,.3,GY+3.6); BX(.3,GY,.3,steelD,x,GY/2,s*10.6,{cast:false}); col(x,s*10.6,.3,.3,GY); }
+    for(const x of [-38,-20,-14,-8,10,14,30]){ const zp=s*15.7; BX(.3,GY+3.6,.3,steelD,x,(GY+3.6)/2+.0,zp); col(x,zp,.3,.3,GY+3.6); }
     // guard rail and kickplate along the outer edge
     for(const [a,b] of cuts([CRG])){ const len=b-a, cx=(a+b)/2; for(const y of [.35,.72,1.1]) BX(len,.05,.05,white,cx,GY+y,s*15.9,{cast:false}); BX(len,.14,.04,plain(0xd8b020,.6),cx,GY+.12,s*15.92,{cast:false}); for(let x=a;x<=b;x+=1.9) BX(.07,1.1,.07,white,x,GY+.55,s*15.9,{cast:false}); col(cx,s*15.9,len,.1,GY+1.1,GY); }
     // overhead pipework: each run leaves one pump housing and ends in the next; the crane gap is left clear
@@ -4206,7 +4241,7 @@ function buildShip(){
     const lamp=(x,z,night)=>{ BX(.1,3,.1,steelD,x,GY+1.5,z,{cast:false}); BX(.5,.14,.3,dkS,x,GY+3.05,z,{cast:false}); BX(.4,.05,.2,MT.bulb,x,GY+2.96,z,{cast:false}); if(night) nightLight(x,GY+2.7,z,0xfff0d0,3.4,16); };
     const O=gz(15.2), I=gz(10.9);
     cabinet(-39,O,s>0?Math.PI:0); reel(-36,gz(15.3)); bottles(-34.2,gz(15.4)); crates(-21.5,gz(15.2)); bench(-18,gz(15.4)); cabinet(-15,O,s>0?Math.PI:0); barrels(-12.2,gz(15.2)); bench2(-9,gz(15.2)); reel(-5.4,gz(15.3)); cabinet(6.5,O,s>0?Math.PI:0); crates(10,gz(15.2)); bench(13,gz(15.4)); bottles(15.3,gz(15.4)); barrels(29,gz(15.2)); cabinet(31.8,O,s>0?Math.PI:0);
-    crates(-38,I); barrels(-20,I); bottles(-12.8,I); crates(9,I); crates(30,I);
+    crates(-38,I); barrels(-20,I); bottles(-12.8,I); crates(9,I);
     lamp(-35,gz(15.7),s>0); lamp(-9,gz(15.7),s>0); lamp(12,gz(15.7),false); lamp(30,gz(15.7),s>0);
     for(const x of [-30,-8,14,28]){ mesh(TG(.32,.07,6,14),plain(0xf4f4f8,.6),x,GY+.75,s*15.86,{cast:false}); mesh(TG(.32,.075,6,14),plain(0xd82a1e,.6),x,GY+.75,s*15.87,{cast:false}).scale.set(1,1,.4); }
     // painted signs on the pipe posts
@@ -4225,10 +4260,10 @@ function buildShip(){
       ladderVis(-58.7,s*8.0,-1,0,GY);
       // finished bow end of each walkway: end rail with a gate for the stairs, handrails down the stairs, an arch with a lamp and a sign
       rail(GX1,s*10.3,GX1,s*12.15); rail(GX1,s*14.25,GX1,s*16.0);
-      for(const dz of [-1,1]){ const z=s*13.2+dz*1.15; BX(.14,3.0,.14,white,GX1+.1,GY+1.5,z,{cast:false}); col(GX1+.1,z,.14,.14,GY+3.0,GY);
+      for(const dz of [-1,1]){ const z=s*13.2+dz*1.15; BX(.14,3.0,.14,white,GX1-.12,GY+1.5,z,{cast:false}); col(GX1-.12,z,.14,.14,GY+3.0,GY);
         beamC(GX1,GY+1.05,z,GX1+5.4,1.05,z,.06,white); beamC(GX1,GY+.6,z,GX1+5.4,.6,z,.05,white);
         for(let k=0;k<=4;k++){ const x=GX1+k*1.35, yt=GY*(1-k*1.35/5.4); BX(.06,1.05,.06,white,x,yt+.52,z,{cast:false}); } }
-      BX(.2,.25,2.5,white,GX1+.1,GY+3.0,s*13.2,{cast:false}); BX(.5,.3,.6,glow(0xfff0c8,1.8),GX1+.1,GY+2.8,s*13.2,{cast:false}); nightLight(GX1-.4,GY+2.4,s*13.2,0xfff0d0,3,14);
+      BX(.2,.25,2.5,white,GX1-.12,GY+3.0,s*13.2,{cast:false}); BX(.5,.3,.6,glow(0xfff0c8,1.8),GX1-.12,GY+2.8,s*13.2,{cast:false}); nightLight(GX1-.4,GY+2.4,s*13.2,0xfff0d0,3,14);
       { const c=mkCanvas(128,24), x=c.getContext('2d'); x.fillStyle='#14161a'; x.fillRect(0,0,128,24); crispText(x,'BOW DECK',64,13,'bold 16px monospace','#ffb040'); mesh(new THREE.PlaneGeometry(2.2,.41),std({map:pxTex(c),roughness:.7}),GX1-.05,GY+3.25,s*13.2,{ry:-Math.PI/2,cast:false}); }
       for(let k=0;k<5;k++) BX(.5,.012,.14,k%2?dkB:plain(0xe8c020,.5),GX1-.6-k*.0,GY+.012,s*13.2-1.0+k*.5,{cast:false});
       for(let k=0;k<3;k++) BX(.8,.012,.2,plain(0xf4f4f8,.6),GX1-1.4-k*1.0,GY+.012,s*13.2,{cast:false});
@@ -4240,6 +4275,33 @@ function buildShip(){
     papers(-58.4,-56.2,-6,6,GY+.012,10);
     for(const z of [-5.6,-2.4]) { BX(.1,.1,.1,glow(0xfff0c8,1.8),-56.1,GY+3.0,z,{cast:false}); }
   }
+  // ---- structure under the second floor: edge skirts, cross beams and a post at every bay, with posts at stair starts and ends ----
+  { const sk=plain(0x4a5262,.5,.5), sk2=plain(0x3a4252,.5,.5);
+    const post=(x,z,w)=>{ BX(w||.34,GY-.2,w||.34,steelD,x,(GY-.2)/2,z,{cast:true}); BX((w||.34)+.14,.14,(w||.34)+.14,dkS,x,.07,z,{cast:false}); BX((w||.34)+.12,.2,(w||.34)+.12,dkS,x,GY-.3,z,{cast:false}); col(x,z,(w||.34),(w||.34),GY-.2,0); };
+    const skirt=(x0,x1,z,hy)=>{ const len=x1-x0, cx=(x0+x1)/2; BX(len,.55,.12,sk,cx,GY-.48,z,{cast:false}); BX(len,.08,.2,sk2,cx,GY-.18,z,{cast:false}); BX(len,.08,.2,sk2,cx,GY-.76,z,{cast:false}); for(let x=x0+.5;x<x1-.2;x+=1.2) BX(.06,.5,.14,sk2,x,GY-.48,z,{cast:false}); };
+    for(const s of [-1,1]){
+      // outer and inner edge skirts of the side walkways
+      for(const [a,b] of cuts([CRG])) skirt(a,b,s*15.98); for(const [a,b] of cuts([...SHAFT,CRG])) skirt(a,b,s*11.62);
+      skirt(GX0,GX1,s*10.28);
+      // cross beams under the walkways, every 4.2 m (skipping the lifeboat shafts and the crane gap)
+      for(let x=-39.5;x<33.5;x+=4.2){ if(SHAFT.some(([a,b])=>x>a-.3&&x<b+.3)||(x>CRG[0]-.3&&x<CRG[1]+.3)) continue; BX(.22,.3,5.7,sk2,x,GY-.4,s*13.15,{cast:false}); }
+      // posts down to the deck along the outer edge, one per bay, with a pair at each end of every walkway span
+      for(const x of [-41.2,-37.6,-34.0,-21.8,-18.0,-14.0,-10.0,-6.2,6.6,10.2,14.0,29.0,31.6,33.6]) post(x,s*15.7);
+      // rear deck behind the tower
+      skirt(-58.6,-44,s*15.98); skirt(-58.6,-44,s*11.02); for(const x of [-58.3,-54.5,-50.7,-46.9]) { post(x,s*15.7); } post(-58.3,s*11.3);
+      // bow-end: stair landing gets two posts and a beam
+      post(GX1-.4,s*11.8); post(GX1-.4,s*14.6); BX(.3,.3,3.0,sk2,GX1-.4,GY-.4,s*13.2,{cast:false});
+    }
+    // the front balcony: fascia plate, beams back to the wall, and posts clear of the doors
+    BX(.14,.6,32.2,sk,-41.38,GY-.5,0,{cast:false}); BX(.2,.08,32.2,sk2,-41.4,GY-.18,0,{cast:false}); BX(.2,.08,32.2,sk2,-41.4,GY-.8,0,{cast:false});
+    for(let z=-14.4;z<=14.4;z+=2.4) BX(2.6,.26,.2,sk2,-42.7,GY-.45,z,{cast:false});
+    for(const z of [-15.7,-10.4,-3.6,3.6,10.4,15.7]) post(-41.6,z,.4);
+    BX(.14,.6,21.6,sk,-58.6,GY-.5,0,{cast:false});
+  }
+  // rails across the crane gap so nobody steps off the second floor into it
+  { const gr=(x1,z1,x2,z2)=>{ const len=Math.hypot(x2-x1,z2-z1), ang=Math.atan2(z2-z1,x2-x1); for(const y of [.38,.76,1.12]) BX(len,.05,.05,white,(x1+x2)/2,GY+y,(z1+z2)/2,{ry:-ang,cast:false}); BX(len,.14,.04,plain(0xd8b020,.6),(x1+x2)/2,GY+.12,(z1+z2)/2,{ry:-ang,cast:false});
+      for(let t=0;t<=len+.01;t+=Math.max(1.6,len/Math.ceil(len/1.8))){ const u=Math.min(1,t/len); BX(.07,1.12,.07,white,x1+(x2-x1)*u,GY+.56,z1+(z2-z1)*u,{cast:false}); } colOBB((x1+x2)/2,(z1+z2)/2,len,.14,GY+1.12,-ang); };
+    for(const s of [-1,1]){ gr(CRG[0],s*11.72,CRG[1],s*11.72); gr(CRG[0]-.1,s*11.72,CRG[0]-.1,s*15.95); gr(CRG[1]+.1,s*11.72,CRG[1]+.1,s*15.95); } }
   // ---- lifeboats: open boats with plank hulls, benches, canopies and davits; stand in one, press the use key and it rides up (or down) between the main deck and the second floor ----
   const LIFTS=[]; MAP.lifts=LIFTS;
   const boatP=plankMat(0xff6a1c), boatW=plankMat(0xf4f4f8), boatF=plankMat(0xc8a878), cush=plain(0x2a4a8a,.9), vestM=plain(0xff8a1a,.8), paneM=plain(0x1a2a3a,.3,.4);
@@ -4296,6 +4358,7 @@ function buildShip(){
     pc(cx,cz,L-1.2,B-.9,.14,0);
     for(const xk of [-1.55,-.52,.52,1.55]) pc(cx+xk,cz,.3,B-.7,.66,0);
     for(const e of [-1,1]){ const px=e*2.78; pc(cx+px,cz,1.7,1.5,2.3,2.1); }
+    for(const xi of [9,63,72]){ const u=(xi+.5-37)/37, Wd=Math.pow(Math.max(0,1-Math.pow(Math.abs(u),2.5)),.62)*12.8, wx=(xi+.5-37)*.1, wz=(Wd-.7)*.1; for(const sd of [-1,1]) pc(cx+wx,cz+sd*wz,.3,.3,2.3,.3); }
     // lifeboat details: hoist eyes, name plates, lifebuoys, ropes, nav light, steering wheel on the aft canopy, oars, engine
     for(const xk of [-2.4,2.4]) for(const hz of [-.8,.8]){ b(.14,.14,.14,chrome,xk,2.3,hz); mesh(TG(.09,.02,6,10),chrome,cx+xk,2.4,cz+hz,{p:g,cast:false}); }
     for(const sd of [-1,1]){ mesh(new THREE.PlaneGeometry(1.9,.36),nameM,cx+.2,.86,cz+sd*1.12,{p:g,ry:sd>0?0:Math.PI,cast:false});
@@ -4327,13 +4390,13 @@ function buildShip(){
   for(const [x,z,ry] of [[-30,-1.35,0],[-6.5,1.35,Math.PI],[14,-1.25,0],[30.5,1.4,Math.PI]]){ forklift(x,z,ry); col(x,z,3.4,1.5,2.6); }
   pallets(-16,-1.3); pallets(21,1.2);
   for(const [x,z] of [[-24,1.9],[-11.5,-1.9],[8.8,1.9],[24.5,-1.7],[36,1.2],[-38,-1.8]]){ crate(x,z,1.2); if(rand()<.6) crate(x+1.3,z+.2,1.0); }
-  for(const [x,z] of [[-34.5,1.9],[-14.8,1.9],[3,-1.95],[27.5,1.95],[-1.4,0]]){ vox('barrelR',x,0,z,1,rand()*6); col(x,z,.7,.7,1.1); vox('barrelB',x+.8,0,z+.2,1,rand()*6); col(x+.8,z+.2,.7,.7,1.1); }
+  for(const [x,z] of [[-34.5,1.9],[-14.8,1.9],[3,-1.95],[27.5,1.95],[-1.4,0]]){ vox('barrelR',x,0,z,1,rand()*6,null,true); col(x,z,.7,.7,1.1); vox('barrelB',x+.8,0,z+.2,1,rand()*6,null,true); col(x+.8,z+.2,.7,.7,1.1); }
   for(const [x,z] of [[0,1.6],[0,-1.6]]) { BX(.5,.5,.5,dkB,x+4.8,.25,z,{cast:false}); }
   for(let x=-37;x<38;x+=4.6) for(const s of [-1,1]) BX(2.2,.01,.16,MT.paintY,x,.035,s*2.72,{cast:false});
   for(const s of [-1,1]) for(let x=-30;x<36;x+=3) BX(1.6,.01,.14,MT.white,x,.036,s*10.45,{cast:false});
   // oil spills on the deck lane and on the second-floor galleries
-  puddles([[-30,-1.3,2.8,1.4],[-6.5,1.3,2.2,1.2],[14,-1.2,2.8,1.4],[30.5,1.4,2.4,1.2],[-14,.6,3.2,1.5],[-20,-1.5,2.2,1],[6,0,3.6,1.6],[22,-.3,2.8,1.2],[-37,.3,2.4,1.4],[36,-.6,2.6,1.2]],84,5.4,0,0,{color:0x050407,rough:.35,metal:.3,op:1,y:.04});
-  for(const s of [-1,1]) puddles([[-36,s*13,2.4,1.6],[-12,s*12.6,2.8,1.5],[8,s*13.6,2.4,1.3],[29,s*13,2.6,1.6]],72,5.4,0,s*13.1,{color:0x050407,rough:.35,metal:.3,op:1,y:GY+.025});
+  puddles([[-30,-1.3,2.8,1.4],[-6.5,1.3,2.2,1.2],[14,-1.2,2.8,1.4],[30.5,1.4,2.4,1.2],[-14,.6,3.2,1.5],[-20,-1.5,2.2,1],[6,0,3.6,1.6],[22,-.3,2.8,1.2],[-37,.3,2.4,1.4],[36,-.6,2.6,1.2]],84,5.4,0,0,{color:0x14131a,rough:.12,metal:.6,op:.62,y:.04});
+  for(const s of [-1,1]) puddles([[-36,s*13,2.4,1.6],[-12,s*12.6,2.8,1.5],[8,s*13.6,2.4,1.3],[29,s*13,2.6,1.6]],72,5.4,0,s*13.1,{color:0x14131a,rough:.12,metal:.6,op:.62,y:GY+.025});
   // light towers in the cross lanes
   for(const [x,z] of [[-23,0],[7.6,0]]) { }
   // ---------- the bow: cargo hatches, windlass and anchors, mast with a lookout, gear lockers, monitors and loads of deck gear ----------
@@ -4344,7 +4407,7 @@ function buildShip(){
     for(const sx of [-1,1]) for(const sz of [-1,1]){ BX(.3,.3,.3,dkS,cx+sx*(w/2-.4),h+.15,sz*(d/2-.4),{cast:false}); BX(.14,.1,.5,chrome,cx+sx*(w/2-.4),h+.34,sz*(d/2-.4),{cast:false}); }
     for(let k=0;k<4;k++) BX(.12,.1,.5,dkS,cx+(k-1.5)*w*.22,h+.06,d/2-.05,{cast:false}); hazard(cx-w/2-.3,-d/2-.35,cx+w/2+.3,-d/2-.35); hazard(cx-w/2-.3,d/2+.35,cx+w/2+.3,d/2+.35); hazard(cx-w/2-.35,-d/2,cx-w/2-.35,d/2); hazard(cx+w/2+.35,-d/2,cx+w/2+.35,d/2);
     for(const sz of [-1,1]) for(let k=0;k<3;k++){ BX(.05,.9,.05,steel,cx-w/2+.8+k*(w-1.6)/2,h/2,sz*(d/2+.1),{cast:false}); } }
-  hatch(52.5,7,9); hatch(61.2,4.4,6.4);
+  hatch(52.5,7,9); hatch(60.0,4.4,6.4);
   // windlass: a bedplate with two voxel-round chain drums on a shaft, brake wheels, gearbox, motor, chain run to the hawse pipe and an anchor
   { const wx=66.6, ob=plain(0xff6418,.5,.2); sol(wx,0,3.0,3.8,0,1.0,dkS); for(let k=0;k<5;k++) BX(3.04,.04,3.84,steelD,wx,.15+k*.2,0,{cast:false}); BX(3.3,.14,4.1,steelD,wx,1.07,0,{cast:false});
     for(const z of [-1.3,1.3]){ BX(.46,1.0,.6,steelD,wx-.77,1.6,z*1.28); BX(.46,1.0,.6,steelD,wx+.77,1.6,z*1.28); pipeAx('x',wx-.95,wx+.95,0,1.85,z*1.28,.58,ob,{cast:true}); pipeAx('x',wx-1.05,wx-.85,0,1.85,z*1.28,.7,dkS); pipeAx('x',wx+.85,wx+1.05,0,1.85,z*1.28,.7,dkS);
@@ -4357,22 +4420,22 @@ function buildShip(){
     for(const sz of [-1,1]){ BX(3.0,.18,.2,dkS,64.0,.14,sz*3.2); BX(.2,.2,1.5,dkS,62.7,.14,sz*3.2); BX(.5,.14,.7,dkS,65.4,.12,sz*3.2); BX(.6,.14,.5,dkS,65.5,.12,sz*3.9); BX(.6,.14,.5,dkS,65.5,.12,sz*2.5); col(64,sz*3.2,3.2,1.6,.45); }
     BX(.14,.1,.14,steelD,wx,2.8,0,{cast:false});
     // two stowed anchors either side: shank, crown, curved arms (stepped), flukes and a stock bar
-    for(const sg of [-1,1]){ const ax=68.6, az=sg*3.9, am=plain(0x24272e,.5,.5);
+    for(const sg of [-1,1]){ const ax=67.4, az=sg*3.5, am=plain(0x24272e,.5,.5);
       BX(2.4,.24,.24,am,ax,.5,az,{cast:true}); BX(.3,.5,.4,am,ax-1.0,.5,az); BX(.2,.2,1.5,am,ax+.9,.5,az); BX(.3,.3,.3,am,ax+.9,.5,az-.75); BX(.3,.3,.3,am,ax+.9,.5,az+.75);
       for(const e of [-1,1]){ BX(.5,.18,.18,am,ax-1.15,.42,az+e*.28); BX(.4,.16,.3,am,ax-1.4,.4,az+e*.5); BX(.5,.06,.55,plain(0x3a3e48,.5,.5),ax-1.55,.36,az+e*.65); }
       BX(.18,.4,.18,steelD,ax+1.1,.65,az,{cast:false}); col(ax,az,2.5,1.0,.7); }
     BX(.14,.1,.14,steelD,wx,2.8,0,{cast:false}); }
   // mooring bitts, capstans, fire monitors and life-raft canisters: voxel-round, with plates, rims and hardware
   const bol=(x,z)=>{ BX(1.0,.14,.9,dkS,x,.07,z); BX(.9,.22,.8,steelD,x,.24,z,{cast:false}); for(const e of [-1,1]){ pipeAx('y',.3,1.15,x+e*.28,0,z,.2,dkS,{cast:true}); BX(.5,.1,.5,steelD,x+e*.28,1.2,z,{cast:false}); } BX(.9,.14,.3,steelD,x,.86,z,{cast:false}); for(const e of [-1,1]) BX(.06,.1,.06,chrome,x+e*.46,.2,z+.38,{cast:false}); col(x,z,1.0,.9,1.25); };
-  for(const sg of [-1,1]){ bol(47,sg*14.4); bol(54.5,sg*13.4); bol(62,sg*10.9); bol(67.4,sg*6.2);
+  for(const sg of [-1,1]){ bol(47,sg*14.4); bol(54.5,sg*13.4); bol(62,sg*10.9); bol(66.2,sg*5.6);
     // capstan: a flared voxel-round drum on a motor housing with a rope turn and bars
-    { const cx=58.4, cz=sg*9.6; sol(cx,cz,1.5,1.5,0,.5,dkS); BX(1.6,.1,1.6,steelD,cx,.55,cz,{cast:false}); pipeAx('y',.5,1.5,cx,0,cz,.46,steelD,{cast:true}); pipeAx('y',.5,.7,cx,0,cz,.62,orange); pipeAx('y',1.3,1.6,cx,0,cz,.62,orange); BX(.5,.14,.5,dkS,cx,1.66,cz,{cast:false});
+    { const cx=60.8, cz=sg*9.2; sol(cx,cz,1.5,1.5,0,.5,dkS); BX(1.6,.1,1.6,steelD,cx,.55,cz,{cast:false}); pipeAx('y',.5,1.5,cx,0,cz,.46,steelD,{cast:true}); pipeAx('y',.5,.7,cx,0,cz,.62,orange); pipeAx('y',1.3,1.6,cx,0,cz,.62,orange); BX(.5,.14,.5,dkS,cx,1.66,cz,{cast:false});
       for(const [dx,dz] of [[.8,0],[-.8,0],[0,.8],[0,-.8]]) BX(dx?.5:.1,.1,dz?.5:.1,chrome,cx+dx,1.2,cz+dz,{cast:false}); for(let k=0;k<3;k++) pipeAx('y',.82+k*.18,.9+k*.18,cx,0,cz,.54,plain(0xc8b078,.9)); BX(.3,.3,.3,glow(0xffb040,1.6),cx+.7,.7,cz+.7,{cast:false}); }
     // fire monitor: round base, swivel head, elbow, barrel with nozzle ring, hand wheel and gauge
     { const mx=56.8, mz=sg*12.0, rd=plain(0xc42a1a,.45,.2); sol(mx,mz,1.0,1.0,0,.4,dkS); pipeAx('y',.4,1.2,mx,0,mz,.3,rd,{cast:true}); BX(.8,.12,.8,steelD,mx,.42,mz,{cast:false}); pipeAx('y',1.2,1.4,mx,0,mz,.38,steelD); pipeAx('x',mx-.1,mx+1.3,0,1.55,mz,.2,rd,{cast:true}); pipeAx('x',mx+1.3,mx+1.5,0,1.55,mz,.27,dkS);
       pipeAx('y',1.2,1.6,mx-.2,0,mz,.14,rd); BX(.4,.06,.4,chrome,mx-.2,1.62,mz,{cast:false}); mesh(TG(.17,.04),plain(0xd82a1e,.5),mx+.2,.8,mz+.34,{cast:false}); BX(.14,.14,.06,glow(0xf4f4f0,1.2),mx-.2,.8,mz+.32,{cast:false}); BX(.5,.06,.06,chrome,mx+.6,1.75,mz,{cast:false}); }
     // life raft canisters: horizontal voxel-round drums in a cradle with straps, end caps, a release hook and a label
-    for(const rx of [45.0,48.2]){ const rz=sg*15.2; BX(2.4,.2,1.1,dkS,rx,.5,rz,{cast:false}); for(const e of [-.8,.8]){ BX(.14,.9,1.1,steelD,rx+e,.95,rz); } pipeAx('x',rx-1.05,rx+1.05,0,1.0,rz,.5,orange,{cast:true}); pipeAx('x',rx-1.15,rx-1.0,0,1.0,rz,.46,white); pipeAx('x',rx+1.0,rx+1.15,0,1.0,rz,.46,white);
+    for(const rx of [45.0,48.4]){ const rz=sg*14.6; BX(2.4,.2,1.1,dkS,rx,.5,rz,{cast:false}); for(const e of [-.8,.8]){ BX(.14,.9,1.1,steelD,rx+e,.95,rz); } pipeAx('x',rx-1.05,rx+1.05,0,1.0,rz,.5,orange,{cast:true}); pipeAx('x',rx-1.15,rx-1.0,0,1.0,rz,.46,white); pipeAx('x',rx+1.0,rx+1.15,0,1.0,rz,.46,white);
       for(const e of [-.55,.55]){ pipeAx('x',rx+e-.05,rx+e+.05,0,1.0,rz,.55,dkS); BX(.12,.14,.14,chrome,rx+e,1.55,rz,{cast:false}); }
       BX(1.0,.34,.04,white,rx,1.0,rz-sg*.52,{cast:false}); BX(.3,.1,.1,glow(0xff4040,1.8),rx+.9,1.62,rz,{cast:false}); BX(.06,.3,.06,chrome,rx-.9,1.6,rz,{cast:false}); col(rx,rz,2.4,1.1,1.5,.4); } }
   // foremast with a lookout platform reached by a ladder, a jackstaff with a flag at the tip
@@ -4386,52 +4449,46 @@ function buildShip(){
     ladderVis(mx+1.75,mz,1,0,top); for(const e of [-1,1]) BX(.5,.06,.06,steelD,mx+1.45,top-.2+.0,mz+e*.26,{cast:false}); }
   { BX(.1,5,.1,steel,69.6,2.5,0,{cast:false}); BX(.05,.8,1.2,plain(0x2a5a9a,.7),69.6,4.5,.65,{cast:false}); BX(.05,.4,.6,plain(0xd82a1e,.7),69.6,4.1,.35,{cast:false}); BX(.4,.2,.4,dkS,69.6,.1,0,{cast:false}); nightLight(69.2,4.8,0,0xfff0d0,2,16); }
   // deck gear lockers (walk-in) either side of the first hatch: shelves, paint tins, rope coils, a workbench, a lamp
-  function locker(cx,cz,w,d,doorSide){ const T=.3, H=3.0, WLk=plain(0xd8dce4,.6);
-    const zDoor=cz+doorSide*d/2, zBack=cz-doorSide*d/2;
-    openingsWall('x',zDoor,cx-w/2,cx+w/2,0,H,[[cx-.65,cx+.65,0,2.2]],WLk,T,trimM); openingsWall('x',zBack,cx-w/2,cx+w/2,0,H,[],WLk,T,trimM);
-    openingsWall('z',cx-w/2,cz-d/2,cz+d/2,0,H,[[cz-.5,cz+.5,1.2,2.2]],WLk,T,trimM); openingsWall('z',cx+w/2,cz-d/2,cz+d/2,0,H,[[cz-.5,cz+.5,1.2,2.2]],WLk,T,trimM);
-    sol(cx,cz,w+.5,d+.5,H,H+.22,dkS); BX(.9,.3,.9,steelD,cx+w/4,H+.37,cz,{cast:false}); BX(.4,.14,2.0,haz0,cx,H+.28,cz,{cast:false});
-    BX(w-.6,.04,d-.6,plankMat(0x8a6a4a),cx,.05,cz,{cast:false});
-    for(const y of [.7,1.4,2.1]) { BX(w-.9,.06,.5,woodM,cx,y,zBack+doorSide*.4,{cast:false}); }
-    for(let k=0;k<6;k++) for(const y of [.7,1.4,2.1]){ if((k+((y*10)|0))%3===0) continue; BX(.34,.34,.3,plain([0xc42a1a,0x2a5ac8,0xe8c020,0x3aa858,0xf4f4f8][(k+((y*3)|0))%5],.5),cx-w/2+.9+k*.55,y+.2,zBack+doorSide*.42,{cast:false}); }
-    for(const y of [.7,1.4]) { BX(.04,.06,.9,steelD,cx-w/2+.45,y,cz+doorSide*.0,{cast:false}); }
-    for(let k=0;k<3;k++) BX(.9,.2,.9,plain(0xc8b078,.9),cx-w/2+.8,.15+k*.2,cz+doorSide*.7,{cast:false});
-    sol(cx+w/2-.75,cz+doorSide*.4,.9,1.6,0,.9,woodD); BX(.3,.1,.5,dkS,cx+w/2-.75,.96,cz+doorSide*.4,{cast:false}); BX(.14,.5,.14,steelD,cx+w/2-.95,1.2,cz+doorSide*.1,{cast:false});
-    crate(cx-w/2+.9,cz-doorSide*.4,.9,0,true); BX(.8,.04,.04,haz0,cx,.1,zDoor,{cast:false});
-    // exterior depth: corrugation ribs, corner posts, a plinth, a lip under the roof, sign, vents and a rain gutter
-    { const rib=plain(0xb8bcc8,.6,.3), post=plain(0x8a8f9c,.6,.3);
-      for(const [wz,so] of [[zDoor,doorSide],[zBack,-doorSide]]){ for(let u=cx-w/2+.35;u<cx+w/2-.2;u+=.5){ if(wz===zDoor&&Math.abs(u-cx)<.9) continue; BX(.14,H-.55,.09,rib,u,H/2+.1,wz+so*(T/2+.04),{cast:false}); } BX(w+.3,.16,.12,post,cx,.35,wz+so*(T/2+.05),{cast:false}); BX(w+.3,.12,.14,post,cx,H-.28,wz+so*(T/2+.06),{cast:false}); }
-      for(const sx of [-1,1]) for(const sz of [-1,1]) BX(.34,H+.02,.34,post,cx+sx*(w/2),H/2,cz+sz*(d/2),{cast:false});
-      for(const sx of [-1,1]){ for(let u=cz-d/2+.5;u<cz+d/2-.2;u+=.55){ if(Math.abs(u-cz)<.6) continue; BX(.09,H-.55,.14,rib,cx+sx*(w/2+T/2+.04),H/2+.1,u,{cast:false}); } }
-      BX(.9,.5,.06,plain(0x2a2a30,.7),cx-w/4,2.2,zDoor+doorSide*(T/2+.05),{cast:false}); for(let k=0;k<5;k++) BX(.8,.03,.08,steelD,cx-w/4,2.05+k*.1,zDoor+doorSide*(T/2+.07),{cast:false});
-      { const c=mkCanvas(96,20), x=c.getContext('2d'); x.fillStyle='#e8c020'; x.fillRect(0,0,96,20); x.fillStyle='#14161a'; x.fillRect(2,2,92,16); crispText(x,'GEAR STORE',48,11,'bold 12px monospace','#e8c020'); mesh(new THREE.PlaneGeometry(1.5,.31),std({map:pxTex(c),roughness:.7}),cx+w/4,2.6,zDoor+doorSide*(T/2+.05),{ry:doorSide>0?0:Math.PI,cast:false}); }
-      BX(.12,.12,w+.4,steelD,cx+w/2+.2,H-.1,cz,{cast:false}); pipeAx('y',.1,H-.1,cx+w/2+.2,0,cz+d/2-.2,.07,steelD); }
+  function locker(cx,cz,w,d,doorSide){ const T=.3, H=3.2, WLk=plain(0xd8dce4,.6), roof=plain(0x4a5262,.5,.4);
+    const zDoor=cz+doorSide*d/2, zBack=cz-doorSide*d/2, ds=doorSide;
+    openingsWall('x',zDoor,cx-w/2,cx+w/2,0,H,[[cx-.75,cx+.75,0,2.3],[cx-w/2+.5,cx-w/2+1.7,1.2,2.2]],WLk,T,trimM); openingsWall('x',zBack,cx-w/2,cx+w/2,0,H,[],WLk,T,trimM);
+    for(const sx of [-1,1]) openingsWall('z',cx+sx*w/2,cz-d/2,cz+d/2,0,H,[[cz-.5,cz+.5,1.2,2.2]],WLk,T,trimM);
+    // roof: a slab with an overhang, a raised parapet and an access hatch; a plinth round the base
+    sol(cx,cz,w+.7,d+.7,H,H+.18,roof); for(const [px,pz,pw,pd] of [[cx,cz-d/2-.3,w+.7,.1],[cx,cz+d/2+.3,w+.7,.1],[cx-w/2-.3,cz,.1,d+.7],[cx+w/2+.3,cz,.1,d+.7]]) BX(pw,.22,pd,plain(0x3a4252,.5,.4),px,H+.28,pz,{cast:false});
+    BX(1.0,.34,1.0,steelD,cx-w/4,H+.35,cz,{cast:false}); BX(.8,.1,.8,dkS,cx-w/4,H+.54,cz,{cast:false}); BX(.5,.5,.5,steelD,cx+w/4,H+.43,cz+ds*.5,{cast:false});
+    BX(w+.2,.3,d+.2,plain(0x6a707c,.8),cx,.15,cz,{cast:false});
+    // interior: planks, a hatch of light, shelving on the back wall, two lockers, a workbench with a vice, a stool and boxes
+    BX(w-.5,.05,d-.5,plankMat(0x8a6a4a),cx,.08,cz,{cast:false});
+    const fvv=(k,c,x,z,ry)=>fv(k,c,x,z,.1,ry);
+    fvv('bookshelf',0,cx-1.2,zBack+ds*.55,ds>0?0:Math.PI); fvv('bookshelf',0,cx+.2,zBack+ds*.55,ds>0?0:Math.PI);
+    lockerU(cx+w/2-.5,.1,cz-ds*.1,-Math.PI/2*ds*-1,0x4a6a8a);
+    sol(cx-w/2+.55,cz+ds*.2,.9,1.7,.1,.95,woodD); BX(.34,.12,.3,dkS,cx-w/2+.55,1.05,cz+ds*.7,{cast:false}); BX(.1,.3,.1,steelD,cx-w/2+.55,1.2,cz+ds*.7,{cast:false}); papers(cx-w/2+.3,cx-w/2+.8,cz-ds*.4,cz+ds*1.0,.96,5);
+    fvv('chair',0xa8683a,cx-w/2+1.4,cz+ds*.4,ds>0?-Math.PI/2:Math.PI/2);
+    crate(cx+w/2-.9,cz+ds*.9,.8,.1,true); BX(.3,.3,.3,plain(0xc42a1a,.6),cx+w/2-.9,1.0,cz+ds*.9,{cast:false});
+    fvv('lamp',0,cx-w/2+.5,cz-ds*.8,0);
+    BX(.8,.04,.04,haz0,cx,.11,zDoor,{cast:false});
+    // outside: a sign, a lamp over the door, a rain gutter and a drain pipe, a window sill each side
+    { const c=mkCanvas(96,20), x=c.getContext('2d'); x.fillStyle='#e8c020'; x.fillRect(0,0,96,20); x.fillStyle='#14161a'; x.fillRect(2,2,92,16); crispText(x,'GEAR STORE',48,11,'bold 12px monospace','#e8c020'); mesh(new THREE.PlaneGeometry(1.5,.31),std({map:pxTex(c),roughness:.7}),cx+w/4,2.8,zDoor+ds*(T/2+.01),{ry:ds>0?0:Math.PI,cast:false}); }
+    BX(.3,.2,.2,glow(0xfff0c8,1.8),cx+1.0,2.6,zDoor+ds*(T/2+.12),{cast:false}); BX(1.9,.12,.5,plain(0x3a4252,.5,.4),cx,2.45,zDoor+ds*(T/2+.28),{cast:false});
+    BX(.12,.1,w+.3,steelD,cx+w/2+.2,H-.05,cz,{cast:false}); pipeAx('y',.15,H-.05,cx+w/2+.2,0,cz+d/2+.0,.06,steelD);
+    BX(1.4,.12,.3,plain(0xe8ecf2,.5),cx-w/2+1.1,1.12,zDoor+ds*(T/2+.12),{cast:false});
     nightLight(cx,2.6,cz,0xffe0b0,2,9); dayLight(cx,2.6,cz,0xffe8d0,.4,6); BX(.7,.08,.3,MT.bulb,cx,H-.12,cz,{cast:false}); }
   const haz0=plain(0xe8c020,.5);
   locker(47.6,-11.8,5.0,4.0,1); locker(47.6,11.8,5.0,4.0,-1);
   // cargo and gear lying around the bow
   forklift(46.4,-5.2,0); col(46.4,-5.2,3.4,1.5,2.6); forklift(63.0,6.4,Math.PI/2); col(63.0,6.4,1.5,3.4,2.6);
   pallets(55.2,6.9); pallets(58.0,-6.8); pallets(50.2,6.6);
-  for(const [x,z,k] of [[48.6,-7.2,1.2],[49.9,-8.0,1.0],[56,8.9,1.1],[68,-3.6,1.0],[63.4,-8.8,1.2],[63.8,8.2,.9],[43.6,12.6,1.2],[43.8,-12.8,1.1]]) crate(x,z,k);
-  for(const [x,z] of [[52.4,-7.2],[53.2,-7.8],[60.4,6.7],[61.2,7.3],[44.6,-8.4],[45.2,8.4]]){ vox('barrelR',x,0,z,1,rand()*6); col(x,z,.7,.7,1.1); }
-  for(const [x,z] of [[59.8,-3.8],[60.8,4.6]]){ vox('barrelB',x,0,z,1,rand()*6); col(x,z,.7,.7,1.1); }
+  for(const [x,z,k] of [[48.6,-7.2,1.2],[49.9,-8.0,1.0],[64.2,-7.2,1.2],[43.6,12.6,1.2],[43.8,-12.8,1.1]]) crate(x,z,k);
+  for(const [x,z] of [[52.4,-7.2],[53.2,-7.8],[60.4,6.7],[61.2,7.3],[44.6,-8.4],[45.2,8.4]]){ vox('barrelR',x,0,z,1,rand()*6,null,true); col(x,z,.7,.7,1.1); }
+  for(const [x,z] of [[59.8,-3.8],[60.8,4.6]]){ vox('barrelB',x,0,z,1,rand()*6,null,true); col(x,z,.7,.7,1.1); }
   // rope coils, a tool chest, hoses and spare lifebuoy rack
-  for(const [x,z] of [[56,-10.2],[50.2,-14.2],[63.6,6.4]]){ for(let k=0;k<4;k++){ BX(.9-k*.1,.1,.9-k*.1,plain(0xc8b078,.9),x,.06+k*.1,z,{cast:false}); } BX(.3,.06,.3,plain(0xb89a60,.9),x,.45,z,{cast:false}); col(x,z,.9,.9,.5); }
+  for(const [x,z] of [[56,-10.2],[53.0,-14.2],[66.0,9.8]]){ for(let k=0;k<4;k++){ BX(.9-k*.1,.1,.9-k*.1,plain(0xc8b078,.9),x,.06+k*.1,z,{cast:false}); } BX(.3,.06,.3,plain(0xb89a60,.9),x,.45,z,{cast:false}); col(x,z,.9,.9,.5); }
   for(const z of [-11.8,11.8]) fireStation(50.44,0,z,Math.PI/2);
   lightTower(53,-12.6); lightTower(53,12.6); lightTower(63,-9.4);
   hazard(65.7,-1.9,65.7,1.9); hazard(67.5,-1.9,67.5,1.9); for(const z of [-1.9,1.9]) hazard(65.7,z,67.5,z);
   for(const x of [41,44]) for(const s of [-1,1]) BX(2.4,.012,.16,MT.white,x,.036,s*7.4,{cast:false});
   for(let k=0;k<5;k++) BX(.18,.012,1.6,MT.white,70.0-k*.0,.037,-2+k*1,{cast:false});
-  puddles([[47,-3,3.4,1.5],[58,2,3,1.4],[62,-3,3.4,1.5],[66,3.4,2.4,1.2],[50,2,3,1.2]],30,16,58,0,{color:0x050407,rough:.35,metal:.3,op:1,y:.04});
-  // ---------- the stern: mooring winches, bollards, a flag staff, life raft rack and deck gear behind the tower ----------
-  for(const sg of [-1,1]){ const wz=sg*12.2; sol(-59.2,wz,2.0,2.6,0,1.0,dkS); for(const dz of [-.7,.7]){ BX(.9,.8,.8,orange,-59.2,1.4,wz+dz,{cast:false}); mesh(TG(.4,.1),dkS,-59.2,1.5,wz+dz,{rz:0,ry:Math.PI/2,cast:false}); } bol(-60.6,sg*8.0); bol(-60.6,sg*14.6); bol(-57.4,sg*15.0);
-    for(let k=0;k<5;k++) BX(.8-k*.1,.1,.8-k*.1,plain(0xc8b078,.9),-60.0,.06+k*.1,sg*4.6,{cast:false}); col(-60.0,sg*4.6,.9,.9,.5);
-    sol(-59.6,sg*6.4,1.4,1.4,0,.9,plain(0xc42a1a,.45,.2)); BX(.9,.5,.9,steelD,-59.6,1.15,sg*6.4,{cast:false}); BX(1.3,.3,.3,plain(0xc42a1a,.45,.2),-59.2,1.45,sg*6.4,{cast:false}); }
-  BX(.12,6,.12,steel,-60.9,3,0,{cast:false}); BX(.04,1.3,2.0,plain(0xc82a1e,.7),-60.9,5.3,-1.1,{cast:false}); BX(.04,1.3,.9,plain(0x2a5a9a,.7),-60.88,5.3,-.0,{cast:false}); BX(.4,.2,.4,dkS,-60.9,.1,0,{cast:false});
-  { const bx=-60.2; sol(bx,0,.7,.7,0,1.1,plain(0xc8a050,.45,.5)); BX(.4,.4,.4,plain(0xd8b868,.4,.6),bx,1.3,0,{cast:false}); BX(.1,.3,.1,dkS,bx,1.6,0,{cast:false}); }
-  for(const [x,z] of [[-58.4,-9.2],[-58.2,9.4]]){ crate(x,z,1.1); vox('barrelR',x+.9,0,z+.3,1,rand()*6); col(x+.9,z+.3,.7,.7,1.1); }
-  for(const z of [-3.4,3.4]) fv('plant',0,-59.6,z,.02,0);
-  nightLight(-58.6,4,0,0xfff0d0,3,22); nightLight(-58.6,4,-12,0xfff0d0,2,16); nightLight(-58.6,4,12,0xfff0d0,2,16);
+  puddles([[47,-3,3.4,1.5],[58,2,3,1.4],[62,-3,3.4,1.5],[66,3.4,2.4,1.2],[50,2,3,1.2]],30,16,58,0,{color:0x14131a,rough:.12,metal:.6,op:.62,y:.04});
   // --- the sea, with sun glitter and foam round the hull, plus a bank of chunky clouds ---
   { const N=140, geo=new THREE.PlaneGeometry(2,2,N,N); geo.rotateX(-Math.PI/2); const pa=geo.attributes.position, R=1100;
     for(let i=0;i<pa.count;i++){ const u=pa.getX(i), v=pa.getZ(i); pa.setX(i,Math.sign(u)*u*u*R); pa.setZ(i,Math.sign(v)*v*v*R); }
@@ -4446,7 +4503,7 @@ MAPDEFS.ship={name:'Cargo Ship',desc:'A huge container ship at sea. Stacked carg
 
 /* ===== lifeboat lifts on the Cargo Ship ===== */
 function liftInside(f,l){ return Math.abs(f.x-l.cx)<l.L/2-.3&&Math.abs(f.z-l.cz)<l.B/2-.15&&f.y>=l.off-.2&&f.y<=l.off+1.6; }
-function tryUse(f){ if(!MAP||!MAP.lifts||f.dead) return false; for(const l of MAP.lifts){ if(l.moving) continue; if(liftInside(f,l)){ l.moving=true; l.tp=l.p>.5?0:1; l.riders=FIGHTERS.filter(q=>!q.dead&&liftInside(q,l)); if(SFX.pop) SFX.pop(); return true; } } return false; }
+function tryUse(f){ if(!MAP||f.dead) return false; if(MAP.secrets){ for(const sc of MAP.secrets){ if(Math.hypot(f.x-sc.x,f.z-sc.z)<sc.r&&Math.abs(f.y-sc.y)<2){ sc.fn(f); return true; } } } if(!MAP.lifts) return false; for(const l of MAP.lifts){ if(l.moving) continue; if(liftInside(f,l)){ l.moving=true; l.tp=l.p>.5?0:1; l.riders=FIGHTERS.filter(q=>!q.dead&&liftInside(q,l)); if(SFX.pop) SFX.pop(); return true; } } return false; }
 function liftTick(dt){ const M=MAP; if(!M||!M.lifts) return;
   for(const l of M.lifts){
     if(l.moving){ const dir=Math.sign(l.tp-l.p); l.p=clamp(l.p+dir*dt/2.6,0,1); if(l.p===l.tp){ l.moving=false; l.up=l.p>.5; } }
@@ -5107,7 +5164,7 @@ function dropWall(i){ const w=WALLS[i]; scene.remove(w.m); w.m.traverse(o=>{ if(
 function doReload(f){ if(f.stormT>0) return; if(f.reloadT<=0&&f.ammo<f.stats.ammo){ if(f.ammo<=0&&f.human) SFX.empty(); f.reloadT=f.stats.reload; SFX.reload(f); } }
 function collide(f){
   const R=f.r, ox=f.x, oz=f.z;
-  for(const o of COL){ if(f.y>=o.h-.05||f.y+BODY_H<=o.y0+.05) continue; if(o.h-f.y<=.36&&f.onGround) continue;
+  for(const o of COL){ if(f.y>=o.h-.05||f.y+BODY_H<=o.y0+(o.y0>.5?.24:.05)) continue; if(o.h-f.y<=.36&&f.onGround) continue;
     const cx=Math.max(o.minX,Math.min(f.x,o.maxX)), cz=Math.max(o.minZ,Math.min(f.z,o.maxZ)), dx=f.x-cx, dz2=f.z-cz, d2=dx*dx+dz2*dz2;
     if(d2<R*R){ if(d2>1e-8){ const d=Math.sqrt(d2); f.x=cx+dx/d*R; f.z=cz+dz2/d*R; }
       else { const l=f.x-o.minX, r=o.maxX-f.x, t=f.z-o.minZ, b=o.maxZ-f.z, m=Math.min(l,r,t,b);
@@ -5801,10 +5858,16 @@ function replayTick(rdt){ if(!KC) return;
   FIGHTERS.forEach((f,n)=>{ const A=a.f[n], B2=b.f[n]; f.x=lerp(A[0],B2[0],k); f.y=lerp(A[1],B2[1],k); f.z=lerp(A[2],B2[2],k); let dy=B2[3]-A[3]; dy=Math.atan2(Math.sin(dy),Math.cos(dy)); f.yaw=A[3]+dy*k; f.pitch=lerp(A[4],B2[4],k); f.dead=!!B2[5]; f.deadT=B2[6];
     const vx=(B2[0]-A[0])/Math.max(.001,b.t-a.t), vz=(B2[2]-A[2])/Math.max(.001,b.t-a.t); f.vx=vx; f.vz=vz; syncRig(f,Math.min(.05,rdt)); });
   const bs=b.b; KC.tr.forEach((m,n)=>{ const q=a.b[n]; if(!q||!bs[n]){ m.visible=false; return; } m.visible=true; m.position.set(lerp(q[0],bs[n][0],k),lerp(q[1],bs[n][1],k),lerp(q[2],bs[n][2],k)); if(bs[n]){ const dx=bs[n][0]-q[0], dy=bs[n][1]-q[1], dz=bs[n][2]-q[2]; if(dx*dx+dy*dy+dz*dz>1e-8) m.lookAt(m.position.x+dx,m.position.y+dy,m.position.z+dz); } });
-  // first person: the killer's own eyes (their body is hidden), easing in a little as the kill lands
-  const W=G.winner, rest2=KC.end-KC.t, zoom=clamp(1-rest2/KC.hold,0,1)*(rest2<KC.hold?1:0);
-  if(W.rig){ W.rig.g.visible=false; W.rig.blob.visible=false; }
-  camera.position.set(W.x,W.y+EYE,W.z); camera.rotation.set(W.pitch,W.yaw,0); camera.fov=lerp(80,62,zoom); camera.updateProjectionMatrix(); camera.updateMatrixWorld(); }
+  // over-the-shoulder: behind and a little above the killer, looking past them at the target; closer when walls are in the way
+  const W=G.winner, V=other(W), rest2=KC.end-KC.t, zoom=clamp(1-rest2/KC.hold,0,1)*(rest2<KC.hold?1:0);
+  if(W.rig){ W.rig.g.visible=!W.dead; W.rig.blob.visible=true; }
+  const eye=new THREE.Vector3(W.x,W.y+1.55,W.z), tgt=new THREE.Vector3(V.x,V.y+1.2,V.z);
+  const fw=new THREE.Vector3(-Math.sin(W.yaw),0,-Math.cos(W.yaw)).normalize(), rt=new THREE.Vector3(-fw.z,0,fw.x);
+  let want=null; for(const [bk,up,sd] of [[3.4,.55,.7],[2.7,.5,.6],[2.1,.45,.5],[1.6,.4,.35]]){ const p=eye.clone().addScaledVector(fw,-bk).addScaledVector(rt,sd); p.y=eye.y+up; if(hasLOS(p,eye)){ want=p; break; } }
+  if(!want) want=eye.clone().addScaledVector(fw,-1.1).add(new THREE.Vector3(0,.35,0));
+  if(!KC.ready){ KC.cp.copy(want); KC.ready=true; } else KC.cp.lerp(want,1-Math.exp(-6*rdt));
+  const aim=eye.clone().addScaledVector(new THREE.Vector3(-Math.sin(W.yaw)*Math.cos(W.pitch),Math.sin(W.pitch),-Math.cos(W.yaw)*Math.cos(W.pitch)),12);
+  camera.position.copy(KC.cp); camera.fov=lerp(70,56,zoom); camera.updateProjectionMatrix(); camera.lookAt(aim.x,aim.y,aim.z); camera.updateMatrixWorld(); }
 function afterRound(){ if(G.winner.score>=G.target) gameOver(G.winner); else startPick(other(G.winner)); }
 addEventListener('keydown',e=>{ if(G.state==='replay'&&!e.repeat) kcSkip(); }); addEventListener('mousedown',()=>kcSkip());
 addEventListener('keydown',e=>{ if(G.state!=='podium') return; const k=e.key.toLowerCase(); if(k==='enter'){ e.preventDefault(); podiumNext(); } else if(BINDS.kb.inspect.includes(k)||k===' '||BINDS.kb.jump.includes(k)){ e.preventDefault(); if(!e.repeat) podiumDance(P); } },true);
