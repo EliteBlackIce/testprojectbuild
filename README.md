@@ -39,6 +39,6 @@ Then open http://localhost:8000. Press F3 in game for the debug overlay.
 
 ## Latest additions
 - **Kill cam:** every round ends with a longer replay from behind the shooter (skip with any key, toggle in Settings, Gameplay).
-- **Cargo Ship:** a big container ship at sea with stacked cargo, a stern tower, a catwalk over the centre, lifeboats you can climb into, and ocean, sky and clouds to the horizon.
+- **Cargo Ship:** a big container ship at sea with detailed cargo, a climbable gantry crane over the centre, a walk-in stern tower with a bridge (mission control) and captain's quarters, a second-floor gallery on both sides, forklifts and oil spills, and ocean, sky and clouds to the horizon. Climb into a lifeboat and press the use key (G) to ride it up to the second floor.
 - **Menus:** the Play screen is grouped into Arena, Match and Opponent, and the How to play page is easier to read.
 - **Fixes:** the Atomic Acres bus now has a proper driver seat, steering wheel and front door and no pole in the back door, the Sunset Town grain elevator lost its long roof gallery, and the font no longer garbles "fi" and "fl".
