@@ -3543,7 +3543,7 @@ MAPDEFS.nuke={name:'Atomic Acres',desc:'A classic two-house cul-de-sac with a bu
       { const [hx,hz]=L2W(3.72,-.62), [bx,bz]=L2W(4.0,-.62); beam(bx,1.02,bz,hx,1.3,hz,.06,DK);
         const wg=new THREE.Group(); wg.position.set(hx,1.32,hz); wg.rotation.order='YXZ'; wg.rotation.y=Math.atan2(bc,-bs); wg.rotation.x=-.6; SR.add(wg);
         mesh(new THREE.TorusGeometry(.2,.03,6,18),DK,0,0,0,{p:wg,cast:false}); for(const a2 of [0,Math.PI/2]){ const sp=BX(.4,.035,.035,DK,0,0,0,{p:wg,cast:false}); sp.rotation.z=a2; } BX(.1,.1,.06,CHR,0,0,0,{p:wg,cast:false}); }
-      at(4.2,0,.03,.14,.5,2.35,CHR); at(4.15,-.5,.04,.03,.4,2.1,DK);
+      
       }
     dayLight(L2W(-.5,0)[0],2.1,L2W(-.5,0)[1],0xffe8b0,1.3,7); }
   truck(5.8,11,-1,0x6a3a2a); truck(-5.8,-11,1,0x3a5a7a); sedan(-5.4,8.6,.5,0xd8d0c6,true); sedan(5.4,-8.6,Math.PI+.5,0x8a6a2a,true);
@@ -4067,11 +4067,11 @@ function buildShip(){
     // upper tiers, funnel, mast
     sol(-50.4,0,10.2,20.6,CE+.2,CE+3.4,WL); sol(-51,0,9,18.4,CE+3.4,CE+6.5,WL); vis(-45.2,0,.1,19,CE+.9,CE+1.9,glow(0xffe8b0,1.4)); for(let k=-8;k<=8;k+=1.7) BX(.08,1.05,1.2,rand()<.5?MT.glassLit[(rand()*3)|0]:MT.glassDark,-45.28,CE+1.4,k,{cast:false});
     for(let k=-8;k<=8;k+=1.7) BX(.08,1.05,1.2,rand()<.5?MT.glassLit[(rand()*3)|0]:MT.glassDark,-46.55,CE+4.6,k,{cast:false});
-    // funnel: a voxel sphere (red hull, white band, black top, a badge on each side)
-    { const R=2.9, cy=CE+9.5, vs=.5, RED=plain(0xc4281a,.55,.2), WH=plain(0xf4f6fa,.6), BK=plain(0x16181e,.5); col(-52.5,0,5.2,5.2,CE+12.4,CE+6.5);
-      for(let i=-6;i<=6;i++) for(let j=-6;j<=6;j++) for(let k=-6;k<=6;k++){ const d=Math.hypot(i,j,k)*vs; if(d>R||d<R-.62) continue; let m=RED;
-        if(j>=3) m=BK; else if(j===-1||j===0) m=WH; else if(Math.abs(k)>=4&&Math.abs(i)<=1&&j>=1&&j<=2) m=(i===0&&j===1)?RED:WH;
-        BX(vs,vs,vs,m,-52.5+i*vs,cy+j*vs,k*vs,{cast:false}); } }
+    // funnel: a tall voxel cylinder (red hull, white band, black top, a badge on each side)
+    { const R=2.4, y0=CE+6.5, vs=.5, NL=28, RED=plain(0xc4281a,.55,.2), WH=plain(0xf4f6fa,.6), BK=plain(0x16181e,.5); col(-52.5,0,5.2,5.2,y0+NL*vs,y0);
+      for(let j=0;j<NL;j++){ const top=j>=NL-2, rim=j>=NL-3, Rj=rim?R+.3:R; for(let i=-6;i<=6;i++) for(let k=-6;k<=6;k++){ const d=Math.hypot(i,k)*vs; if(d>Rj||(!top&&d<Rj-.62)) continue; let m=RED;
+          if(top) m=BK; else if(j>=NL-4) m=BK; else if(j===NL-8||j===NL-7) m=WH; else if(Math.abs(k)>=4&&Math.abs(i)<=1&&j>=14&&j<=17) m=(i===0&&j===15)?RED:WH;
+          BX(vs,vs,vs,m,-52.5+i*vs,y0+j*vs+vs/2,k*vs,{cast:false}); } } }
     pipeAx('y',CE+6.5,CE+15.5,-49,0,6,.14,steel); { const rd=new THREE.Group(); rd.position.set(-49,CE+6.5+9.3,6); SR.add(rd); BX(2.6,.12,.5,steel,0,.1,0,{p:rd,cast:false}); BX(.3,.3,.3,dkS,0,0,0,{p:rd,cast:false}); rd.userData.noBake=true; MAP.radar=rd; }
     nightLight(-42.5,GY+3.2,-8,0xffd9a0,2,16); nightLight(-42.5,GY+3.2,8,0xffd9a0,2,16);
     // ---- abandoned: papers on every floor, desks and tables, plus a toppled chair or two ----
@@ -4125,7 +4125,7 @@ function buildShip(){
       for(const [x,z,h] of [[-55,-9.4,5.2],[-55,9.4,4.2],[-47.0,-8.6,3.6]]){ pipeAx('y',ty2,ty2+h,x,0,z,.05,steel); BX(.5,.05,.05,steel,x,ty2+h*.75,z,{cast:false}); BX(.3,.05,.05,steel,x,ty2+h*.9,z,{cast:false}); BX(.1,.1,.1,glow(0xff3030,2),x,ty2+h+.05,z,{cast:false}); }
       for(const [x,z,ry] of [[-48.5,-6.5,.5],[-48.5,6.5,-.5]]){ BX(.3,.9,.3,steelD,x,ty2+.45,z,{cast:false}); const dsh=new THREE.Group(); dsh.position.set(x,ty2+1.1,z); dsh.rotation.y=ry; SR.add(dsh); BX(.1,1.4,1.4,plain(0xe8ecf2,.5,.2),0,0,0,{p:dsh,cast:false,rz:.45}); BX(.1,1.0,1.0,plain(0xc8ccd6,.5,.2),.1,0,0,{p:dsh,cast:false,rz:.45}); BX(.06,.06,.5,steel,.45,.3,0,{p:dsh,cast:false,rz:.45}); dsh.userData.noBake=true; }
       for(const z of [-4,4]){ BX(.5,.5,.5,steelD,-46.9,ty2+.25,z,{cast:false}); BX(.4,.14,.4,glow(0xfff0c8,2),-46.9,ty2+.65,z,{cast:false}); }
-      pipeAx('y',ty2+7.0,ty2+10.4,-52.5,0,0,.06,steel); BX(.14,.14,.14,glow(0xff3030,2),-52.5,ty2+10.45,0,{cast:false});
+      
 
     }
     // second-floor side-door stairs are the side walkways themselves: add hand wheels and wall lamps beside every upper door
@@ -4612,7 +4612,7 @@ function maskPines(zones){ if(!SHARED.pines||!SHARED.pineMeshes) return; const d
   for(const m of SHARED.pineMeshes) if(m) m.instanceMatrix.needsUpdate=true; }
 async function loadMap(id,progress){
   if(MAP&&MAP.id===id) return;
-  if(MAP) MAP.root.visible=false;
+  if(MAP){ MAP.root.visible=false; try{ clearBullets(); for(const d of decals) if(d) d.visible=false; }catch(e){} } // nothing from the old map (walls, gadgets, decals, shots) may follow you into the next one
   let M=MAPS[id];
   if(!M){
     M={id,def:MAPDEFS[id],root:new THREE.Group(),COL:[],NOGRASS:[],BLINK:[],NIGHTL:[],STAIRS:[],TRAMPS:[],LADDERS:[]}; MAPS[id]=M; scene.add(M.root);
@@ -5948,12 +5948,12 @@ function replayTick(rdt){ if(!KC) return;
   FIGHTERS.forEach((f,n)=>{ const A=a.f[n], B2=b.f[n]; f.x=lerp(A[0],B2[0],k); f.y=lerp(A[1],B2[1],k); f.z=lerp(A[2],B2[2],k); let dy=B2[3]-A[3]; dy=Math.atan2(Math.sin(dy),Math.cos(dy)); f.yaw=A[3]+dy*k; f.pitch=lerp(A[4],B2[4],k); f.dead=!!B2[5]; f.deadT=B2[6];
     const vx=(B2[0]-A[0])/Math.max(.001,b.t-a.t), vz=(B2[2]-A[2])/Math.max(.001,b.t-a.t); f.vx=vx; f.vz=vz; syncRig(f,Math.min(.05,rdt)); });
   const bs=b.b; KC.tr.forEach((m,n)=>{ const q=a.b[n]; if(!q||!bs[n]){ m.visible=false; return; } m.visible=true; m.position.set(lerp(q[0],bs[n][0],k),lerp(q[1],bs[n][1],k),lerp(q[2],bs[n][2],k)); if(bs[n]){ const dx=bs[n][0]-q[0], dy=bs[n][1]-q[1], dz=bs[n][2]-q[2]; if(dx*dx+dy*dy+dz*dz>1e-8) m.lookAt(m.position.x+dx,m.position.y+dy,m.position.z+dz); } });
-  // first person from the victim's eyes: what the person being shot actually sees, with the killer in view and the victim's own body hidden
+  // first person from the killer's own eyes, exactly as they saw it: their body and gear hidden so nothing blocks the view
   const W=G.winner, V=other(W), rest2=KC.end-KC.t, zoom=clamp(1-rest2/KC.hold,0,1)*(rest2<KC.hold?1:0);
-  for(const f of FIGHTERS) f.kcHide=(f===V); if(V.rig){ V.rig.g.visible=false; V.rig.blob.visible=false; }
-  if(!KC.vp) KC.vp=new THREE.Vector3(); if(!V.dead||!KC.vpSet){ KC.vp.set(V.x,V.y+1.6,V.z); KC.vpSet=true; }
-  const look=new THREE.Vector3(W.x,W.y+1.35,W.z); if(look.distanceTo(KC.vp)<.3) look.set(KC.vp.x-Math.sin(V.yaw),KC.vp.y,KC.vp.z-Math.cos(V.yaw));
-  KC.cp.copy(KC.vp); KC.ready=true; camera.position.copy(KC.cp); camera.fov=lerp(78,60,zoom); camera.updateProjectionMatrix(); camera.lookAt(look.x,look.y,look.z); camera.updateMatrixWorld(); for(const m of KC.tr) if(m.visible&&m.position.distanceTo(KC.cp)<3) m.visible=false; }
+  for(const f of FIGHTERS) f.kcHide=(f===W); if(W.rig){ W.rig.g.visible=false; W.rig.blob.visible=false; } if(V.rig&&!V.dead){ V.rig.g.visible=true; }
+  const eye=eyePos(W), fwd=new THREE.Vector3(-Math.sin(W.yaw)*Math.cos(W.pitch),Math.sin(W.pitch),-Math.cos(W.yaw)*Math.cos(W.pitch));
+  KC.cp.copy(eye); KC.ready=true; camera.position.copy(eye); camera.fov=(+($('#fov')&&$('#fov').value)||75)-zoom*6; camera.updateProjectionMatrix(); camera.lookAt(eye.x+fwd.x,eye.y+fwd.y,eye.z+fwd.z); camera.updateMatrixWorld();
+  for(const m of KC.tr) if(m.visible&&m.position.distanceTo(eye)<.6) m.visible=false; }
 function afterRound(){ if(G.winner.score>=G.target&&G.tournMatch&&TN.match) tournDone(G.winner); else if(G.winner.score>=G.target) gameOver(G.winner); else startPick(other(G.winner)); }
 addEventListener('keydown',e=>{ if(G.state==='replay'&&!e.repeat) kcSkip(); }); addEventListener('mousedown',()=>kcSkip());
 addEventListener('keydown',e=>{ if(G.state!=='podium') return; const k=e.key.toLowerCase(); if(k==='enter'){ e.preventDefault(); podiumNext(); } else if(BINDS.kb.inspect.includes(k)||k===' '||BINDS.kb.jump.includes(k)){ e.preventDefault(); if(!e.repeat) podiumDance(P); } },true);
