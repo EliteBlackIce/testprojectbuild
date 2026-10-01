@@ -50,3 +50,5 @@ Then open http://localhost:8000. Press F3 in game for the debug overlay.
 - **UI:** sliders, text boxes, the tournament wheel and the bracket now use the same chunky pixel style as the rest of the menus; the Locker no longer cuts off names or prices.
 - **Cargo Ship:** decluttered bow, a much more detailed windlass, fixed locker flashing, and bookshelf/chair/crate placement in the gear stores.
 - **Numbers:** all digits now use a custom blocky pixel font (embedded in the file), and the open cargo container's doors are short enough to walk past. The tournament wheel is smooth again, with pixel names and a pixel rim.
+- **Soundtrack:** drop `town/yard/farm/nuke/ship/rust.mp3` into `music/` (or use Settings > Audio > Load music files). The track follows the map, and the whole mix goes muffled while someone is choosing their next power.
+- **Kill cam** is now first person through the winner's eyes. The lookout tower on the Cargo Ship was rebuilt, floating papers near the lifeboat shafts removed, the Atomic Acres bus front door cleaned up, farm woodpile/stump are voxel blocks, and the town shop signs/windows no longer stretch.
