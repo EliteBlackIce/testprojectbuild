@@ -36,3 +36,10 @@ python3 -m http.server 8000
 ```
 
 Then open http://localhost:8000. Press F3 in game for the debug overlay.
+
+## Latest additions
+- **Kill cam:** every round ends with a replay from behind the shooter (skip with any key, toggle in Settings, Gameplay).
+- **Frontier:** a huge map twice the size of Freight Yard with watchtowers, lodges, a lake and spawn camps. Pick the Snow, Autumn or Desert theme on the Play screen.
+- **Menus:** the Play screen is now grouped into Arena, Match and Opponent, and the How to play page is easier to read.
+- **Fixes:** the Atomic Acres bus no longer has wheels poking through the cabin or odd glass, Sunset Town's far silo is now a proper grain elevator, and the font no longer garbles "fi" and "fl" letter pairs.
+
