@@ -5953,7 +5953,7 @@ function replayTick(rdt){ if(!KC) return;
   if(V.rig){ V.rig.g.visible=false; V.rig.blob.visible=false; } if(W.rig){ W.rig.g.visible=!W.dead; W.rig.blob.visible=true; }
   if(!KC.vp) KC.vp=new THREE.Vector3(); if(!V.dead||!KC.vpSet){ KC.vp.set(V.x,V.y+1.6,V.z); KC.vpSet=true; }
   const look=new THREE.Vector3(W.x,W.y+1.35,W.z); if(look.distanceTo(KC.vp)<.3) look.set(KC.vp.x-Math.sin(V.yaw),KC.vp.y,KC.vp.z-Math.cos(V.yaw));
-  KC.cp.copy(KC.vp); KC.ready=true; camera.position.copy(KC.cp); camera.fov=lerp(78,60,zoom); camera.updateProjectionMatrix(); camera.lookAt(look.x,look.y,look.z); camera.updateMatrixWorld(); }
+  KC.cp.copy(KC.vp); KC.ready=true; camera.position.copy(KC.cp); camera.fov=lerp(78,60,zoom); camera.updateProjectionMatrix(); camera.lookAt(look.x,look.y,look.z); camera.updateMatrixWorld(); for(const m of KC.tr) if(m.visible&&m.position.distanceTo(KC.cp)<3) m.visible=false; }
 function afterRound(){ if(G.winner.score>=G.target&&G.tournMatch&&TN.match) tournDone(G.winner); else if(G.winner.score>=G.target) gameOver(G.winner); else startPick(other(G.winner)); }
 addEventListener('keydown',e=>{ if(G.state==='replay'&&!e.repeat) kcSkip(); }); addEventListener('mousedown',()=>kcSkip());
 addEventListener('keydown',e=>{ if(G.state!=='podium') return; const k=e.key.toLowerCase(); if(k==='enter'){ e.preventDefault(); podiumNext(); } else if(BINDS.kb.inspect.includes(k)||k===' '||BINDS.kb.jump.includes(k)){ e.preventDefault(); if(!e.repeat) podiumDance(P); } },true);
