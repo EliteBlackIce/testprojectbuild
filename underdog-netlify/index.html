@@ -5926,7 +5926,7 @@ function recTick(dt){ RECT+=dt; const fr={t:RECT,f:FIGHTERS.map(f=>[f.x,f.y,f.z,
   for(const b of G.bullets){ if(fr.b.length>=14) break; if(b.m&&!b.saw) fr.b.push([b.m.position.x,b.m.position.y,b.m.position.z,b.grenade?1:0]); }
   REC.push(fr); while(REC.length>2&&RECT-REC[0].t>7.4) REC.shift(); }
 function pollKcPad(){ const gp=navigator.getGamepads?navigator.getGamepads():[]; for(const g of gp){ if(g&&g.buttons&&g.buttons.some((b,i)=>i<4&&b.pressed)){ kcSkip(); return; } } }
-function endReplayQuiet(){ if(!KC) return; for(const m of KC.tr) scene.remove(m); KC=null; G.rpOn=false; camera.layers.disable(2); $('#kcam').classList.remove('show'); }
+function endReplayQuiet(){ if(!KC) return; for(const f of FIGHTERS) f.kcHide=false; for(const m of KC.tr) scene.remove(m); KC=null; G.rpOn=false; camera.layers.disable(2); $('#kcam').classList.remove('show'); }
 function kcSkip(){ if(G.state==="replay"&&KC&&KC.real>.5) endReplay(); }
 function startReplay(){
   if(!G.killcam||REC.length<24||!G.winner) return false;
@@ -5938,7 +5938,7 @@ function startReplay(){
   clearBullets(); G.state='replay'; G.rpOn=true; camera.layers.enable(2); layoutViews(); mouseDown=false; mouseRight=false;
   for(const f of FIGHTERS) f.scopeK=0;
   $('#kcam').classList.add('show'); $('#kcTxt').textContent=G.winner.human&&!G.winner.isBot?(G.mode==='split'?G.winner.name+' lands the kill':'Your kill'):(G.mode==='split'?G.winner.name+' lands the kill':'How you went down'); SFX.pop&&SFX.pop(); return true; }
-function endReplay(){ if(G.state!=='replay'||!KC) return;
+function endReplay(){ if(G.state!=='replay'||!KC) return; for(const f of FIGHTERS) f.kcHide=false;
   FIGHTERS.forEach((f,i)=>Object.assign(f,KC.save[i])); HUDS.forEach((h,i)=>{ if(KC.huds[i]) h.el.classList.add('on'); });
   for(const m of KC.tr) scene.remove(m); KC=null; G.rpOn=false; camera.layers.disable(2); $('#kcam').classList.remove('show'); G.state='roundEnd'; layoutViews();
   for(const f of FIGHTERS) syncRig(f,.05); afterRound(); }
@@ -5950,7 +5950,7 @@ function replayTick(rdt){ if(!KC) return;
   const bs=b.b; KC.tr.forEach((m,n)=>{ const q=a.b[n]; if(!q||!bs[n]){ m.visible=false; return; } m.visible=true; m.position.set(lerp(q[0],bs[n][0],k),lerp(q[1],bs[n][1],k),lerp(q[2],bs[n][2],k)); if(bs[n]){ const dx=bs[n][0]-q[0], dy=bs[n][1]-q[1], dz=bs[n][2]-q[2]; if(dx*dx+dy*dy+dz*dz>1e-8) m.lookAt(m.position.x+dx,m.position.y+dy,m.position.z+dz); } });
   // first person from the victim's eyes: what the person being shot actually sees, with the killer in view and the victim's own body hidden
   const W=G.winner, V=other(W), rest2=KC.end-KC.t, zoom=clamp(1-rest2/KC.hold,0,1)*(rest2<KC.hold?1:0);
-  if(V.rig){ V.rig.g.visible=false; V.rig.blob.visible=false; } if(W.rig){ W.rig.g.visible=!W.dead; W.rig.blob.visible=true; }
+  for(const f of FIGHTERS) f.kcHide=(f===V); if(V.rig){ V.rig.g.visible=false; V.rig.blob.visible=false; }
   if(!KC.vp) KC.vp=new THREE.Vector3(); if(!V.dead||!KC.vpSet){ KC.vp.set(V.x,V.y+1.6,V.z); KC.vpSet=true; }
   const look=new THREE.Vector3(W.x,W.y+1.35,W.z); if(look.distanceTo(KC.vp)<.3) look.set(KC.vp.x-Math.sin(V.yaw),KC.vp.y,KC.vp.z-Math.cos(V.yaw));
   KC.cp.copy(KC.vp); KC.ready=true; camera.position.copy(KC.cp); camera.fov=lerp(78,60,zoom); camera.updateProjectionMatrix(); camera.lookAt(look.x,look.y,look.z); camera.updateMatrixWorld(); for(const m of KC.tr) if(m.visible&&m.position.distanceTo(KC.cp)<3) m.visible=false; }
@@ -6146,7 +6146,7 @@ function syncRig(f,dt){
   armIK(r.rArm,J.rT,J.rP); armIK(r.lArm,J.lT,J.lP);
   if(r.gun){ r.gun.position.set(.5-.07*n.gunKick,-.1-.05*n.gunDip,.1); r.gun.rotation.set(0,0,-.4*n.gunDip+.05*n.gunKick); }
   if(f.dead){ const t=Math.min(1,f.deadT/.7), e=1-Math.pow(1-t,3); r.body.rotation.z=e*1.45; r.body.position.y=e*.12; r.upper.visible=false; } else { r.body.rotation.z=lerp(r.body.rotation.z,0,1-Math.exp(-16*dt)); }
-  r.g.visible=!(f.cloakT>0&&!f.dead); r.blob.visible=r.g.visible;
+  r.g.visible=!(f.cloakT>0&&!f.dead)&&!f.kcHide; r.blob.visible=r.g.visible;
   const em=f.flash>0?new THREE.Color(.8,.8,.8):f.tsT>0?new THREE.Color(.1,.25,.7):f.frozenT>0?new THREE.Color(.4,.7,1.2):f.ghostT>0?new THREE.Color(.5,.5,.9):f.lsT>0?new THREE.Color(.6,.4,.05):(f.slowT>0?new THREE.Color(.1,.3,.6):null);
   r.bombM.visible=f.bombs.length>0&&!f.dead&&(G.time*(f.bombs[0]&&f.bombs[0].t<1?12:5)|0)%2===0;
   r.paras.forEach((m,i)=>{ m.visible=i<f.paras.length&&!f.dead; const a=G.time*3+i*2.1; m.position.set(Math.cos(a)*.55,1.1+Math.sin(a*1.7)*.3,Math.sin(a)*.55); });
