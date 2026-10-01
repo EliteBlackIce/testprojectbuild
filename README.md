@@ -4,7 +4,7 @@ A free pixel-art 1v1 first-person duel that runs in the browser (three.js, no bu
 Lose a round, pick one of three power cards, and out-adapt your opponent.
 
 - **Modes:** vs bot (4 bot styles, 3 difficulties) or split screen with controllers
-- **Maps:** Sunset Town, Freight Yard, Harvest Farm, Atomic Acres, Rust (plus Random), day or night
+- **Maps:** Sunset Town, Freight Yard, Harvest Farm, Atomic Acres, Rust, Cargo Ship (plus Random), day or night
 - **Weapons:** Rifle, SMG, Shotgun, Sniper. Each gun has its own bullet drop (sniper flattest, shotgun and SMG arc the most), so long shots need aiming high
 - **Rules:** Classic, Chaos (random power every round), One Shot
 - **Powers:** 118 power cards (42 of them abilities that stack, up to 4 at once, including 16 bullet abilities like Frost, Blast, Ricochet and Homing rounds plus bullet passives) and 32 combos. Cards are drawn with weighted odds, powerful ones are rare, and the odds are shown on each card. Plus a Locker with hats, tracers and gun skins
@@ -38,8 +38,7 @@ python3 -m http.server 8000
 Then open http://localhost:8000. Press F3 in game for the debug overlay.
 
 ## Latest additions
-- **Kill cam:** every round ends with a replay from behind the shooter (skip with any key, toggle in Settings, Gameplay).
-- **Frontier:** a huge map twice the size of Freight Yard with watchtowers, lodges, a lake and spawn camps. Pick the Snow, Autumn or Desert theme on the Play screen.
-- **Menus:** the Play screen is now grouped into Arena, Match and Opponent, and the How to play page is easier to read.
-- **Fixes:** the Atomic Acres bus no longer has wheels poking through the cabin or odd glass, Sunset Town's far silo is now a proper grain elevator, and the font no longer garbles "fi" and "fl" letter pairs.
-
+- **Kill cam:** every round ends with a longer replay from behind the shooter (skip with any key, toggle in Settings, Gameplay).
+- **Cargo Ship:** a big container ship at sea with stacked cargo, a stern tower, a catwalk over the centre, lifeboats you can climb into, and ocean, sky and clouds to the horizon.
+- **Menus:** the Play screen is grouped into Arena, Match and Opponent, and the How to play page is easier to read.
+- **Fixes:** the Atomic Acres bus now has a proper driver seat, steering wheel and front door and no pole in the back door, the Sunset Town grain elevator lost its long roof gallery, and the font no longer garbles "fi" and "fl".
