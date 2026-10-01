@@ -49,3 +49,4 @@ Then open http://localhost:8000. Press F3 in game for the debug overlay.
 
 - **UI:** sliders, text boxes, the tournament wheel and the bracket now use the same chunky pixel style as the rest of the menus; the Locker no longer cuts off names or prices.
 - **Cargo Ship:** decluttered bow, a much more detailed windlass, fixed locker flashing, and bookshelf/chair/crate placement in the gear stores.
+- **Numbers:** all digits now use a custom blocky pixel font (embedded in the file), and the open cargo container's doors are short enough to walk past. The tournament wheel is smooth again, with pixel names and a pixel rim.
