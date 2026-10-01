@@ -5932,12 +5932,12 @@ function replayTick(rdt){ if(!KC) return;
   FIGHTERS.forEach((f,n)=>{ const A=a.f[n], B2=b.f[n]; f.x=lerp(A[0],B2[0],k); f.y=lerp(A[1],B2[1],k); f.z=lerp(A[2],B2[2],k); let dy=B2[3]-A[3]; dy=Math.atan2(Math.sin(dy),Math.cos(dy)); f.yaw=A[3]+dy*k; f.pitch=lerp(A[4],B2[4],k); f.dead=!!B2[5]; f.deadT=B2[6];
     const vx=(B2[0]-A[0])/Math.max(.001,b.t-a.t), vz=(B2[2]-A[2])/Math.max(.001,b.t-a.t); f.vx=vx; f.vz=vz; syncRig(f,Math.min(.05,rdt)); });
   const bs=b.b; KC.tr.forEach((m,n)=>{ const q=a.b[n]; if(!q||!bs[n]){ m.visible=false; return; } m.visible=true; m.position.set(lerp(q[0],bs[n][0],k),lerp(q[1],bs[n][1],k),lerp(q[2],bs[n][2],k)); if(bs[n]){ const dx=bs[n][0]-q[0], dy=bs[n][1]-q[1], dz=bs[n][2]-q[2]; if(dx*dx+dy*dy+dz*dz>1e-8) m.lookAt(m.position.x+dx,m.position.y+dy,m.position.z+dz); } });
-  // first person: through the winner's own eyes, with their body hidden so the camera is never inside the model
-  const W=G.winner, rest2=KC.end-KC.t, zoom=clamp(1-rest2/KC.hold,0,1)*(rest2<KC.hold?1:0);
-  if(W.rig){ W.rig.g.visible=false; W.rig.blob.visible=false; }
-  const fwd=new THREE.Vector3(-Math.sin(W.yaw)*Math.cos(W.pitch),Math.sin(W.pitch),-Math.cos(W.yaw)*Math.cos(W.pitch));
-  KC.cp.set(W.x,W.y+1.6,W.z); KC.ready=true;
-  camera.position.copy(KC.cp); camera.fov=lerp(78,62,zoom); camera.updateProjectionMatrix(); camera.lookAt(KC.cp.x+fwd.x,KC.cp.y+fwd.y,KC.cp.z+fwd.z); camera.updateMatrixWorld(); }
+  // first person from the victim's eyes: what the person being shot actually sees, with the killer in view and the victim's own body hidden
+  const W=G.winner, V=other(W), rest2=KC.end-KC.t, zoom=clamp(1-rest2/KC.hold,0,1)*(rest2<KC.hold?1:0);
+  if(V.rig){ V.rig.g.visible=false; V.rig.blob.visible=false; } if(W.rig){ W.rig.g.visible=!W.dead; W.rig.blob.visible=true; }
+  if(!KC.vp) KC.vp=new THREE.Vector3(); if(!V.dead||!KC.vpSet){ KC.vp.set(V.x,V.y+1.6,V.z); KC.vpSet=true; }
+  const look=new THREE.Vector3(W.x,W.y+1.35,W.z); if(look.distanceTo(KC.vp)<.3) look.set(KC.vp.x-Math.sin(V.yaw),KC.vp.y,KC.vp.z-Math.cos(V.yaw));
+  KC.cp.copy(KC.vp); KC.ready=true; camera.position.copy(KC.cp); camera.fov=lerp(78,60,zoom); camera.updateProjectionMatrix(); camera.lookAt(look.x,look.y,look.z); camera.updateMatrixWorld(); }
 function afterRound(){ if(G.winner.score>=G.target&&G.tournMatch&&TN.match) tournDone(G.winner); else if(G.winner.score>=G.target) gameOver(G.winner); else startPick(other(G.winner)); }
 addEventListener('keydown',e=>{ if(G.state==='replay'&&!e.repeat) kcSkip(); }); addEventListener('mousedown',()=>kcSkip());
 addEventListener('keydown',e=>{ if(G.state!=='podium') return; const k=e.key.toLowerCase(); if(k==='enter'){ e.preventDefault(); podiumNext(); } else if(BINDS.kb.inspect.includes(k)||k===' '||BINDS.kb.jump.includes(k)){ e.preventDefault(); if(!e.repeat) podiumDance(P); } },true);
