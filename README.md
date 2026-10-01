@@ -43,3 +43,7 @@ Then open http://localhost:8000. Press F3 in game for the debug overlay.
 - **Menus:** the Play screen is grouped into Arena, Match and Opponent, and the How to play page is easier to read.
 - **Fixes:** the Atomic Acres bus now has a proper driver seat, steering wheel and front door and no pole in the back door, the Sunset Town grain elevator lost its long roof gallery, and the font no longer garbles "fi" and "fl".
 - **Dev free camera:** turn on Developer options, then press F4 (or use the toggle) to fly around any map with WASD, Space, C and Shift without playing the round.
+- **Tournament mode:** 4 to 16 players. Type in the names, then a spinning wheel picks who plays whom (and who gets a bye when the numbers don't divide evenly). Matches are split-screen duels and winners move up the bracket to a champion screen.
+- **Cargo Ship:** a button in the crane cab raises and lowers the open container.
+- **Clearer numbers:** digits use a clearer system font so a 2 no longer looks like an 8.
+
