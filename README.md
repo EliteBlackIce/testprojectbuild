@@ -5,9 +5,9 @@ Lose a round, pick one of three power cards, and out-adapt your opponent.
 
 - **Modes:** vs bot (4 bot styles, 3 difficulties) or split screen with controllers
 - **Maps:** Sunset Town, Freight Yard, Harvest Farm, Atomic Acres, Rust (plus Random), day or night
-- **Weapons:** Rifle, SMG, Shotgun, Sniper. The Combat Knife is an ability card (slash up close, throw when far) with 30 upgrade cards
+- **Weapons:** Rifle, SMG, Shotgun, Sniper. Each gun has its own bullet drop (sniper flattest, shotgun and SMG arc the most), so long shots need aiming high
 - **Rules:** Classic, Chaos (random power every round), One Shot
-- **Powers:** 120 power cards (27 of them abilities that stack, up to 4 at once) and 32 combos. Cards are drawn with weighted odds, powerful ones are rare, and the odds are shown on each card. Plus a Locker with hats, tracers and gun skins
+- **Powers:** 118 power cards (42 of them abilities that stack, up to 4 at once, including 16 bullet abilities like Frost, Blast, Ricochet and Homing rounds plus bullet passives) and 32 combos. Cards are drawn with weighted odds, powerful ones are rare, and the odds are shown on each card. Plus a Locker with hats, tracers and gun skins
 - **Lobby:** a map vote before every round (toggle in Settings), organized Video / Audio / Gameplay settings with crosshair, shake, view bob, invert-Y and more
 - **Sound:** fully synthesized audio with a reverb room, per-ability sounds, map ambience, a different music track for every map, and a muffled mix when you are down
 - **Controls:** keyboard + mouse, gamepad, or touch
