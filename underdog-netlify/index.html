@@ -4622,11 +4622,13 @@ async function loadMap(id,progress){
     if(id!=='town') rand=rng(1337+[...id].reduce((a,c)=>a*31+c.charCodeAt(0)|0,7)); // same look every time, whatever order maps get built in
     M.def.build(); _dp.length=0; if(MAPDECOR[id]) MAPDECOR[id]();
     { const seen=new Set(); M.COL=M.COL.filter(o=>{ const k=[o.x,o.z,o.w,o.d,o.h,o.y0,o.nb?1:0].map(v=>Math.round(v*50)).join(','); if(seen.has(k)) return false; seen.add(k); return true; }); COL=M.COL; } // drop exact duplicate colliders
-    if(progress) await progress(.7,'Baking '+M.def.name);
-    bake(SR,M.root);
+    const mySR=SR; if(progress) await progress(.7,'Baking '+M.def.name);
+    bake(mySR,M.root);
     M.base=drawMapBase(M);
   }
   MAP=M; COL=M.COL; NOGRASS=M.NOGRASS; BLINK=M.BLINK; NIGHTL=M.NIGHTL; STAIRS=M.STAIRS; M.root.visible=true; AW=M.def.aw||30; AD=M.def.ad||14;
+  // only the current map may exist in the scene: every other map is taken out entirely, not just hidden
+  for(const k in MAPS){ const o=MAPS[k]; if(o===M){ if(!o.root.parent) scene.add(o.root); } else { o.root.visible=false; if(o.root.parent) o.root.parent.remove(o.root); } }
   const tt=M.def.tint||[1,1,1]; MT.terrain.color.setRGB(tt[0],tt[1],tt[2]);
   maskPines(M.def.noTrees); pineTint(M.def.pineTint||null); if(SHARED.terrain) SHARED.terrain.visible=!M.def.ocean; applyMapLight();
 }
@@ -5771,7 +5773,9 @@ function configurePlayers(){
   P.view=VV[0]; P.cam=CAMS[0]; P.hud=HUDS[0];
   B.view=B.human?VV[1]:null; B.cam=B.human?CAMS[1]:null; B.hud=B.human?HUDS[1]:null;
 }
-async function ensureMap(id){
+let mapQueue=Promise.resolve();
+function ensureMap(id){ const run=mapQueue.then(()=>ensureMapNow(id)); mapQueue=run.catch(()=>{}); return run; }
+async function ensureMapNow(id){
   if(MAP&&MAP.id===id) return;
   const L=$('#loading'); L.style.display='flex'; L.classList.remove('fade'); setLoad(.1,'Loading '+MAPDEFS[id].name); await tick();
   await loadMap(id,async(p,t)=>{ setLoad(p,t); await tick(); }); setLoad(1,'Ready'); await tick();
@@ -6314,7 +6318,7 @@ function loop(now){
   const inMenu=G.state==='menu'||G.state==='loading';
   if(inMenu){ const t=G.time*.05; camera.position.set(-24+Math.sin(t)*3,2.4+Math.sin(t*1.3)*.3,1.6+Math.sin(t*.7)*1.2); camera.rotation.set(.04+Math.sin(t*.9)*.02,-Math.PI/2+.12+Math.sin(t)*.28,0); camera.updateMatrixWorld(); VV[0].vm.visible=false; }
   if(G.podOn){ podiumCam(); VV[0].vm.visible=false; }
-  if(G.rpOn) VV[0].vm.visible=false;
+  if(G.rpOn){ const w=KC&&G.winner, v0=VIEWS[0]; if(w&&w.view&&v0&&v0.f===w){ w.view.vm.visible=true; syncViewmodel(w,camera,rdt); } else VV[0].vm.visible=false; } // the killer's own gun and hands, as they saw them
   for(const v of VIEWS){
     if(!inMenu&&!G.podOn&&!G.rpOn){ placeCamera(v.f,v.cam); syncViewmodel(v.f,v.cam,rdt); if(HUDS[v.f.id]&&HUDS[v.f.id].el.classList.contains('on')) updateHUD(v.f,rdt,v.r); }
     renderView(v,rdt);
