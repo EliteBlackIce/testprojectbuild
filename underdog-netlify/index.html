@@ -6020,7 +6020,7 @@ function mrPose(S,arr,t,rdt,pov){
   if(S.lt===undefined||t<S.lt||t-S.lt>.25) S.sh=[]; S.lt=t; // a seek must not fire a phantom shot
   const a=arr[i], b=arr[Math.min(i+1,arr.length-1)], k=b.t>a.t?clamp((t-a.t)/(b.t-a.t),0,1):0;
   FIGHTERS.forEach((f,n)=>{ const A=a.f[n], B2=b.f[n]; if(!A||!B2) return; f.x=lerp(A[0],B2[0],k); f.y=lerp(A[1],B2[1],k); f.z=lerp(A[2],B2[2],k); let dy=B2[3]-A[3]; dy=Math.atan2(Math.sin(dy),Math.cos(dy)); f.yaw=A[3]+dy*k; f.pitch=lerp(A[4],B2[4],k); f.dead=!!B2[5]; f.deadT=B2[6];
-    f.vx=lerp(A[7],B2[7],k); f.vz=lerp(A[8],B2[8],k); f.hp=B2[9]; const rl=B2[11]; f.reloadT=rl>=0?(1-rl)*f.stats.reload:0; f.blockT=B2[12]?.3:0; f.slideT=B2[13]?.3:0; f.scopeK=lerp(A[14]||0,B2[14]||0,k); f.inspectT=0;
+    f.vx=lerp(A[7],B2[7],k); f.vz=lerp(A[8],B2[8],k); f.hp=B2[9]; const rl=B2[11]; f.reloadT=rl>=0?(1-rl)*f.stats.reload:0; f.blockT=B2[12]?.3:0; f.slideT=B2[13]?.3:0; f.scopeK=lerp(A[14]||0,B2[14]||0,k); f.inspectT=0; f.flash=0; f.tsT=0; f.frozenT=0; f.ghostT=0; f.lsT=0; f.slowT=0; f.blindT=0;
     f.onGround=!!B2[15]; f.vy=lerp(A[16]||0,B2[16]||0,k); f.wallT=B2[17]?.2:0; f.wallNX=B2[18]||0; f.wallNZ=B2[19]||0; f.wjT=B2[20]||0; f.ladder=B2[21]?true:null;
     const sh=B2[10]; if(S.sh[n]===undefined||sh<S.sh[n]) S.sh[n]=sh; else if(sh>S.sh[n]){ S.sh[n]=sh; const Fx=f.fx; Fx.kick=1; Fx.kickRot=1; Fx.kickYaw=RR(-1,1); Fx.flashT=.05; f.fireT=(f.fireT||0)+.01; }
     syncRig(f,Math.min(.05,rdt)); });
@@ -6029,12 +6029,12 @@ function mrPose(S,arr,t,rdt,pov){
   for(const f of FIGHTERS) f.kcHide=(f===pov); if(pov.rig){ pov.rig.g.visible=false; pov.rig.blob.visible=false; } RPV=pov;
   const sf=pov.fx.shake; pov.fx.shake=0; placeCamera(pov,camera); pov.fx.shake=sf; pov.fov=pov.fov||G.fov; 
   for(const m of S.tr) if(m.visible&&m.position.distanceTo(camera.position)<.6) m.visible=false;
-  { const sc=$('#mrScope'); if(sc&&G.state==='mreplay'){ const sk=pov.scopeK||0; sc.style.opacity=sk>.3?Math.min(1,(sk-.3)/.5):0; } } }
+  { const sc=$('#mrScope'); if(sc&&(G.state==='mreplay'||G.state==='replay')){ const sk=pov.scopeK||0; sc.style.opacity=sk>.3?Math.min(1,(sk-.3)/.5):0; } } }
 const snapF=f=>({x:f.x,y:f.y,z:f.z,yaw:f.yaw,pitch:f.pitch,dead:f.dead,deadT:f.deadT,vx:f.vx,vz:f.vz,reloadT:f.reloadT,blockT:f.blockT,slideT:f.slideT,scopeK:f.scopeK,hp:f.hp,onGround:f.onGround,vy:f.vy,wallT:f.wallT,wallNX:f.wallNX,wallNZ:f.wallNZ,wjT:f.wjT,ladder:f.ladder,fireT:f.fireT,fov:f.fov,inspectT:f.inspectT});
 function vmSetWeapon(V,wid){ wid=wid||'rifle'; if(!V||!V.VM||!V.VM.guns||!V.VM.guns[wid]) return; for(const k in V.VM.guns) V.VM.guns[k].g.visible=k===wid; const GN=V.VM.guns[wid]; V.VM.mag=GN.mag; V.VM.muzzle.position.z=GN.muz; }
 let RPV=null;
 function pollKcPad(){ const gp=navigator.getGamepads?navigator.getGamepads():[]; for(const g of gp){ if(g&&g.buttons&&g.buttons.some((b,i)=>i<4&&b.pressed)){ kcSkip(); return; } } }
-function endReplayQuiet(){ if(!KC) return; for(const f of FIGHTERS) f.kcHide=false; for(const m of KC.tr) scene.remove(m); KC=null; G.rpOn=false; camera.layers.disable(2); $('#kcam').classList.remove('show'); }
+function endReplayQuiet(){ if(!KC) return; vmSetWeapon(VV[0],P.weapon); $('#mrScope').style.opacity=0; for(const f of FIGHTERS) f.kcHide=false; for(const m of KC.tr) scene.remove(m); KC=null; G.rpOn=false; camera.layers.disable(2); $('#kcam').classList.remove('show'); }
 function kcSkip(){ if(G.state==="replay"&&KC&&KC.real>.5) endReplay(); }
 function startReplay(){
   if(!G.killcam||REC.length<24||!G.winner) return false;
@@ -6046,7 +6046,7 @@ function startReplay(){
   clearBullets(); G.state='replay'; G.rpOn=true; camera.layers.enable(2); layoutViews(); mouseDown=false; mouseRight=false;
   for(const f of FIGHTERS) f.scopeK=0;
   $('#kcam').classList.add('show'); $('#kcTxt').textContent=G.winner.human&&!G.winner.isBot?(G.mode==='split'?G.winner.name+' lands the kill':'Your kill'):(G.mode==='split'?G.winner.name+' lands the kill':'How you went down'); SFX.pop&&SFX.pop(); return true; }
-function endReplay(){ if(G.state!=='replay'||!KC) return; for(const f of FIGHTERS) f.kcHide=false;
+function endReplay(){ if(G.state!=='replay'||!KC) return; vmSetWeapon(VV[0],P.weapon); $('#mrScope').style.opacity=0; for(const f of FIGHTERS) f.kcHide=false;
   FIGHTERS.forEach((f,i)=>Object.assign(f,KC.save[i])); HUDS.forEach((h,i)=>{ if(KC.huds[i]) h.el.classList.add('on'); });
   for(const m of KC.tr) scene.remove(m); KC=null; G.rpOn=false; camera.layers.disable(2); $('#kcam').classList.remove('show'); G.state='roundEnd'; layoutViews();
   for(const f of FIGHTERS) syncRig(f,.05); afterRound(); }
