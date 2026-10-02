@@ -93,6 +93,10 @@ button{cursor:var(--curP)}
 #kcam .kch{position:absolute;right:4vw;bottom:11vh;font-size:16px;color:var(--muted);text-shadow:0 2px 0 #000}
 
 #menu .mpane{padding-bottom:64px}
+#lan{overflow:auto;justify-content:flex-start;padding-top:calc(5vh + 8px);background:rgba(14,8,18,.94);gap:12px}
+#lan [hidden]{display:none!important} .lanbox{display:flex;flex-direction:column;gap:8px;align-items:center;padding:14px;width:min(640px,92vw);box-sizing:border-box}
+.lanbox textarea{width:100%;height:84px;resize:none;font:13px monospace;color:var(--ink);background:none;border:9px solid transparent;border-image:var(--fSlot) 3 fill / 9px stretch;image-rendering:pixelated;box-sizing:border-box;outline:none;word-break:break-all} .lanbox textarea:focus{border-image-source:var(--fGoldSlot)}
+#lanBar{position:absolute;top:8px;right:8px;z-index:9;display:none} #lanBar.show{display:block}
 #mrScopeBox{position:absolute;inset:0;pointer-events:none;z-index:6} #mrScopeBox .h-scope{z-index:1}
 #mrp{position:absolute;left:0;right:0;bottom:0;display:none;flex-direction:column;gap:6px;padding:10px 16px 14px;z-index:7;background:linear-gradient(transparent,rgba(10,6,12,.88) 30%)} #mrp.show{display:flex}
 #mrp .mrtop{display:flex;gap:18px;align-items:center;flex-wrap:wrap} #mrp .mrtop b{font-size:24px} #mrp .mrkeys{margin-left:auto;font-size:14px;color:var(--muted)}
@@ -507,6 +511,25 @@ button:focus-visible{outline:3px solid #fff;outline-offset:6px}
     <div class="tpane" id="tBracket"><h2 class="o">Bracket</h2><p class="s" id="tBrMsg"></p><div id="tBrBody" class="frame bracket"></div><div class="row"><button class="pbtn" id="tBrGo">Continue</button><button class="pbtn ghost" id="tBrMenu">Menu</button><button class="pbtn ghost" id="tBrNew">New tournament</button></div></div>
     <div class="tpane" id="tChamp"><h1 class="o champ">Champion</h1><div id="tChampName" class="tmatch"></div><div id="tChampBr" class="frame bracket"></div><div class="row"><button class="pbtn" id="tChampNew">New tournament</button><button class="pbtn ghost" id="tChampMenu">Menu</button></div></div>
   </div>
+
+  <div id="lan" class="overlay">
+    <h2 class="o mtitle">LAN game</h2>
+    <p class="s">Play 1v1 against a friend on the same Wi-Fi or network. One of you hosts, the other joins, and you swap two short codes (message them or read them out). No account or server needed.</p>
+    <div class="row"><button class="pbtn" id="lanHost">Host a game</button><button class="pbtn" id="lanJoin">Join a game</button><button class="pbtn ghost" id="lanBack">Back</button></div>
+    <div id="lanHostBox" class="frame lanbox" hidden>
+      <b class="o">1. Send this code to your friend</b><textarea id="lanOffer" readonly spellcheck="false"></textarea><button class="btn2" id="lanCopyOffer">Copy</button>
+      <b class="o">2. Paste the reply code they send back</b><textarea id="lanAnswerIn" spellcheck="false"></textarea><button class="pbtn" id="lanConnect">Connect</button>
+    </div>
+    <div id="lanJoinBox" class="frame lanbox" hidden>
+      <b class="o">1. Paste the host's code</b><textarea id="lanOfferIn" spellcheck="false"></textarea><button class="pbtn" id="lanMakeReply">Make reply code</button>
+      <b class="o">2. Send this reply to the host, then wait</b><textarea id="lanReply" readonly spellcheck="false"></textarea><button class="btn2" id="lanCopyReply">Copy</button>
+    </div>
+    <p class="s" id="lanStatus"></p>
+    <div class="row"><button class="pbtn" id="lanStart" hidden>Start match</button></div>
+    <p class="s mhint">The host sets the map, round target and weapon in Play first. Powers that need extra effects (abilities) are switched off in LAN games for now, and the Cargo Ship is not available yet.</p>
+  </div>
+
+  <div id="lanBar"><button class="btn2" id="lanLeave">Leave LAN game</button></div>
 
   <div id="pick" class="overlay">
     <h2 id="pickTitle" class="o"></h2>
@@ -1725,7 +1748,7 @@ const TIER_W={common:100,uncommon:58,rare:26}, OP_MUL=.4;
 const PCT={};
 function cardWeight(c,deficit){ let w=TIER_W[c.tier]*(c.op?OP_MUL:1)*(c.w||1); if(c.tier!=='common') w*=1+Math.min(.6,.15*(deficit||0)); if(c.tier==='uncommon') w*=1+Math.min(1.4,.2*Math.max(0,(G.round||1)-1)); else if(c.tier==='common') w*=1/(1+Math.min(.5,.05*Math.max(0,(G.round||1)-1))); return w; } // later rounds offer more uncommon cards
 function drawCards(n,deficit,owner){
-  const have=owner?owner.stats.abilities:[], full=have.length>=4&&!(DEV.on&&DEV.pickAny), pool=CARDS.filter(c=>!(owner&&c.ab&&(have.includes(c.ab)||full))), ws=pool.map(c=>cardWeight(c,deficit)), tot=ws.reduce((a,b)=>a+b,0);
+  const have=owner?owner.stats.abilities:[], full=have.length>=4&&!(DEV.on&&DEV.pickAny), pool=CARDS.filter(c=>!(owner&&c.ab&&(have.includes(c.ab)||full))&&!(G.mode==='lan'&&c.ab)), ws=pool.map(c=>cardWeight(c,deficit)), tot=ws.reduce((a,b)=>a+b,0);
   const tierSum={}, opSum=pool.reduce((a,c,i)=>a+(c.op?ws[i]:0),0); pool.forEach((c,i)=>{ tierSum[c.tier]=(tierSum[c.tier]||0)+ws[i]; });
   pool.forEach(c=>PCT[c.id]=(c.op?opSum:tierSum[c.tier])/tot*100); // share of all offers that are this rarity (powerful cards counted on their own)
   const out=[], W=ws.slice(), P=pool.slice();
@@ -5048,7 +5071,7 @@ function resetFighter(f,sp){
   Object.assign(f.ai,{t:0,los:0,lastX:x,lastZ:z,stuckT:0,dodgeT:0});
   if(f.rig){ f.rig.body.rotation.set(0,0,0); f.rig.body.position.y=0; f.rig.upper.visible=true; }
 }
-const eyePos=f=>new THREE.Vector3(f.x,f.y+(f.human?EYE:1.45)-(f.slideT>0?.75:0),f.z);
+const eyePos=f=>new THREE.Vector3(f.x,f.y+(f.human||f.remote?EYE:1.45)-(f.slideT>0?.75:0),f.z);
 
 /* ================= controllers ================= */
 const PADS=[]; // per index: {id,axes,b(values),down(bool),pr(edge),navT}
@@ -5085,7 +5108,7 @@ function tryFire(f,o,d){
   if(f.cloakT>.4) f.cloakT=.4;
   const s=f.stats; f.fireT=s.fireDelay/fireMul(f); if(!(f.stormT>0)) f.ammo--; if(DEV.on&&DEV.ammo&&f===P) f.ammo++; f.shotN=(f.shotN||0)+1; f.thirdNow=s.third&&f.shotN%3===0; f.dtapNow=s.dtap&&Math.random()<s.dtap; const oc=f.overShots>0?2:((s.quickdraw&&f.qdReady)?1:0); if(f.overShots>0) f.overShots--; f.qdReady=false; SFX.shot(f); SFX.shell(f); if(f.weapon==='sniper') SFX.bolt(f);
   const n=Math.round(s.proj), jit=.01+(s.spread-.08)*.35;
-  if(!f.human){ const q=other(f), dd=Math.hypot(q.x-f.x,q.z-f.z), tt=dd/s.bSpeed; d=d.clone(); d.y+=.5*s.drop*tt*tt/Math.max(8,dd); d.normalize(); }
+  if(!f.human&&!f.remote){ const q=other(f), dd=Math.hypot(q.x-f.x,q.z-f.z), tt=dd/s.bSpeed; d=d.clone(); d.y+=.5*s.drop*tt*tt/Math.max(8,dd); d.normalize(); }
   let muzzleW;
   if(f.human){ muzzleW=new THREE.Vector3(); f.view.VM.muzzle.getWorldPosition(muzzleW); f.st.shots++; rumble(f,.15,.35,70); }
   else muzzleW=o.clone().addScaledVector(d,1.15);
@@ -5378,6 +5401,7 @@ function damage(t,amt,src,head,quiet){
   t.hp-=amt;
   if(!quiet){
     t.flash=.1;
+    if(NET.on&&NET.role==='host'&&G.mode==='lan'){ if(t.remote){ const a=src?src.x-t.x:0, b2=src?src.z-t.z:1, cy=Math.cos(t.yaw), sy=Math.sin(t.yaw); netR({t:'hurt',a:Math.atan2(a*cy-b2*sy,-(a*sy+b2*cy)),d:amt}); } if(src&&src.remote&&src!==t) netR({t:'hit',h:!!head}); }
     if(t.human){ const F=t.fx; F.hurtT=.45; F.dmgFx=Math.min(1,F.dmgFx+.35+amt/120); F.shake=Math.min(1,F.shake+.3+amt/120); rumble(t,.7,.4,160);
       if(src&&src!==t){ const a=src.x-t.x, b=src.z-t.z, cy=Math.cos(t.yaw), sy=Math.sin(t.yaw); F.dmgAng=Math.atan2(a*cy-b*sy,-(a*sy+b*cy)); F.dmgDirT=1; } }
     if(t.human) SFX.hurt(); else SFX.grunt(t); if(src&&src!==t) t.lastHit={by:src,dmg:amt,head:!!head};
@@ -5508,7 +5532,7 @@ function hasLOS(a,b){ const d=a.distanceTo(b), n=Math.ceil(d/.4);
 const keys={}; let mouseRight=false, mouseDown=false, jumpQ=false, blockQ=false, reloadQ=false, abilQ=[false,false,false,false], slideQ=false;
 const canvas=renderer.domElement;
 const isLocked=()=>document.pointerLockElement===canvas;
-const live=()=>(G.state==='playing'||G.state==='countdown')&&!G.paused;
+const live=()=>(G.state==='playing'||G.state==='countdown'||(G.state==='lanc'&&(NET.hs==='playing'||NET.hs==='countdown')))&&!G.paused;
 const needsLock=()=>P.input&&P.input.kbm&&G.lastInput==='kbm'&&!G.noLock;
 function requestLock(){ if(G.noLock||G.lastInput==='pad') return; try{ const p=canvas.requestPointerLock(); if(p&&p.catch) p.catch(()=>{}); }catch(e){} }
 document.addEventListener('pointerlockerror',()=>{ G.lockErrs++; if(G.lockErrs>=2){ G.noLock=true; G.paused=false; showOverlay(null); } });
@@ -5678,9 +5702,9 @@ function updateHUD(f,rdt,view){
 
 /* ================= UI ================= */
 const banner=$('#banner');
-function showBanner(t,sub,c){ $('#bTitle').textContent=t; $('#bTitle').style.color=c||'var(--ink)'; $('#bSub').textContent=sub||''; banner.classList.remove('show'); void banner.offsetWidth; banner.classList.add('show'); }
-function hideBanner(){ banner.classList.remove('show'); }
-function showOverlay(id){ if(id==='#menu'&&typeof showPane==='function'&&$('#paneMain')) showPane('paneMain'); ['#menu','#pick','#over','#pause','#locker','#binds','#dev','#vote','#tourn'].forEach(s=>$(s).classList.toggle('show',s===id)); setFocus(null); }
+function showBanner(t,sub,c){ if(NET.on&&NET.role==='host'&&G.mode==='lan'&&!NET.noRelay) netR({t:'banner',a:t,b:sub||'',c:(c||'').replace('var(--you)','#ffcf40').replace('var(--bot)','#ffcf40')}); $('#bTitle').textContent=t; $('#bTitle').style.color=c||'var(--ink)'; $('#bSub').textContent=sub||''; banner.classList.remove('show'); void banner.offsetWidth; banner.classList.add('show'); }
+function hideBanner(){ banner.classList.remove('show'); if(NET.on&&NET.role==='host'&&G.mode==='lan') netR({t:'hideBanner'}); }
+function showOverlay(id){ if(id==='#menu'&&typeof showPane==='function'&&$('#paneMain')) showPane('paneMain'); ['#menu','#pick','#over','#pause','#locker','#binds','#dev','#vote','#tourn','#lan'].forEach(s=>$(s).classList.toggle('show',s===id)); setFocus(null); }
 function seg(id,cb){ const s=$(id); s.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{ s.querySelectorAll('button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); cb(b.dataset.v); })); }
 function syncSeg(id,v){ $(id).querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===v)); }
 seg('#diffSeg',v=>G.diff=v); seg('#tgtSeg',v=>G.target=+v);
@@ -5760,7 +5784,7 @@ function positionPausePanels(){ const WH=wrap.clientHeight;
 
 $('#fov').addEventListener('input',e=>setFov(+e.target.value)); $('#fov2').addEventListener('input',e=>setFov(+e.target.value));
 $('#playBtn').addEventListener('click',()=>{ requestLock(); startMatch(); });
-$('#againBtn').addEventListener('click',()=>{ requestLock(); startMatch(); });
+$('#againBtn').addEventListener('click',()=>{ requestLock(); if(G.mode==='lan'&&NET.on&&NET.role==='host') lanHostStart(); else startMatch(); });
 $('#mrBtn').addEventListener('click',()=>mvStart('over')); $('#mrExit').addEventListener('click',()=>mvEnd());
 $('#mrPlay').addEventListener('click',()=>{ if(MV){ if(MV.paused&&MV.t>=MV.end-.05) MV.t=MV.t0; MV.paused=!MV.paused; mvUI(true); } });
 $('#mrSeek').addEventListener('input',e=>{ if(MV){ MV.seeking=true; MV.t=MV.t0+(+e.target.value/1000)*(MV.end-MV.t0); } }); $('#mrSeek').addEventListener('change',()=>{ if(MV) MV.seeking=false; });
@@ -5772,7 +5796,7 @@ $('#bindsBack').addEventListener('click',closeBinds); $('#devBack').addEventList
 $('#dTabOpt').addEventListener('click',()=>{ DEV.tab='opt'; renderDev(); }); $('#dTabCards').addEventListener('click',()=>{ DEV.tab='cards'; renderDev(); });
 $('#bindsReset').addEventListener('click',()=>{ CAP=null; const dev=BIND_DEV, sv=SAVE.binds; BINDS[dev]=JSON.parse(JSON.stringify(DEF_BINDS[dev])); for(const a in BINDS[dev]) BINDS[dev][a]=BINDS[dev][a].concat([null,null,null]).slice(0,3); saveBinds(); renderBinds(); toast('Controls reset'); });
 function resume(){ if(G.noLock||!needsLock()){ G.paused=false; showOverlay(null); } else requestLock(); }
-function toMenu(){ G.tournMatch=false; if(G.state==='replay') endReplayQuiet(); if(MV){ const M=MV; MV=null; for(const m of M.tr) scene.remove(m); FIGHTERS.forEach((f,i)=>{ Object.assign(f,M.save[i]); f.kcHide=false; }); G.rpOn=false; RPV=null; camera.layers.disable(2); $('#mrp').classList.remove('show'); $('#mrScope').style.opacity=0; } podiumCleanup(); VOTE.on=false; hideRecap(); G.state='menu'; G.paused=false; clearBullets(); hideBanner(); HUDS.forEach(h=>h.el.classList.remove('on')); wrap.classList.remove('split','tb','lr');
+function toMenu(){ if(NET.on||G.mode==='lan'||G.state==='lanc') lanLeave(true); G.tournMatch=false; if(G.state==='replay') endReplayQuiet(); if(MV){ const M=MV; MV=null; for(const m of M.tr) scene.remove(m); FIGHTERS.forEach((f,i)=>{ Object.assign(f,M.save[i]); f.kcHide=false; }); G.rpOn=false; RPV=null; camera.layers.disable(2); $('#mrp').classList.remove('show'); $('#mrScope').style.opacity=0; } podiumCleanup(); VOTE.on=false; hideRecap(); G.state='menu'; G.paused=false; clearBullets(); hideBanner(); HUDS.forEach(h=>h.el.classList.remove('on')); wrap.classList.remove('split','tb','lr');
   $('#letterbox').classList.remove('off'); for(const f of FIGHTERS) if(f.view) f.view.vm.visible=false; showOverlay('#menu'); updatePadInfo(); if(isLocked()) document.exitPointerLock(); resize(); }
 function toast(t){ const e=$('#toast'); e.textContent=t; e.style.opacity=1; clearTimeout(toast.t); toast.t=setTimeout(()=>e.style.opacity=0,2600); }
 
@@ -5809,8 +5833,11 @@ function perfTick(rdt){
 
 /* ================= match flow ================= */
 function configurePlayers(){
-  const pads=padList();
-  if(G.mode==='split'){
+  const pads=padList(); B.remote=false; B.mirror=false;
+  if(G.mode==='lan'){
+    B.isBot=false; B.human=false; B.r=.4; P.name='You'; P.short='You'; B.input=null; P.input={kbm:true,pad:'any'};
+    if(NET.role==='host'){ B.remote=true; B.name='Guest'; B.short='Guest'; } else { B.mirror=true; B.name='Host'; B.short='Host'; }
+  } else if(G.mode==='split'){
     B.isBot=false; B.human=true; B.r=.4; P.name='Player 1'; P.short='P1'; B.name='Player 2'; B.short='P2';
     if(pads.length>=2){ P.input={kbm:true,pad:pads[0]}; B.input={kbm:false,pad:pads[1]}; } else { P.input={kbm:true,pad:-1}; B.input={kbm:false,pad:pads[0]}; }
     if(G.tournMatch&&TN.match){ P.name=TN.match.a; P.short=TN.match.a.slice(0,8); B.name=TN.match.b; B.short=TN.match.b.slice(0,8); }
@@ -5836,7 +5863,7 @@ async function startMatch(){
   if(starting) return; starting=true; try{ await ensureMap(G.map==='random'?randMap(MAP&&MAP.id):resolveMap(G.map)); } finally { starting=false; }
   configurePlayers();
   for(const f of FIGHTERS){ f.stats=baseStats(); f.cards=[]; f.combos=[]; f.score=0; f.st={shots:0,hits:0,heads:0}; }
-  applyWeapon(P,G.weapon); applyWeapon(B,G.mode==='split'?G.weapon:botWeapon()); applyCosmetics(); B.ai.style=G.mode==='split'?null:G.botStyle;
+  applyWeapon(P,G.weapon); applyWeapon(B,(G.mode==='split'||G.mode==='lan')?G.weapon:botWeapon()); applyCosmetics(); B.ai.style=G.mode==='split'?null:G.botStyle;
   G.round=0; mrReset();
   wrap.classList.toggle('split',G.mode==='split'); wrap.classList.toggle('tb',G.mode==='split'&&G.split==='tb'); wrap.classList.toggle('lr',G.mode==='split'&&G.split==='lr');
   HUDS[0].el.classList.add('on'); HUDS[1].el.classList.toggle('on',G.mode==='split');
@@ -5847,14 +5874,15 @@ function startRound(){
   clearBullets(); resetFighter(P,MAP.def.spawn[0]); resetFighter(B,MAP.def.spawn[1]); G.round++;
   recClear(); MR.round++; MR.rounds.push({n:MR.round,t0:MR.t,t1:MR.t,w:-1,map:MAP&&MAP.id}); G.state='countdown'; G.timer=1.8; G.fightShown=false; G.slow=0; G.roundT=0; G.sudden=false; hideRecap(); SFX.countdown();
   if(G.rules==='chaos'&&G.round>1) for(const f of FIGHTERS){ const c=drawCards(1,0,f)[0]; c.apply(f.stats); clampStats(f.stats); f.cards.push(c); if(f.human) renderCards(f); f.hp=f.stats.maxHp; f.ammo=f.stats.ammo; toast('Chaos: '+f.name+' got '+c.name); }
-  renderScore(); showBanner('Round '+G.round,'Get ready'); mouseDown=false;
+  renderScore(); showBanner('Round '+G.round,'Get ready'); mouseDown=false; if(G.mode==='lan'&&NET.role==='host') lanMeta();
 }
 function roundOver(w){
   { const r=MR.rounds[MR.rounds.length-1]; if(r){ r.t1=MR.t; r.w=FIGHTERS.indexOf(w); } }
   G.state='roundEnd'; G.winner=w; w.score++; G.timer=G.killcam?1.5:2.4; G.slow=.8; mouseDown=false;
   SFX.round(G.mode==='split'||!w.isBot); if(w.human) addCoins(10); showRecap(other(w),w);
   renderScore();
-  if(G.mode==='split') showBanner(w.name+' wins the round',other(w).name+' gets to pick a power',w.team==='blue'?'var(--you)':'var(--bot)');
+  if(G.mode==='lan'){ NET.noRelay=true; showBanner(w===P?'You win the round':'Guest wins the round',w===P?'Guest gets to pick a power':'You get to pick a power',w===P?'var(--you)':'var(--bot)'); NET.noRelay=false; netR({t:'banner',a:w===P?'You lose the round':'You win the round',b:w===P?'You get to pick a power':'The host gets to pick a power',c:'#ffcf40'}); }
+  else if(G.mode==='split') showBanner(w.name+' wins the round',other(w).name+' gets to pick a power',w.team==='blue'?'var(--you)':'var(--bot)');
   else showBanner(w.isBot?'You went down':'Round won',w.isBot?'The bot takes this one':'Nice shooting',w.isBot?'var(--bot)':'var(--you)');
 }
 function comboHint(c,locked){ if(locked||!G.picker) return ''; const ids=G.picker.cards.map(k=>k.id).concat(c.id); const hit=COMBOS.filter(k=>!G.picker.combos.includes(k.id)&&comboMet(ids,k));
@@ -5865,31 +5893,33 @@ function cardHTML(c,i,locked){
     c.pros.map(p=>`<li class="pro s">${p}</li>`).join('')+c.cons.map(p=>`<li class="con s">${p}</li>`).join('')+'</ul></div></div>';
 }
 function startPick(l){
-  hideRecap(); G.state='pick'; G.picker=l; G.offer=drawCards(3,Math.max(0,other(l).score-l.score),l); G.pickT=0; G.botChoice=-1;
+  const passive=l.isBot||l.remote; hideRecap(); G.state='pick'; G.picker=l; G.offer=drawCards(3,Math.max(0,other(l).score-l.score),l); G.pickT=0; G.botChoice=-1;
   const col=l.team==='blue'?'var(--you)':'var(--bot)';
-  if(l.isBot){ $('#pickTitle').textContent='The bot is picking a power'; $('#pickSub').textContent='You won the round, so the bot gets a card.'; }
+  if(l.remote){ $('#pickTitle').textContent=l.name+' is picking a power'; $('#pickSub').textContent='You won the round, so they get a card.'; }
+  else if(l.isBot){ $('#pickTitle').textContent='The bot is picking a power'; $('#pickSub').textContent='You won the round, so the bot gets a card.'; }
   else if(G.mode==='split'){ $('#pickTitle').textContent=l.name+', pick your power'; $('#pickSub').textContent=l.input.kbm?'Click a card or press 1, 2 or 3.':'Use the D-pad or stick, then press A.'; }
   else { $('#pickTitle').textContent='Pick your power'; $('#pickSub').textContent='You lost the round. Click a card, press 1, 2 or 3, or use a controller.'; }
   $('#pickTitle').style.color=col;
-  const o=$('#offer'); if(DEV.on&&DEV.pickAny&&!l.isBot){ G.offer=CARDS.slice(); } o.classList.toggle('all',G.offer.length>3); o.innerHTML=G.offer.map((c,i)=>cardHTML(c,i,l.isBot)).join('');
-  if(!l.isBot){ if(isLocked()&&l.input.kbm) document.exitPointerLock(); o.querySelectorAll('.card').forEach(el=>el.addEventListener('click',()=>choose(+el.dataset.i))); }
+  const o=$('#offer'); if(DEV.on&&DEV.pickAny&&!passive){ G.offer=CARDS.slice(); } o.classList.toggle('all',G.offer.length>3); o.innerHTML=G.offer.map((c,i)=>cardHTML(c,i,passive)).join('');
+  if(G.mode==='lan'&&NET.role==='host') netR({t:'pick',who:l.remote?'you':'host',offer:G.offer.map(c=>c.id)});
+  if(!passive){ if(isLocked()&&l.input.kbm) document.exitPointerLock(); o.querySelectorAll('.card').forEach(el=>el.addEventListener('click',()=>choose(+el.dataset.i))); }
   showOverlay('#pick');
   const pk=$('#pick'); pk.classList.remove('inview'); pk.style.cssText='';
-  if(G.mode==='split'&&!l.isBot){ const v=VIEWS.find(v=>v.f===l); if(v){ const [x,y,w,h]=v.r, WH=wrap.clientHeight; pk.classList.add('inview');
+  if(G.mode==='split'&&!passive){ const v=VIEWS.find(v=>v.f===l); if(v){ const [x,y,w,h]=v.r, WH=wrap.clientHeight; pk.classList.add('inview');
     pk.style.cssText=`left:${x}px;top:${WH-y-h}px;width:${w}px;height:${h}px;--pk:${Math.min(.62,h/640,w/1150).toFixed(3)}`; } }
-  if(!l.isBot&&!l.input.kbm){ const first=o.querySelector('.card'); if(first) setFocus(first); }
+  if(!passive&&!l.input.kbm){ const first=o.querySelector('.card'); if(first) setFocus(first); }
 }
 function choose(i){
   if(G.state!=='pick') return;
-  const l=G.picker, c=G.offer[i]; SFX.card(); grantCard(l,c);
+  const l=G.picker, c=G.offer[i]; SFX.card(); grantCard(l,c); if(G.mode==='lan'&&NET.role==='host') netR({t:'pickEnd'});
   if(l.human&&l.input.kbm&&!(G.vote&&G.rotate!=='round')) requestLock(); showOverlay(null); nextRound();
 }
 function gameOverBuild(w){
   hideBanner(); hideRecap(); HUDS.forEach(h=>h.el.classList.remove('on')); if(isLocked()) document.exitPointerLock(); addCoins(w.human?40:15); SAVE.matches=(SAVE.matches||0)+1; persist();
-  const split=G.mode==='split', n1=split?'Player 1':'Player 1', n2=split?'Player 2':'Bot', t=$('#overTitle');
+  const lan=G.mode==='lan', split=G.mode==='split', n1=lan?'You':'Player 1', n2=lan?B.name:split?'Player 2':'Bot', t=$('#overTitle');
   const st=f=>({acc:f.st.shots?Math.round(f.st.hits/f.st.shots*100):0,hits:f.st.hits,shots:f.st.shots,heads:f.st.heads,cards:f.cards.length,score:f.score});
   const A=st(P), Bs=st(B), winP=w===P;
-  t.textContent=split?(winP?'Player 1 wins!':'Player 2 wins!'):(winP?'Player 1 wins!':'Bot wins!'); t.style.color=winP?'var(--you)':'var(--bot)'; if(!split&&winP) t.style.color='var(--gold)';
+  t.textContent=lan?(winP?'You win!':B.name+' wins!'):split?(winP?'Player 1 wins!':'Player 2 wins!'):(winP?'Player 1 wins!':'Bot wins!'); t.style.color=winP?'var(--you)':'var(--bot)'; if(!split&&winP) t.style.color='var(--gold)';
   t.classList.remove('slam'); void t.offsetWidth; t.classList.add('slam');
   $('#overSub').innerHTML=`Final score <b>${P.score}</b> – <b>${B.score}</b>  ·  +${G.matchCoins||0} coins (${SAVE.coins} total)`; G.matchCoins=0;
   const row=(label,va,vb,suffix,max)=>`<div class="orow"><span class="olab s">${label}</span><div class="obar o1"><i data-v="${va}" data-m="${max}"></i><b class="onum" data-n="${va}" data-s="${suffix}">0${suffix}</b></div><div class="obar o2"><i data-v="${vb}" data-m="${max}"></i><b class="onum" data-n="${vb}" data-s="${suffix}">0${suffix}</b></div></div>`;
@@ -5904,7 +5934,7 @@ function gameOverBuild(w){
 
 const POD={built:false,g:null,y:300,spots:[],cn:0};
 const DANCES=['cheer','disco','floss','robot','flex','runman'];
-function gameOver(w){ gameOverBuild(w); G.state='over'; for(const f of humans()){ f.scopeK=0; } mouseRight=false; $('#letterbox').classList.remove('off'); showOverlay('#over'); const first=$('#againBtn'); if(G.lastInput==='pad') setFocus(first); }
+function gameOver(w){ gameOverBuild(w); if(G.mode==='lan'&&NET.role==='host'&&NET.on){ const st=f=>({shots:f.shotN||0,hits:f.st.hits,heads:f.st.heads}); netR({t:'over',w:FIGHTERS.indexOf(w),score:[P.score,B.score],st:[st(P),st(B)]}); } G.state='over'; for(const f of humans()){ f.scopeK=0; } mouseRight=false; $('#letterbox').classList.remove('off'); showOverlay('#over'); const first=$('#againBtn'); if(G.lastInput==='pad') setFocus(first); }
 function buildPodium(){ if(POD.built) return; POD.built=true; const g=new THREE.Group(); g.position.set(0,POD.y,0); scene.add(g); POD.g=g;
   const M=(c,e,ei,r,m)=>std({color:c,emissive:e||0,emissiveIntensity:ei||1,roughness:r===undefined?.6:r,metalness:m||0});
   const add=(geo,mat,x,y,z,rx,ry,rz)=>{ const k=new THREE.Mesh(geo,mat); k.position.set(x,y,z); if(rx||ry||rz) k.rotation.set(rx||0,ry||0,rz||0); g.add(k); return k; };
@@ -6078,6 +6108,7 @@ function controlHuman(f,dt){
     if(BINDS.pad.block.some(b=>b!=null&&p.pr[b]&&!(f.weapon==='sniper'&&BINDS.pad.scope.includes(b)))) block=true;
     if(padPr(p,'slide')) slide=true; if(padPr(p,'reload')) reload=true; ['ability','ability2','ability3','ability4'].forEach((a,i)=>{ if(padPr(p,a)) abil[i]=true; }); if(padPr(p,'pause')) pause=true;
   }
+  if(NET.cl){ const C=NET.cin; C.fi=fi; C.si=si; C.fire=fire?1:0; C.scope=scopeHeld?1:0; C.yaw=f.yaw; C.pitch=f.pitch; if(jump) C.j++; if(block) C.b++; if(reload) C.r++; if(slide) C.s++; abil.forEach((q,i)=>{ if(q) C.a[i]++; }); return pause; }
   if(f.frozenT>0){ fi=si=0; fire=jump=slide=false; abil=[false,false,false,false]; }
   const wantScope=scopeHeld&&f.weapon==='sniper'&&!f.dead&&f.reloadT<=0; f.scopeK=lerp(f.scopeK||0,wantScope?1:0,Math.min(1,dt*12));
   const fx=-Math.sin(f.yaw), fz=-Math.cos(f.yaw), rxv=Math.cos(f.yaw), rzv=-Math.sin(f.yaw);
@@ -6368,7 +6399,7 @@ function loop(now){
   }
   if(isLive){
     if(G.state==='playing'){
-      for(const f of FIGHTERS){ if(f.human&&DEV.on&&DEV.freecam&&f===P){ f.mx=f.mz=0; fcTick(dt); } else if(f.human) controlHuman(f,dt); else if(DEV.on&&DEV.freeze){ f.mx=f.mz=0; } else botThink(f,dt); }
+      for(const f of FIGHTERS){ if(f.human&&DEV.on&&DEV.freecam&&f===P){ f.mx=f.mz=0; fcTick(dt); } else if(f.human) controlHuman(f,dt); else if(f.remote) controlRemote(f,dt); else if(DEV.on&&DEV.freeze){ f.mx=f.mz=0; } else botThink(f,dt); }
       G.roundT=(G.roundT||0)+rdt;
       if(G.roundT>SUDDEN_AT){ if(!G.sudden){ G.sudden=true; showBanner('Sudden death','Everyone bleeds until one of you drops','var(--bad)'); G.bannerT=2; SFX.combo(); }
         const bleed=(3+(G.roundT-SUDDEN_AT)*.2)*dt; for(const f of (Math.random()<.5?FIGHTERS:[B,P])) if(!f.dead&&G.state==='playing'){ f.lastHit=null; damage(f,bleed,null,false,true); } }
@@ -6383,6 +6414,7 @@ function loop(now){
   }
   if(G.state==='replay'){ pollKcPad(); replayTick(rdt); }
   if(G.state==='mreplay') mvTick(rdt);
+  if(G.state==='lanc') lanClientTick(rdt); else if(NET.on&&NET.role==='host'&&G.mode==='lan') lanHostTick(rdt);
   if(G.bannerT>0){ G.bannerT-=rdt; if(G.bannerT<=0&&G.state==='playing') hideBanner(); }
   voteTick(rdt);
   if(G.state==='pick'&&G.picker.isBot){ G.pickT+=rdt;
@@ -6694,6 +6726,121 @@ function tnInit(){
   tnEl('tStart').onclick=tnStart; tnEl('tBack').onclick=tnLeave; tnEl('tPlay').onclick=tnPlay; tnEl('tMatchBack').onclick=()=>tnShowBracket('');
   tnEl('tBrMenu').onclick=tnLeave; tnEl('tBrNew').onclick=()=>{ tnReset(); tnPane('tSetup'); tnRenderSetup(); }; tnEl('tChampNew').onclick=()=>{ tnReset(); tnPane('tSetup'); tnRenderSetup(); }; tnEl('tChampMenu').onclick=()=>{ tnReset(); tnLeave(); }; }
 
+/* ================= LAN play: the host runs the match, the guest sends controls and sees the host's world ================= */
+const NET={on:false,role:null,cl:false,pc:null,u:null,r:null,snaps:[],inp:null,inT:0,seenInit:false,seen:{j:0,b:0,r:0,s:0,a:[0,0,0,0]},cin:{fi:0,si:0,fire:0,scope:0,yaw:0,pitch:0,j:0,b:0,r:0,s:0,a:[0,0,0,0]},sendT:0,hs:'',tr:[],prevMode:null,noRelay:false,sh:[0,0],delay:90};
+const LAN_OK=id=>id!=='ship';
+const b64e=u=>{ let s='';  for(let i=0;i<u.length;i+=8192) s+=String.fromCharCode.apply(null,u.subarray(i,i+8192)); return btoa(s); };
+const b64d=t=>Uint8Array.from(atob(t),c=>c.charCodeAt(0));
+async function netEnc(obj){ const raw=new TextEncoder().encode(JSON.stringify(obj)); if(window.CompressionStream){ const cs=new CompressionStream('deflate-raw'), w=cs.writable.getWriter(); w.write(raw); w.close(); return 'Z'+b64e(new Uint8Array(await new Response(cs.readable).arrayBuffer())); } return 'R'+b64e(raw); }
+async function netDec(t){ t=(t||'').trim().replace(/\s+/g,''); const k=t[0], u=b64d(t.slice(1)); if(k==='Z'){ const ds=new DecompressionStream('deflate-raw'), w=ds.writable.getWriter(); w.write(u); w.close(); return JSON.parse(new TextDecoder().decode(new Uint8Array(await new Response(ds.readable).arrayBuffer()))); } return JSON.parse(new TextDecoder().decode(u)); }
+const netGather=pc=>new Promise(res=>{ if(pc.iceGatheringState==='complete') return res(); const t=setTimeout(res,3500); pc.addEventListener('icegatheringstatechange',()=>{ if(pc.iceGatheringState==='complete'){ clearTimeout(t); res(); } }); });
+const netR=o=>{ try{ if(NET.r&&NET.r.readyState==='open') NET.r.send(JSON.stringify(o)); }catch(e){} };
+const netU=o=>{ try{ if(NET.u&&NET.u.readyState==='open') NET.u.send(JSON.stringify(o)); }catch(e){} };
+function lanStatus(t){ const e=$('#lanStatus'); if(e) e.textContent=t; }
+function netPC(){ netClose(true); const pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]}); NET.pc=pc;
+  pc.onconnectionstatechange=()=>{ const st=pc.connectionState; if(st==='failed'||st==='closed'||st==='disconnected') setTimeout(()=>{ if(NET.pc===pc&&pc.connectionState!=='connected') netLost(); },2000); }; return pc; }
+function netWire(ch){ NET[ch.label]=ch; ch.onmessage=e=>{ try{ netMsg(JSON.parse(e.data)); }catch(err){} };
+  ch.onopen=()=>{ if(NET.u&&NET.r&&NET.u.readyState==='open'&&NET.r.readyState==='open'&&!NET.on) netOpen(); }; ch.onclose=()=>{ if(NET.on) netLost(); }; }
+async function netHostCreate(){ const pc=netPC(); NET.role='host'; netWire(pc.createDataChannel('u',{ordered:false,maxRetransmits:0})); netWire(pc.createDataChannel('r'));
+  await pc.setLocalDescription(await pc.createOffer()); await netGather(pc); return netEnc({d:pc.localDescription.toJSON?pc.localDescription.toJSON():pc.localDescription}); }
+async function netHostAccept(code){ const o=await netDec(code); await NET.pc.setRemoteDescription(o.d); }
+async function netJoin(code){ const o=await netDec(code), pc=netPC(); NET.role='client'; pc.ondatachannel=e=>netWire(e.channel); await pc.setRemoteDescription(o.d); await pc.setLocalDescription(await pc.createAnswer()); await netGather(pc); return netEnc({d:pc.localDescription.toJSON?pc.localDescription.toJSON():pc.localDescription}); }
+function netClose(keepRole){ try{ if(NET.u) NET.u.close(); if(NET.r) NET.r.close(); if(NET.pc) NET.pc.close(); }catch(e){} NET.u=NET.r=NET.pc=null; NET.on=false; if(!keepRole){ NET.role=null; NET.cl=false; } }
+function netOpen(){ NET.on=true; NET.cl=NET.role==='client'; NET.snaps=[]; NET.seenInit=false; NET.inp=null;
+  if(NET.role==='host'){ lanStatus('Connected! Pick your map in Play if you like, then start.'); $('#lanStart').hidden=false; } else lanStatus('Connected! Waiting for the host to start the match...'); }
+function netLost(){ if(!NET.on&&!NET.pc) return; const had=NET.on; netClose(); if(had){ toast('LAN connection lost'); if(G.state==='lanc'||G.mode==='lan') toMenu(); else lanStatus('Connection lost.'); } else lanStatus('Could not connect. Check the codes and try again.'); }
+function lanLeave(quiet){ if(NET.on&&NET.role==='host') netR({t:'bye'}); if(NET.on&&NET.role==='client') netR({t:'bye'});
+  for(const m of NET.tr){ scene.remove(m); } NET.tr=[]; B.remote=false; B.mirror=false;
+  if(G.mode==='lan'){ G.mode=NET.prevMode||'bot'; syncSeg('#modeSeg',G.mode); if(NET.restore){ Object.assign(G,NET.restore); NET.restore=null; } }
+  if(G.state==='lanc') G.state='menu'; $('#lanBar').classList.remove('show'); $('#againBtn').hidden=false; netClose(); $('#lanStart').hidden=true; NET.pickOpen=false; }
+function openLan(){ showOverlay('#lan'); $('#lanHostBox').hidden=true; $('#lanJoinBox').hidden=true; $('#lanStart').hidden=!(NET.on&&NET.role==='host'); lanStatus(NET.on?'Connected.':''); }
+// ---- host: send snapshots, take the guest's controls ----
+const r3=v=>Math.round(v*1000)/1000;
+const lanFS=f=>[r3(f.x),r3(f.y),r3(f.z),r3(f.yaw),r3(f.pitch),f.dead?1:0,r3(f.deadT||0),r3(f.vx||0),r3(f.vz||0),Math.round(f.hp||0),f.shotN||0,f.reloadT>0?r3(1-f.reloadT/Math.max(.01,f.stats.reload)):-1,f.blockT>0?1:0,f.slideT>0?1:0,r3(f.scopeK||0),f.onGround?1:0,r3(f.vy||0),f.wallT>0?1:0,r3(f.wallNX||0),r3(f.wallNZ||0),f.wjT>0?r3(f.wjT):0,f.ladder?1:0,f.ammo|0,f.score|0,r3(Math.max(0,f.blockCd||0)),r3(f.flash||0)];
+function lanMeta(){ if(!NET.on) return; netR({t:'meta',f:FIGHTERS.map(f=>({stats:f.stats,cards:f.cards.map(c=>c.id),combos:f.combos,weapon:f.weapon}))}); }
+function lanHostTick(rdt){ if((NET.sendT-=rdt)>0) return; NET.sendT=1/30;
+  const bl=[]; for(const b of G.bullets){ if(bl.length>=24) break; if(b.m) bl.push([r3(b.m.position.x),r3(b.m.position.y),r3(b.m.position.z),r3(b.vx),r3(b.vy),r3(b.vz),b.owner===P?0:1]); }
+  netU({t:'snap',s:G.state,rd:G.round,pz:G.paused?1:0,f:FIGHTERS.map(lanFS),b:bl}); }
+async function lanHostStart(){ if(!NET.on||NET.role!=='host') return; if(G.mode!=='lan'){ NET.prevMode=G.mode; NET.restore={vote:G.vote,rotate:G.rotate,killcam:G.killcam,map:G.map}; }
+  G.mode='lan'; G.vote=false; G.rotate='match'; G.killcam=false; let id=G.map==='random'?randMap(MAP&&MAP.id):G.map; if(!LAN_OK(id)) id=Object.keys(MAPDEFS).filter(LAN_OK)[0]; G.map=id;
+  netR({t:'init',map:id,target:G.target,rules:G.rules,weapon:G.weapon,night:!!G.night}); NET.seenInit=false; NET.inp=null; requestLock(); await startMatch(); lanMeta(); }
+function controlRemote(f,dt){ const R=NET.inp, S=NET.seen;
+  if(!R||performance.now()-NET.inT>1500){ f.mx=f.mz=0; return; }
+  if(!NET.seenInit){ NET.seenInit=true; S.j=R.j; S.b=R.b; S.r=R.r; S.s=R.s; S.a=R.a.slice(); }
+  f.yaw=R.yaw; f.pitch=clamp(R.pitch,-1.45,1.45);
+  let fi=R.fi||0, si=R.si||0, fire=!!R.fire; const jump=R.j>S.j, block=R.b>S.b, reload=R.r>S.r; let slide=R.s>S.s; const abil=[0,1,2,3].map(i=>R.a[i]>S.a[i]);
+  S.j=R.j; S.b=R.b; S.r=R.r; S.s=R.s; S.a=R.a.slice();
+  let jmp=jump; if(f.frozenT>0){ fi=si=0; fire=false; jmp=false; slide=false; }
+  const wantScope=!!R.scope&&f.weapon==='sniper'&&!f.dead&&f.reloadT<=0; f.scopeK=lerp(f.scopeK||0,wantScope?1:0,Math.min(1,dt*12));
+  const fx=-Math.sin(f.yaw), fz=-Math.cos(f.yaw), rxv=Math.cos(f.yaw), rzv=-Math.sin(f.yaw);
+  let mx=fx*fi+rxv*si, mz=fz*fi+rzv*si; const l=Math.hypot(mx,mz); if(l>1){ mx/=l; mz/=l; } f.mx=mx; f.mz=mz;
+  if(jmp) doJump(f); if(block) doBlock(f); if(reload) doReload(f); if(slide) doSlide(f);
+  if(fire&&tryFire(f,eyePos(f),fwd(f.yaw,f.pitch))){ f.pitch=Math.min(1.45,f.pitch+.007); } }
+// ---- guest ----
+async function lanClientInit(m){ NET.cl=true; G.mode='lan'; G.map=m.map; setNight(!!m.night); await ensureMap(m.map); configurePlayers();
+  for(const f of FIGHTERS){ f.stats=baseStats(); f.cards=[]; f.combos=[]; f.score=0; f.st={shots:0,hits:0,heads:0}; f.shotN=0; }
+  G.target=m.target; G.rules=m.rules; applyWeapon(P,m.weapon); applyWeapon(B,m.weapon); applyCosmetics(); G.round=0;
+  wrap.classList.remove('split','tb','lr'); HUDS[0].el.classList.add('on'); HUDS[1].el.classList.remove('on'); renderCards(P);
+  $('#againBtn').hidden=false;   $('#letterbox').classList.add('off'); showOverlay(null); G.paused=false; G.state='lanc'; NET.snaps=[]; NET.hs=''; NET.sh=[0,0]; NET.pickOpen=false; $('#lanBar').classList.add('show');
+  layoutViews(); resize(); renderScore(); requestLock(); }
+function lanApplyMeta(m){ [[B,0],[P,1]].forEach(([f,i])=>{ const d=m.f[i]; if(!d) return; f.stats=Object.assign(baseStats(),d.stats); f.cards=d.cards.map(id=>CARDS.find(c=>c.id===id)).filter(Boolean); f.combos=d.combos||[]; f.weapon=d.weapon||f.weapon; }); renderCards(P); renderScore(); }
+function lanPose(f,A,B2,k,rdt,own){
+  const jump=Math.hypot(B2[0]-A[0],B2[2]-A[2])>4; if(jump) k=1;
+  f.x=lerp(A[0],B2[0],k); f.y=lerp(A[1],B2[1],k); f.z=lerp(A[2],B2[2],k);
+  if(!own){ let dy=B2[3]-A[3]; dy=Math.atan2(Math.sin(dy),Math.cos(dy)); f.yaw=A[3]+dy*k; f.pitch=lerp(A[4],B2[4],k); }
+  f.dead=!!B2[5]; f.deadT=B2[6]; f.vx=lerp(A[7],B2[7],k); f.vz=lerp(A[8],B2[8],k); f.hp=B2[9]; const rl=B2[11]; f.reloadT=rl>=0?(1-rl)*f.stats.reload:0; f.blockT=B2[12]?.3:0; f.slideT=B2[13]?.3:0; f.scopeK=lerp(A[14]||0,B2[14]||0,k);
+  f.onGround=!!B2[15]; f.vy=lerp(A[16]||0,B2[16]||0,k); f.wallT=B2[17]?.2:0; f.wallNX=B2[18]||0; f.wallNZ=B2[19]||0; f.wjT=B2[20]||0; f.ladder=B2[21]?true:null; f.ammo=B2[22]; f.score=B2[23]; f.blockCd=B2[24]; f.flash=B2[25]||0;
+  const i=f===P?0:1, sh=B2[10]; if(sh<NET.sh[i]) NET.sh[i]=sh; else if(sh>NET.sh[i]){ NET.sh[i]=sh; const Fx=f.fx; Fx.kick=1; Fx.kickRot=1; Fx.kickYaw=RR(-1,1); Fx.flashT=.05; f.fireT=(f.fireT||0)+.01; try{ SFX.shot(f); }catch(e){} } }
+function lanClientTick(rdt){
+  controlHuman(P,rdt); P.input={kbm:true,pad:'any'};
+  if((NET.sendT-=rdt)<=0){ NET.sendT=1/30; const C=NET.cin; netU({t:'in',fi:C.fi,si:C.si,fire:C.fire,scope:C.scope,yaw:r3(C.yaw),pitch:r3(C.pitch),j:C.j,b:C.b,r:C.r,s:C.s,a:C.a.slice()}); }
+  const S=NET.snaps; if(!S.length) return; G.round=S[S.length-1].rd||G.round; const tgt=performance.now()-NET.delay; while(S.length>2&&S[1].rt<=tgt) S.shift();
+  const a=S[0], b=S[1]||S[0], k=b.rt>a.rt?clamp((tgt-a.rt)/(b.rt-a.rt),0,1):0, last=S[S.length-1];
+  lanPose(B,a.f[0],b.f[0],k,rdt,false); lanPose(P,a.f[1],b.f[1],k,rdt,true);
+  syncRig(B,Math.min(.05,rdt)); syncRig(P,Math.min(.05,rdt));
+  // tracer shots from the newest snapshot, carried forward to now
+  const age=Math.min(.12,(performance.now()-last.rt)/1000); const bl=last.b||[];
+  while(NET.tr.length<24){ const m=new THREE.Mesh(tracerGeo,P.tMat); m.visible=false; m.frustumCulled=false; m.renderOrder=6; scene.add(m); NET.tr.push(m); }
+  NET.tr.forEach((m,n)=>{ const q=bl[n]; if(!q){ m.visible=false; return; } m.material=q[6]===0?B.tMat:P.tMat; m.visible=true; m.position.set(q[0]+q[3]*age,q[1]+q[4]*age,q[2]+q[5]*age); m.lookAt(m.position.x+q[3],m.position.y+q[4],m.position.z+q[5]); });
+  if(NET.hs!==last.s){ NET.hs=last.s; if(last.s==='countdown'){ P.yaw=last.f[1][3]; P.pitch=last.f[1][4]; } if(last.s==='countdown'||last.s==='playing'){ if(NET.pickOpen){ NET.pickOpen=false; showOverlay(null); } if(!isLocked()) requestLock(); } renderScore(); }
+  if(last.pz&&!NET.hostPaused){ NET.hostPaused=true; toast('Host paused the game'); } else if(!last.pz) NET.hostPaused=false; }
+function lanShowPick(m){ NET.pickOpen=true; if(isLocked()) document.exitPointerLock(); const mine=m.who==='you', offer=m.offer.map(id=>CARDS.find(c=>c.id===id)).filter(Boolean);
+  $('#pickTitle').textContent=mine?'Pick your power':'The host is picking a power'; $('#pickSub').textContent=mine?'You lost the round. Click a card or press 1, 2 or 3.':'You won the round, so they get a card.'; $('#pickTitle').style.color='var(--ink)';
+  const o=$('#offer'); o.classList.remove('all'); o.innerHTML=offer.map((c,i)=>cardHTML(c,i,!mine)).join('');
+  if(mine) o.querySelectorAll('.card').forEach(el=>el.addEventListener('click',()=>{ netR({t:'choose',i:+el.dataset.i}); o.querySelectorAll('.card').forEach(x=>x.classList.add('dim')); })); NET.pickMine=mine;
+  const pk=$('#pick'); pk.classList.remove('inview'); pk.style.cssText=''; showOverlay('#pick'); }
+addEventListener('keydown',e=>{ if(G.state==='lanc'&&NET.pickOpen&&NET.pickMine&&['1','2','3'].includes(e.key)){ netR({t:'choose',i:+e.key-1}); $('#offer').querySelectorAll('.card').forEach(x=>x.classList.add('dim')); } });
+wrap.addEventListener('click',()=>{ if(G.state==='lanc'&&!NET.pickOpen&&!isLocked()&&!G.noLock) requestLock(); });
+function netMsg(m){
+  switch(m.t){
+    case 'in': NET.inp=m; NET.inT=performance.now(); break;
+    case 'choose': if(G.state==='pick'&&G.picker&&G.picker.remote) choose(m.i|0); break;
+    case 'init': lanClientInit(m); break;
+    case 'meta': lanApplyMeta(m); break;
+    case 'snap': NET.snaps.push({rt:performance.now(),s:m.s,f:m.f,b:m.b,pz:m.pz}); if(NET.snaps.length>12) NET.snaps.shift(); break;
+    case 'banner': if(G.state==='lanc') showBanner(m.a,m.b,m.c||undefined); break;
+    case 'hideBanner': hideBanner(); break;
+    case 'pick': if(G.state==='lanc') lanShowPick(m); break;
+    case 'pickEnd': NET.pickOpen=false; if(G.state==='lanc') showOverlay(null); break;
+    case 'hit': P.fx.hitFx=.16; P.fx.hitHead=!!m.h; try{ SFX.hit(!!m.h); }catch(e){} break;
+    case 'hurt': { const F=P.fx; F.hurtT=.45; F.dmgFx=Math.min(1,F.dmgFx+.35+(m.d||20)/120); F.shake=Math.min(1,F.shake+.3+(m.d||20)/120); F.dmgAng=m.a||0; F.dmgDirT=1; try{ SFX.hurt(); }catch(e){} break; }
+    case 'over': if(G.state==='lanc'){ B.st={shots:m.st[0].shots,hits:m.st[0].hits,heads:m.st[0].heads}; P.st={shots:m.st[1].shots,hits:m.st[1].hits,heads:m.st[1].heads}; B.score=m.score[0]; P.score=m.score[1];
+        const w=m.w===0?B:P; hideBanner(); gameOverBuild(w); G.state='over'; $('#letterbox').classList.remove('off'); $('#lanBar').classList.remove('show'); $('#againBtn').hidden=true; showOverlay('#over'); } break;
+    case 'bye': toast('The other player left'); lanLeave(true); toMenu(); break;
+  }
+}
+// ---- the LAN screen ----
+(function(){ const cp=(el,btn)=>{ btn.addEventListener('click',()=>{ el.select(); try{ navigator.clipboard.writeText(el.value); }catch(e){ document.execCommand('copy'); } btn.textContent='Copied'; setTimeout(()=>btn.textContent='Copy',1200); }); };
+  const stop=el=>el.addEventListener('keydown',e=>e.stopPropagation());
+  for(const id of ['lanOffer','lanAnswerIn','lanOfferIn','lanReply']) stop($('#'+id)); cp($('#lanOffer'),$('#lanCopyOffer')); cp($('#lanReply'),$('#lanCopyReply'));
+  $('#lanHost').addEventListener('click',async()=>{ lanLeave(true); $('#lanHostBox').hidden=false; $('#lanJoinBox').hidden=true; $('#lanOffer').value=''; lanStatus('Making your code...'); try{ $('#lanOffer').value=await netHostCreate(); lanStatus('Send this code to your friend, then paste their reply below.'); }catch(e){ lanStatus('Could not make a code: '+e.message); } });
+  $('#lanConnect').addEventListener('click',async()=>{ try{ lanStatus('Connecting...'); await netHostAccept($('#lanAnswerIn').value); }catch(e){ lanStatus('That reply code did not work. Ask for it again.'); } });
+  $('#lanJoin').addEventListener('click',()=>{ lanLeave(true); $('#lanJoinBox').hidden=false; $('#lanHostBox').hidden=true; $('#lanReply').value=''; lanStatus('Paste the host\'s code to start.'); });
+  $('#lanMakeReply').addEventListener('click',async()=>{ try{ lanStatus('Making your reply...'); $('#lanReply').value=await netJoin($('#lanOfferIn').value); lanStatus('Send this reply to the host. This screen will say Connected when they press Connect.'); }catch(e){ lanStatus('That code did not work. Ask the host for a fresh one.'); } });
+  $('#lanStart').addEventListener('click',()=>lanHostStart());
+  $('#lanBack').addEventListener('click',()=>{ if(!NET.on) lanLeave(true); showOverlay('#menu'); });
+  $('#lanLeave').addEventListener('click',()=>{ lanLeave(true); toMenu(); }); })();
+
 function openDev(ret){ if(!DEV.on) return; DEV.ret=ret; renderDev(); showOverlay('#dev'); }
 function closeDev(){ if(DEV.ret==='pause'&&G.paused) showOverlay('#pause'); else if(DEV.ret==='pause'){ showOverlay(null); } else { showOverlay('#menu'); showPane('paneSet'); } }
 /* ================= rebindable controls ================= */
@@ -6900,13 +7047,13 @@ function buildMenuPanes(){ const menu=$('#menu'), panel=menu.querySelector('.pan
   codeRow.querySelector('#codeGo').addEventListener('click',doCode); codeRow.querySelector('#codeIn').addEventListener('keydown',e=>{ if(e.key==='Enter') doCode(); e.stopPropagation(); }); codeRow.querySelector('#setDev').addEventListener('click',()=>openDev('menu')); syncDevUI();
   help.appendChild(menu.querySelector('.howto')); help.appendChild(menu.querySelector('.controls')); help.appendChild(menu.querySelector('.padmap')); help.appendChild(back());
   const lb=$('#lockerBtn'); lb.classList.remove('btn2'); lb.classList.add('mbtn');
-  main.innerHTML='<div class="mstack"><button class="mbtn big" id="mQuick">Quick match</button><button class="mbtn" id="mPlay">Play</button><button class="mbtn" id="mTourn">Tournament</button><button class="mbtn" id="mReplay">Match replay</button></div>';
+  main.innerHTML='<div class="mstack"><button class="mbtn big" id="mQuick">Quick match</button><button class="mbtn" id="mPlay">Play</button><button class="mbtn" id="mTourn">Tournament</button><button class="mbtn" id="mReplay">Match replay</button><button class="mbtn" id="mLan">LAN game</button></div>';
   const st=main.querySelector('.mstack'); st.appendChild(lb); st.insertAdjacentHTML('beforeend','<button class="mbtn" id="mSet">Settings</button><button class="mbtn" id="mHelp">How to play</button>');
   main.insertAdjacentHTML('beforeend','<p class="s mhint">Lose a round, pick a power. First to the round target wins.</p>');
   panel.remove(); const oldRow=menu.querySelector('.row'); if(oldRow&&!oldRow.children.length) oldRow.remove();
   for(const p of [main,play,set,help]) menu.appendChild(p);
   $('#mPlay').addEventListener('click',()=>showPane('panePlay')); $('#mSet').addEventListener('click',()=>showPane('paneSet')); $('#mHelp').addEventListener('click',()=>showPane('paneHelp'));
-  $('#mQuick').addEventListener('click',()=>{ $('#playBtn').click(); }); $('#mTourn').addEventListener('click',()=>openTourn()); $('#mReplay').addEventListener('click',()=>mvStart('menu'));
+  $('#mQuick').addEventListener('click',()=>{ $('#playBtn').click(); }); $('#mTourn').addEventListener('click',()=>openTourn()); $('#mReplay').addEventListener('click',()=>mvStart('menu')); $('#mLan').addEventListener('click',()=>openLan());
   tnInit(); showPane('paneMain'); }
 function showPane(id){ document.querySelectorAll('#menu .mpane').forEach(p=>p.classList.toggle('on',p.id===id)); $('#menu').classList.toggle('onmain',id==='paneMain'); }
 addEventListener('keydown',e=>{ if(e.key==='Escape'&&G.state==='menu'&&$('#menu').classList.contains('show')&&!$('#paneMain').classList.contains('on')) showPane('paneMain'); });
