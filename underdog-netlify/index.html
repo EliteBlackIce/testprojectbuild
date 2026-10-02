@@ -7226,15 +7226,15 @@ const b64e=u=>{ let s='';  for(let i=0;i<u.length;i+=8192) s+=String.fromCharCod
 const b64d=t=>Uint8Array.from(atob(t),c=>c.charCodeAt(0));
 async function netEnc(obj){ const raw=new TextEncoder().encode(JSON.stringify(obj)); if(window.CompressionStream){ const cs=new CompressionStream('deflate-raw'), w=cs.writable.getWriter(); w.write(raw); w.close(); return 'Z'+b64e(new Uint8Array(await new Response(cs.readable).arrayBuffer())); } return 'R'+b64e(raw); }
 async function netDec(t){ t=(t||'').trim().replace(/\s+/g,''); const k=t[0], u=b64d(t.slice(1)); if(k==='Z'){ const ds=new DecompressionStream('deflate-raw'), w=ds.writable.getWriter(); w.write(u); w.close(); return JSON.parse(new TextDecoder().decode(new Uint8Array(await new Response(ds.readable).arrayBuffer()))); } return JSON.parse(new TextDecoder().decode(u)); }
-const netGather=pc=>new Promise(res=>{ if(pc.iceGatheringState==='complete') return res(); let done=false, srf=0; const t0=performance.now(), fin=()=>{ if(done) return; done=true; clearTimeout(t); clearInterval(iv); res(); }, t=setTimeout(fin,3500);
+const netGather=pc=>new Promise(res=>{ if(pc.iceGatheringState==='complete') return res(); let done=false, srf=0, rel=0; const fin=()=>{ if(done) return; done=true; clearTimeout(t); clearInterval(iv); res(); }, t=setTimeout(fin,5000);
   pc.addEventListener('icegatheringstatechange',()=>{ if(pc.iceGatheringState==='complete') fin(); });
-  pc.addEventListener('icecandidate',e=>{ if(e.candidate){ const ty=(/ typ (\w+)/.exec(e.candidate.candidate)||[])[1]; (NET.cand=NET.cand||{})[ty]=((NET.cand||{})[ty]||0)+1; if((ty==='srflx'||ty==='relay')&&!srf) srf=performance.now(); } });
-  const iv=setInterval(()=>{ if(srf&&performance.now()-srf>500) fin(); },100); }); // wait for the STUN (public-address) candidate too: some LANs only connect through it
+  pc.addEventListener('icecandidate',e=>{ if(e.candidate){ const ty=(/ typ (\w+)/.exec(e.candidate.candidate)||[])[1]; (NET.cand=NET.cand||{})[ty]=((NET.cand||{})[ty]||0)+1; if(ty==='srflx'&&!srf) srf=performance.now(); if(ty==='relay'&&!rel) rel=performance.now(); } });
+  const iv=setInterval(()=>{ const n=performance.now(); if(NETCFG.relay){ if(rel&&n-rel>400) fin(); } else if(srf&&n-srf>500) fin(); },100); }); // wait for the public-address and relay candidates too: some networks only connect through them
 // ---------- LAN netcode settings (tune here or live with the F4 overlay) ----------
 // tickHz: snapshots the host sends per second. inHz: inputs the guest sends per second. interp: how the guest smooths the OTHER player
 // (auto = a couple of snapshot intervals plus measured jitter). predict: the guest moves its own player locally and the host only corrects it.
 const NETCFG=Object.assign({tickHz:60,inHz:60,interpAuto:true,interpTicks:2.2,interpFixed:45,interpMin:22,interpMax:140,extrapMax:80,
-  predict:true,corrRate:12,deadzone:.08,deadY:.16,snapDist:1.8,snapY:1.3,shotPredict:true,lagComp:true,compMax:.25,stun:true,simLatency:0,simLoss:0,overlay:false},
+  predict:true,corrRate:12,deadzone:.08,deadY:.16,snapDist:1.8,snapY:1.3,shotPredict:true,lagComp:true,compMax:.25,stun:true,relay:true,simLatency:0,simLoss:0,overlay:false},
   (()=>{ try{ return JSON.parse(localStorage.getItem('udNetCfg')||'{}'); }catch(e){ return {}; } })());
 NETCFG.simLatency=0; NETCFG.simLoss=0;
 const netCfgSave=()=>{ try{ localStorage.setItem('udNetCfg',JSON.stringify(NETCFG)); }catch(e){} };
@@ -7295,7 +7295,9 @@ async function lanHostRoom(){ const room=newRoom(), code=await netHostCreate(); 
 async function lanJoinRoom(room){ NET.gotOffer=false; NET.room=room; let tm=null;
   sigSub(room,async m=>{ if(m.k==='offer'&&!NET.gotOffer){ NET.gotOffer=true; clearTimeout(tm); lanStatus('Room found, connecting...'); try{ const rep=await netJoin(m.c); await sigPub(room,{k:'answer',c:rep}); }catch(e){ lanStatus('Could not connect: '+e.message); } } });
   tm=setTimeout(()=>{ if(!NET.gotOffer){ try{ NET.es&&NET.es.close(); }catch(e){} lanStatus('No room with that code. Check it with your friend.'); } },9000); }
-function netPC(){ netClose(true); NET.cand={}; const pc=new RTCPeerConnection({iceServers:NETCFG.stun?[{urls:'stun:stun.l.google.com:19302'}]:[]}); NET.pc=pc;
+// STUN finds your public address (works for most home networks); the free public TURN relay is the fallback for networks that can't connect directly (different Wi-Fi, mobile data, strict routers)
+function netIce(){ const l=[]; if(NETCFG.stun) l.push({urls:'stun:stun.l.google.com:19302'},{urls:'stun:openrelay.metered.ca:80'}); if(NETCFG.relay) l.push({urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turn:openrelay.metered.ca:443?transport=tcp','turns:openrelay.metered.ca:443?transport=tcp'],username:'openrelayproject',credential:'openrelayproject'}); return l; }
+function netPC(){ netClose(true); NET.cand={}; const pc=new RTCPeerConnection({iceServers:netIce()}); NET.pc=pc;
   pc.oniceconnectionstatechange=()=>{ NET.lastIce='ice '+pc.iceConnectionState; }; pc.onconnectionstatechange=()=>{ const st=pc.connectionState; if(st==='failed'||st==='closed'||st==='disconnected') setTimeout(()=>{ if(NET.pc===pc&&pc.connectionState!=='connected') netLost(); },2000); }; return pc; }
 function netWire(ch){ NET[ch.label]=ch; ch.onmessage=e=>netRecv(ch,e.data);
   ch.onopen=()=>{ if(NET.u&&NET.r&&NET.u.readyState==='open'&&NET.r.readyState==='open'&&!NET.on) netOpen(); }; ch.onclose=()=>{ if(NET.on) netLost(); }; }
