@@ -3156,7 +3156,7 @@ function lightTower(x,z){ for(const [dx,dz] of [[-.3,-.3],[.3,-.3],[-.3,.3],[.3,
 
 /* ================= MAP 2: Freight Yard (multi-level) ================= */
 MAPDEFS.yard={name:'Freight Yard',desc:'Container stacks and a raised catwalk, with the harbour and city skyline behind. Fight on two levels.',spawn:[[-27,0],[27,0]],land:true,noTrees:[[-500,-500,500,500]],ground:'#3a3842',light:{nl:.3,expN:.95,hemiN:1.2},build(){
-  plane(120,60,MT.yard,0,.02,0,4); nog(-60,-30,60,30); yardEnv();
+  plane(120,60,MT.yard,0,.02,0,4); nog(-60,-30,60,30);
   puddles([[-20,3,4,2],[-8,-4,3,1.4],[6,4,5,2],[18,-2,3,1.2],[-2,10,3,1.3],[2,-10,3,1.3],[25,9,2.4,1.2],[-25,-9,2.4,1.2]],60,28,0,0);
   for(const z of [-3.9,3.9]) for(let x=-28;x<28;x+=4) BX(2,.01,.16,MT.paintY,x,.035,z,{cast:false});
   for(const [x,z] of [[-12,0],[12,0],[0,7.5],[0,-7.5]]) BX(.8,.02,.8,MT.grating,x,.03,z,{cast:false});
@@ -3282,7 +3282,7 @@ MAPDEFS.yard={name:'Freight Yard',desc:'Container stacks and a raised catwalk, w
 
 /* ================= MAP 3: Harvest Farm (barn with a hayloft) ================= */
 MAPDEFS.farm={name:'Harvest Farm',desc:'A big barn with a hayloft, silos and hay bales, in golden fields that run to the horizon.',spawn:[[-27,0],[27,0]],land:true,noTrees:[[-500,-500,500,500]],ground:'#40602c',light:{sunD:1.15,hemiD:2,hemiN:2.6,sunN:1.7,expD:1.12,expN:1.3,nl:1.4,fogN:.8},build(){
-  farmEnv(); plane(64,3.6,MT.dirt,0,.03,0,2); plane(3.6,26,MT.dirt,0,.031,0,2); plane(15,13,MT.dirt,0,.029,0,2);
+  plane(64,3.6,MT.dirt,0,.03,0,2); plane(3.6,26,MT.dirt,0,.031,0,2); plane(15,13,MT.dirt,0,.029,0,2);
   const wall=(x,z,w,d,h,y0,mat)=>{ y0=y0||0; BX(w,h-y0,d,mat||MT.barn,x,y0+(h-y0)/2,z); col(x,z,w,d,h,y0); };
   const X=7, Z=5, H=6.2, T=.3, W=MT.white, top=3.2, Y0=2.9, rl=(x1,z1,x2,z2)=>{ const cx=(x1+x2)/2, cz=(z1+z2)/2, w=Math.abs(x2-x1), d=Math.abs(z2-z1);
     BX(w+.1,.12,d+.1,MT.logs,cx,top+.95,cz,{cast:false}); BX(w+.06,.08,d+.06,MT.logs,cx,top+.5,cz,{cast:false}); const n=Math.max(1,Math.round(Math.max(w,d)/1.6)); for(let i=0;i<=n;i++) BX(.12,1,.12,MT.logs,x1+(x2-x1)*i/n,top+.5,z1+(z2-z1)*i/n,{cast:false});
@@ -3542,7 +3542,7 @@ function nukeHouse2(tf,wallC,roofC,accent){ const P=v=>v*tf, wm=sidingMat(wallC)
 }
 MAPDEFS.nuke={name:'Atomic Acres',desc:'A classic two-house cul-de-sac with a bus in the middle, at an atomic test site with a mushroom cloud on the horizon. Close, fast and chaotic.',land:true,noTrees:[[-500,-500,500,500]],aw:30,ad:21,spawn:[[-27,0],[27,0]],ground:'#8a7a58',tint:[1.45,1.08,.62],light:{sunD:1.12,hemiD:1.9,hemiN:2.6,sunN:1.7,expD:1.1,expN:1.3,nl:1.3,fogN:.8},build(){
   const lawn=std({map:TX.lawn,normalMap:TX.lawnN,color:0xe8f0d8,roughness:.97});
-  nukeEnv(); plane(60,42,lawn,0,.012,0,4); plane(18,42,MT.asph,0,.03,0); nog(-60,-32,60,32);
+  plane(60,42,lawn,0,.012,0,4); plane(18,42,MT.asph,0,.03,0); nog(-60,-32,60,32);
   for(let z=-20;z<21;z+=3) BX(.16,.01,1.4,MT.paintY,0,.04,z,{cast:false});
   for(const s of [-1,1]){ plane(1.6,42,MT.side,s*9.8,.045,0,1.6); BX(.2,.12,42,MT.curb,s*9,.06,0,{cast:false});
     plane(.5,2,MT.side,s*10.85,.046,0,1.6); plane(3.6,5.6,MT.pad,s*12.4,.047,s*10.65,2); BX(3.6,.012,.06,plain(0x8e877d,.95),s*12.4,.049,s*10.65-2.8,{cast:false}); BX(3.6,.012,.06,plain(0x8e877d,.95),s*12.4,.049,s*10.65+2.8,{cast:false}); plane(5,6,MT.pad,s*-26,.045,0,2);
@@ -3694,118 +3694,159 @@ MAPDEFS.nuke={name:'Atomic Acres',desc:'A classic two-house cul-de-sac with a bu
 }};
 
 /* ================= MAP 5: Rust (a cramped desert oil yard, inspired by the classic small-map feel) ================= */
-// ---------- per-map landscapes: every map gets its own ground, horizon and scenery instead of the shared green hills ----------
-function envLand(o){
-  const fx=o.fx, fz=o.fz, bl=o.blend||30, q=o.q||1.5;
-  const hf=(x,z)=>{ const d=Math.hypot(Math.max(Math.abs(x)-fx,0),Math.max(Math.abs(z)-fz,0)); return o.h(x,z,smooth(0,bl,d),d)-.14; };
-  const onD=(x,z)=>Math.round(hf(x,z)*q)/q, S=o.size||900, N=o.cells||240, g=new THREE.PlaneGeometry(S,S,N,N); g.rotateX(-Math.PI/2);
-  const pa=g.attributes.position, uv=g.attributes.uv; for(let i=0;i<pa.count;i++){ const x=pa.getX(i), z=pa.getZ(i); pa.setY(i,onD(x,z)); uv.setXY(i,x/(o.uvx||30),z/(o.uvz||20)); }
-  g.computeVertexNormals(); const nr=g.attributes.normal, col=new Float32Array(pa.count*3), sd=SUN_DIR;
-  for(let i=0;i<pa.count;i++){ const x=pa.getX(i), z=pa.getZ(i), y=pa.getY(i), lit=clamp(nr.getX(i)*sd.x+nr.getY(i)*sd.y+nr.getZ(i)*sd.z,0,1), c=o.col(x,z,y,lit); col[i*3]=c[0]; col[i*3+1]=c[1]; col[i*3+2]=c[2]; }
-  g.setAttribute('color',new THREE.BufferAttribute(col,3));
-  const t=new THREE.Mesh(g,std({map:o.tex,vertexColors:true,flatShading:true,roughness:1})); t.receiveShadow=true; t.userData.noBake=true; t.frustumCulled=false; SR.add(t);
-  return {hf,onD,ok:(x,z)=>Math.abs(x)>fx||Math.abs(z)>fz}; }
-function envScatter(L,n,r0,r1,asp,fns,tries){ let placed=0, t=0; const tot=fns.reduce((a,f)=>a+f[0],0); while(placed<n&&t<(tries||n*14)){ t++; const a=rand()*Math.PI*2, r=r0+rand()*(r1-r0), x=Math.cos(a)*r*asp[0], z=Math.sin(a)*r*asp[1]; if(!L.ok(x,z)) continue;
-    let k=rand()*tot, f=fns[0]; for(const e of fns){ k-=e[0]; if(k<=0){ f=e; break; } } f[1](x,z); placed++; } }
-// a distant skyscraper with lit windows
+// ---------- per-map landscapes: every map gets its own ground, horizon and scenery, placed so nothing overlaps ----------
+// makeEnv builds a landscape in two passes: big structures are placed first (each claims a circle of ground and a flat pad), then the terrain mesh is made
+// with those pads levelled, so buildings never float or sink and no two scenery objects, or a scenery object and the map itself, can overlap.
+const MAPENV={};
+function makeEnv(o){
+  const E={o,pads:[],occ:[],queue:[]}, bl=o.blend||30, q=o.q||1.5, sink=o.sink===undefined?.03:o.sink, S=o.size||900, N=o.cells||240, cs=S/N;
+  E.raw=(x,z)=>{ const d=Math.hypot(Math.max(Math.abs(x)-o.fx,0),Math.max(Math.abs(z)-o.fz,0)); return o.h(x,z,smooth(0,bl,d),d)-sink; };
+  E.rawQ=(x,z)=>Math.round(E.raw(x,z)*q)/q;
+  E.hf=(x,z)=>{ let h=E.rawQ(x,z), sw=0, sy=0; for(const p of E.pads){ const d=Math.hypot(x-p[0],z-p[1]); if(d>p[2]+p[3]) continue; const w=1-smooth(p[2],p[2]+p[3],d); sw+=w; sy+=w*p[4]; } if(sw>0) h=lerp(h,sy/sw,Math.min(1,sw)); return h; };
+  const colHit=(x,z,r)=>{ for(const c of COL){ if(x>c.minX-r&&x<c.maxX+r&&z>c.minZ-r&&z<c.maxZ+r) return true; } return false; };
+  E.clear=(x,z,r)=>{ if(Math.abs(x)<o.fx+r&&Math.abs(z)<o.fz+r) return false; for(const q2 of E.occ) if(Math.hypot(q2[0]-x,q2[1]-z)<q2[2]+r) return false; return !colHit(x,z,r); };
+  // put: claim a circle and queue the build; flat=true levels the ground under it (plus a 6m ramp that stays clear). Builders run after the ground exists, so they get its exact height.
+  E.put=(x,z,r,fn,flat)=>{ const rr=r+(flat?6:0); if(!E.clear(x,z,rr)) return false; E.occ.push([x,z,rr]); let y=0; if(flat){ y=E.rawQ(x,z); E.pads.push([x,z,r,6,y]); } E.queue.push({x,z,fn,flat,y}); return true; };
+  // a straight run (fence, rail, wire poles) is only built if its whole length is clear; then it claims that ground
+  E.run=(x1,z1,x2,z2,w,fn)=>{ const L=Math.hypot(x2-x1,z2-z1), n=Math.max(1,Math.ceil(L/3)), pts=[]; for(let i=0;i<=n;i++){ const t=i/n, x=lerp(x1,x2,t), z=lerp(z1,z2,t); if(!E.clear(x,z,w)) return false; pts.push([x,z]); } for(const p of pts) E.occ.push([p[0],p[1],w]); E.queue.push({run:fn}); return true; };
+  E.scatter=(n,r0,r1,asp,list,tries)=>{ let placed=0, t=0; const tot=list.reduce((a,e)=>a+e[0],0); while(placed<n&&t<(tries||n*16)){ t++; const a=rand()*Math.PI*2, r=r0+rand()*(r1-r0), x=Math.cos(a)*r*asp[0], z=Math.sin(a)*r*asp[1]; let k=rand()*tot, e=list[0]; for(const c of list){ k-=c[0]; if(k<=0){ e=c; break; } } if(E.put(x,z,e[1],e[2],e[3])) placed++; } return placed; };
+  let G=null; E.surf=(x,z)=>{ if(!G) return E.hf(x,z); const fx=(x+S/2)/cs, fz=(z+S/2)/cs, i=clamp(Math.floor(fx),0,N-1), j=clamp(Math.floor(fz),0,N-1), tx=fx-i, tz=fz-j, h=(a,b)=>G[b*(N+1)+a]; return lerp(lerp(h(i,j),h(i+1,j),tx),lerp(h(i,j+1),h(i+1,j+1),tx),tz); };
+  E.finish=(tex,colf)=>{ if(tex){ const g=new THREE.PlaneGeometry(S,S,N,N); g.rotateX(-Math.PI/2); const pa=g.attributes.position, uv=g.attributes.uv; G=new Float32Array(pa.count);
+      for(let i=0;i<pa.count;i++){ const x=pa.getX(i), z=pa.getZ(i), y=E.hf(x,z); pa.setY(i,y); uv.setXY(i,x/(o.uvx||30),z/(o.uvz||20)); const ix=Math.round((x+S/2)/cs), iz=Math.round((z+S/2)/cs); G[iz*(N+1)+ix]=y; }
+      g.computeVertexNormals(); const nr=g.attributes.normal, col=new Float32Array(pa.count*3), sd=SUN_DIR;
+      for(let i=0;i<pa.count;i++){ const x=pa.getX(i), z=pa.getZ(i), y=pa.getY(i), lit=clamp(nr.getX(i)*sd.x+nr.getY(i)*sd.y+nr.getZ(i)*sd.z,0,1), c=colf(x,z,y,lit); col[i*3]=c[0]; col[i*3+1]=c[1]; col[i*3+2]=c[2]; }
+      g.setAttribute('color',new THREE.BufferAttribute(col,3)); const t=new THREE.Mesh(g,std({map:tex,vertexColors:true,flatShading:true,roughness:1})); t.receiveShadow=true; t.userData.noBake=true; t.frustumCulled=false; SR.add(t); }
+    for(const e of E.queue){ if(e.run) e.run(E.surf); else e.fn(e.x,e.z,e.flat?e.y:E.surf(e.x,e.z)); } E.queue.length=0; return E; };
+  return E; }
+const _P=(c,r,m)=>plain(c,r===undefined?.85:r,m||0);
+// ----- scenery models (box built, a little detailed, nothing thinner than it has to be) -----
+function kOak(x,y,z,k){ const t=_P(0x5a3c24), g1=_P(0x3e7a34), g2=_P(0x4a8a3c), g3=_P(0x5c9a46); BX(.8*k,2.6*k,.8*k,t,x,y+1.3*k,z,{cast:false}); BX(.5*k,.4*k,1.4*k,t,x,y+2.1*k,z+.6*k,{cast:false}); BX(1.4*k,.4*k,.5*k,t,x-.6*k,y+2.4*k,z,{cast:false});
+  BX(5*k,1.7*k,5*k,g1,x,y+3.3*k,z,{cast:false}); BX(4.3*k,1.5*k,4.3*k,g2,x+.3*k,y+4.7*k,z-.2*k,{cast:false}); BX(3*k,1.3*k,3*k,g3,x-.2*k,y+5.9*k,z+.2*k,{cast:false}); BX(1.6*k,.9*k,1.6*k,g3,x,y+6.8*k,z,{cast:false}); }
+function kPine(x,y,z,k,snow){ const t=_P(0x4a3220), a=_P(0x2a5a34), b=_P(0x336a3c); BX(.7*k,2*k,.7*k,t,x,y+1*k,z,{cast:false}); for(let i=0;i<6;i++){ const w=(4.6-i*.72)*k; BX(w,1.2*k,w,i%2?b:a,x,y+2.2*k+i*1.05*k,z,{cast:false}); } BX(.5*k,1*k,.5*k,b,x,y+8.7*k,z,{cast:false}); }
+function kBush(x,y,z,k,c){ const m=_P(c||0x4a7a38); BX(1.5*k,.8*k,1.4*k,m,x,y+.4*k,z,{cast:false}); BX(1*k,.7*k,1*k,m,x+.3*k,y+1.0*k,z-.1*k,{cast:false}); }
+function kHouse(x,y,z,ry,wall,roofC,w,d){ w=w||8; d=d||6.4; const W=_P(wall), R=_P(roofC), T=_P(0xf0ece0), G=_P(0x2a3a4a,.2,.4), D=_P(0x5a3a28), c=Math.cos(ry), s=Math.sin(ry), at=(a,b)=>[x+c*a+s*b,z-s*a+c*b];
+  BX(w+.6,.5,d+.6,_P(0x8a8478),x,y+.25,z,{ry,cast:false}); BX(w,3.4,d,W,x,y+2.2,z,{ry,cast:true});
+  for(let i=0;i<4;i++) BX(w+.9-i*(w*.28),.7,d+.9,R,x,y+4.2+i*.65,z,{ry,cast:false}); BX(w*.1,.4,d+1,R,x,y+6.7,z,{ry,cast:false});
+  { const [px,pz]=at(w*.3,0); BX(1.1,2.6,1.1,_P(0x8a5a48),px,y+5.6,pz,{cast:false}); BX(1.3,.2,1.3,_P(0x4a3a34),px,y+7,pz,{cast:false}); }
+  for(const sd of [-1,1]){ const [fx,fz]=at(0,sd*(d/2+.03)); BX(1.1,2,.14,D,fx+c*(w*.2),y+1.7,fz-s*(w*.2),{ry,cast:false}); for(const k of [-.28,.28]){ const [wx,wz]=at(w*k*1.2,sd*(d/2+.04)); BX(1.5,1.2,.14,T,wx,y+2.4,wz,{ry,cast:false}); BX(1.2,.9,.16,G,wx,y+2.4,wz,{ry,cast:false}); } } }
+function kBarn(x,y,z,ry){ const R=_P(0xa8302a), Wt=_P(0xf0ece0), Rf=_P(0x4a4c54,.7,.2), Dk=_P(0x2a1a14), c=Math.cos(ry), s=Math.sin(ry), at=(a,b)=>[x+c*a+s*b,z-s*a+c*b];
+  BX(15,.6,23,_P(0x8a8478),x,y+.3,z,{ry,cast:false}); BX(14,6.2,22,R,x,y+3.7,z,{ry,cast:true}); for(let i=0;i<5;i++) BX(14.6-i*2.9,1.5,22.8,Rf,x,y+7.2+i*1.3,z,{ry,cast:false}); BX(.8,.5,23,Rf,x,y+13.7,z,{ry,cast:false});
+  for(const [a,b] of [[-7,-11],[7,-11],[-7,11],[7,11]]){ const [px,pz]=at(a,b); BX(.5,6.4,.5,Wt,px,y+3.5,pz,{ry,cast:false}); }
+  for(const sd of [-1,1]){ const [fx,fz]=at(0,sd*11.1); BX(5.4,5,.3,Dk,fx,y+3,fz,{ry,cast:false}); for(const k of [-2.7,0,2.7]){ const [px,pz]=at(k,sd*11.15); BX(.35,5.2,.4,Wt,px,y+3,pz,{ry,cast:false}); } for(const k of [-1.6,1.6]){ const [px,pz]=at(k,sd*11.15); BX(2.6,.3,.4,Wt,px,y+3,pz,{ry,cast:false}); }
+    BX(2.4,2,.3,Dk,fx,y+9.4,fz,{ry,cast:false}); BX(2.7,.25,.36,Wt,fx,y+10.5,fz,{ry,cast:false}); BX(.25,2.2,.38,Wt,fx,y+9.4,fz,{ry,cast:false}); }
+  BX(.2,2.2,.2,_P(0x3a3a42,.6,.5),x,y+14.9,z,{cast:false}); BX(1.4,.18,.18,_P(0x3a3a42,.6,.5),x,y+15.5,z,{cast:false}); BX(.5,.5,.18,_P(0xd8a020,.5,.4),x+.7,y+15.8,z,{cast:false}); }
+function kSilo(x,y,z,h){ const m=_P(0xc8ccd4,.5,.5), b=_P(0x8a8e98,.5,.5); BX(8,.6,8,_P(0x8a8478),x,y+.3,z,{cast:false}); vcyl('y',y,y+h,x,0,z,3.6,m,{cast:true}); for(let k=1;k<=Math.floor(h/3.4);k++) vcyl('y',y+k*3.4,y+k*3.4+.35,x,0,z,3.85,b,{cast:false});
+  vcyl('y',y+h,y+h+1.2,x,0,z,3.1,b,{cast:false}); vcyl('y',y+h+1.2,y+h+2.2,x,0,z,2,b,{cast:false}); BX(.1,h,.5,_P(0x6a6e78,.5,.5),x+3.7,y+h/2,z,{cast:false}); }
+function kMill(x,y,z){ const wh=_P(0xe8e4d8), rd=_P(0xa8302a), dk=_P(0x3a3a42,.6,.4); BX(7,.6,7,_P(0x8a8478),x,y+.3,z,{cast:false}); for(let k=0;k<8;k++) BX(5.4-k*.45,3,5.4-k*.45,k%2?wh:_P(0xd8d4c8),x,y+2+k*3,z,{cast:true});
+  BX(5,2,5,rd,x,y+27,z,{cast:false}); BX(1.5,1.5,2.4,dk,x,y+26.4,z+3.2,{cast:false}); for(const [dx,dy] of [[0,1],[0,-1],[1,0],[-1,0]]) BX(dx?10:1.2,dy?10:1.2,.5,wh,x+dx*5,y+26.4+dy*5,z+4.5,{cast:false}); BX(1.6,1.6,.8,dk,x,y+26.4,z+4.1,{cast:false}); }
+function kTowerCity(x,y,z,w,d,h){ const m=_cityWin(), c=_P(0x2a2e3a,.8); BX(w+1,2,d+1,_P(0x3a3e48),x,y+1,z,{cast:false}); BX(w,h,d,m,x,y+h/2,z,{cast:false}); if(h>60){ BX(w*.72,h*.18,d*.72,m,x,y+h+h*.09,z,{cast:false}); BX(w*.5,h*.06,d*.5,c,x,y+h*1.2+h*.03,z,{cast:false}); BX(.9,14,.9,c,x,y+h*1.26+7,z,{cast:false}); BX(1.2,1.2,1.2,glowMat(0xff3030,2),x,y+h*1.26+14.5,z,{cast:false}); } else { BX(w*.5,2.4,d*.5,c,x+w*.15,y+h+1.2,z,{cast:false}); BX(w*.3,1.6,d*.3,c,x-w*.2,y+h+.8,z+d*.1,{cast:false}); } }
+function kStack(x,y,z,ry,cols){ const cs=cols||[0xa83a26,0x2a5a8a,0x3a7a44,0xc88a1a,0xd8d0c6,0x2a7a7a,0x8a5a3a,0x4a4a8a], nx=2+((rand()*2)|0), nz=1+((rand()*2)|0), c=Math.cos(ry), s=Math.sin(ry);
+  BX(nx*6.4+.6,.3,nz*2.7+.6,_P(0x4a4a50),x+c*(nx*3.2-3.2)-s*((nz-1)*1.35),y+.15,z-s*(nx*3.2-3.2)+c*((nz-1)*1.35),{ry,cast:false});
+  for(let i=0;i<nx;i++) for(let j=0;j<nz;j++){ const n=1+((rand()*3)|0), px=x+c*i*6.4-s*j*2.7, pz=z-s*i*6.4+c*j*2.7, col=paintMat(cs[(rand()*cs.length)|0]); for(let k=0;k<n;k++){ BX(6.1,2.6,2.44,col,px,y+.3+1.3+k*2.6,pz,{ry,cast:true}); BX(.2,2.7,2.5,_P(0x1a1a1e,.8),px+c*3.05,y+.3+1.3+k*2.6,pz-s*3.05,{ry,cast:false}); } } return {w:nx*6.4,d:nz*2.7}; }
+function kGantry(x,y,z,ry){ const yl=_P(0xe8b01c,.5,.3), dk=_P(0x3a3e48,.6,.3), c=Math.cos(ry), s=Math.sin(ry), at=(a,b)=>[x+c*a+s*b,z-s*a+c*b];
+  for(const a of [-24,24]) for(const b of [-13,13]){ const [px,pz]=at(a,b); BX(2.4,.8,2.4,dk,px,y+.4,pz,{cast:false}); BX(2,44,2,yl,px,y+22.4,pz,{cast:false}); }
+  for(const a of [-24,24]){ for(const k of [10,20,30]){ const [p1x,p1z]=at(a,0); BX(1.2,1.2,26,yl,p1x,y+k,p1z,{ry,cast:false}); } }
+  for(const b of [-13,13]){ const [px,pz]=at(0,b); BX(52,3.2,2.6,yl,px,y+44,pz,{ry,cast:false}); } for(const a of [-24,24]){ const [px,pz]=at(a,0); BX(2.6,3.2,28,yl,px,y+44,pz,{ry,cast:false}); }
+  const [tx,tz]=at(0,0); BX(8,5,8,dk,tx,y+40,tz,{ry,cast:false}); BX(5,3.4,5,_P(0x9ac8e8,.1,.5),tx+c*0,y+36.3,tz,{ry,cast:false}); BX(.5,28,.5,dk,tx,y+22,tz,{cast:false}); BX(2,2,6,glowMat(0xfff0c8,1.4),tx,y+44.2,tz+0,{ry,cast:false}); }
+function kChimney(x,y,z,h,r){ BX(r*2.6,.8,r*2.6,_P(0x8a8478),x,y+.4,z,{cast:false}); const nl=Math.round(h/3); for(let i=0;i<nl;i++){ const c=Math.floor(i/3)%2?_P(0xd82a1e,.7):_P(0xe8e4dc,.7); vcyl('y',y+i*3,y+i*3+3.05,x,0,z,r*(1-i/nl*.25),c,{cast:false}); } vcyl('y',y+h,y+h+2,x,0,z,r*.82,_P(0x2a2a30),{cast:false}); BX(1.2,1.2,1.2,glowMat(0xff3030,2),x,y+h+3,z,{cast:false}); }
+function kPole(x,y,z,h,ry){ const w=_P(0x6a5038); BX(.4,h,.4,w,x,y+h/2,z,{cast:false}); BX(3,.3,.3,w,x,y+h-.7,z,{ry:ry||0,cast:false}); BX(2.2,.26,.26,w,x,y+h-2,z,{ry:ry||0,cast:false}); for(const s of [-1.3,0,1.3]) BX(.3,.3,.3,_P(0x9a9aa4,.4,.4),x+Math.cos(ry||0)*s,y+h-.45,z-Math.sin(ry||0)*s,{cast:false}); }
+function kRocks(x,y,z,k,mats){ for(let i=0;i<4;i++){ const w=(1+rand()*2.4)*k; BX(w,w*.72,w*.9,mats[(rand()*mats.length)|0],x+(rand()-.5)*3.2*k,y+w*.28,z+(rand()-.5)*3.2*k,{ry:rand()*6,cast:false}); } BX(2.4*k,.4,2.4*k,mats[0],x,y+.05,z,{cast:false}); }
+function kButte(x,y,z,w,h){ const RK=[0xb8844a,0xa8743e,0xc8945a,0x98643a,0xd0a468].map(c=>_P(c,.95)), n=Math.max(4,Math.round(h/2.4)); BX(w*1.15,3,w*1.05,RK[3],x,y-.5,z,{cast:false}); for(let k=0;k<n;k++){ const f=1-k/n*.5, lw=w*f, lh=h/n; BX(lw,lh+.05,lw*.9,RK[(k+((x*3)|0)+10)%RK.length],x+(k%2?.5:-.4),y+lh*k+lh/2,z,{cast:true}); } BX(w*.46,h*.12,w*.42,RK[2],x,y+h+h*.06,z,{cast:false}); }
+function kCactus(x,y,z){ const g=_P(0x4a7a3a), g2=_P(0x3a6a2e), h=2.4+rand()*2.4; BX(.55,h,.55,g,x,y+h/2,z,{cast:false}); BX(.6,.2,.6,g2,x,y+h,z,{cast:false}); for(const sd of [-1,1]) if(rand()<.75){ const ah=.9+rand()*1.2, ay=y+h*.45+rand()*.5; BX(.8,.34,.34,g,x+sd*.55,ay,z,{cast:false}); BX(.34,ah,.34,g,x+sd*.9,ay+ah/2-.1,z,{cast:false}); BX(.38,.14,.38,g2,x+sd*.9,ay+ah-.05,z,{cast:false}); } }
+function kDeadTree(x,y,z){ const wd=_P(0x6a5038), h=2.6+rand()*1.8; BX(.4,h,.4,wd,x,y+h/2,z,{cast:false}); for(let k=0;k<3;k++){ const dir=k%2?-1:1, by=y+h*(.45+k*.16), bl=.9+rand()*1; BX(bl,.22,.22,wd,x+dir*bl/2,by,z,{cast:false}); BX(.22,.6,.22,wd,x+dir*bl,by+.3,z,{cast:false}); } }
+function kBones(x,y,z){ const b=_P(0xe8e0cc,.8); BX(.36,.3,.32,b,x,y+.15,z,{ry:rand()*6,cast:false}); BX(.22,.14,.24,b,x+.14,y+.07,z,{cast:false}); for(let k=0;k<5;k++) BX(.55,.08,.08,b,x-.5+k*.2,y+.05,z+.5+((k%2)?.1:-.1),{ry:rand()*3,cast:false}); }
+function kTumble(x,y,z){ const d=_P(0xa8884a,.95); for(let i=0;i<3;i++) BX(.7,.7,.7,d,x,y+.42,z,{rx:i*.8,ry:i*.9+.3,rz:i*.5,cast:false}); }
+function kWreck(x,y,z,ry){ const rs=_P(0x8a4a2a,.6,.4); BX(4.6,.9,2,rs,x,y+.9,z,{ry,cast:true}); BX(2,.8,1.8,rs,x-Math.cos(ry)*.4,y+1.7,z+Math.sin(ry)*.4,{ry,cast:true}); for(const [dx,dz] of [[-1.5,1],[1.5,1],[-1.5,-1],[1.5,-1]]) BX(.8,.8,.3,_P(0x1c1a1a,.9),x+dx*Math.cos(ry)+dz*Math.sin(ry),y+.4,z-dx*Math.sin(ry)+dz*Math.cos(ry),{ry,cast:false}); }
+function kRuin(x,y,z){ const a=rand()*3; const RK=[0xb8844a,0xa8743e,0xc8945a].map(c=>_P(c,.95)); BX(8,.4,3.4,RK[1],x,y+.2,z,{ry:a,cast:false}); for(let i=0;i<6;i++){ const hh=1+((i*5)%3)*.8; BX(.9,hh,.7,RK[i%3],x+Math.cos(a)*(i-2.5)*1.2,y+.4+hh/2,z-Math.sin(a)*(i-2.5)*1.2,{ry:a,cast:true}); } }
+function kBunker(x,y,z,ry){ const c=_P(0xa8a090,.9); BX(11,.5,8,_P(0x8a8478),x,y+.25,z,{ry,cast:false}); BX(10,3,7,c,x,y+2,z,{ry,cast:true}); BX(7.6,1,5.4,_P(0x8a8272,.9),x,y+4,z,{ry,cast:false}); BX(2.2,2.2,.4,_P(0x1a1a20,.9),x-Math.sin(ry)*3.6,y+1.6,z-Math.cos(ry)*3.6,{ry,cast:false}); BX(.4,2.6,.4,_P(0x6a6e78,.5,.5),x+3.4,y+6,z,{cast:false}); }
+function kWatchTower(x,y,z,h){ const st=_P(0x6a6e78,.6,.4); for(const a of [-1,1]) for(const b of [-1,1]) BX(.5,h,.5,st,x+a*3,y+h/2,z+b*3,{cast:false}); for(let k=0;k<Math.floor(h/7);k++){ for(const s of [-1,1]){ BX(6.4,.4,.4,st,x,y+4+k*7,z+s*3,{cast:false}); BX(.4,.4,6.4,st,x+s*3,y+4+k*7,z,{cast:false}); } } BX(8.4,.5,8.4,_P(0x4a4e58),x,y+h,z,{cast:false}); BX(8,3.2,8,_P(0xd8d0c0,.8),x,y+h+2.1,z,{cast:true}); BX(8.6,.4,8.6,_P(0x8a3a2a),x,y+h+3.9,z,{cast:false}); BX(.5,2.4,.5,st,x,y+h+5.2,z,{cast:false}); BX(1.1,1.1,1.1,glowMat(0xff3030,2),x,y+h+6.6,z,{cast:false}); }
+function kMushroom(cx,cz,sc){ const gl=glowMat(0xff7a28,1.6), gl2=glowMat(0xffb050,1.9), ash=_P(0x6a5a52,.95), ash2=_P(0x8a7a70,.95), top=_P(0xc8b8a8,.95);
+  vcyl('y',0,12*sc,cx,0,cz,64*sc,_P(0x7a5a40,.95),{cast:false}); for(let i=0;i<10;i++) vcyl('y',12*sc+i*13*sc,12*sc+i*13*sc+13.2*sc,cx,0,cz,(15-i*.55)*sc,i<4?gl:ash,{cast:false});
+  for(let i=0;i<8;i++){ const y=(142+i*13)*sc, r=(20+Math.sin(i/7*3.1)*48)*sc; vcyl('y',y,y+13.4*sc,cx,0,cz,r,i<3?gl2:i<6?ash2:top,{cast:false}); } vcyl('y',246*sc,270*sc,cx,0,cz,32*sc,top,{cast:false}); }
+function kLighthouse(x,y,z){ const wh=_P(0xf0ece0,.7), rd=_P(0xc42a1e,.7); BX(8,2,8,_P(0x6a6e78),x,y+1,z,{cast:false}); for(let i=0;i<7;i++) vcyl('y',y+2+i*4,y+2+i*4+4.1,x,0,z,3.2-i*.18,i%2?rd:wh,{cast:false}); BX(6,.6,6,_P(0x2a2e38),x,y+30.3,z,{cast:false}); BX(3,3,3,glowMat(0xfff0c8,2),x,y+32,z,{cast:false}); BX(4,.8,4,rd,x,y+34,z,{cast:false}); }
+function kOilRig(x,y,z){ const st=_P(0x8a8e98,.5,.5), dk=_P(0x3a3e48,.6,.4); for(const a of [-1,1]) for(const b of [-1,1]){ BX(2.4,34,2.4,st,x+a*10,y+10,z+b*10,{cast:false}); } BX(30,2,30,dk,x,y+28,z,{cast:false}); BX(22,5,16,_P(0xd8d0c0,.8),x-3,y+31.5,z+3,{cast:false}); for(let k=0;k<5;k++) BX(.8,26,.8,_P(0xe8b01c,.5),x+8,y+41+0*k,z-6,{cast:false}); BX(.5,12,.5,dk,x+8,y+54,z-6,{cast:false}); BX(3,3,3,glowMat(0xff8a28,2.2),x+8,y+61,z-6,{cast:false}); }
+function kFarShip(x,y,z,ry){ const c=Math.cos(ry), s=Math.sin(ry); BX(80,8,14,_P(0x2a3a5a,.6),x,y+4,z,{ry,cast:false}); BX(84,1,15,_P(0xa83a26,.7),x,y+8.5,z,{ry,cast:false}); for(let i=0;i<8;i++) for(let k=0;k<3;k++) BX(7.6,2.6,11,paintMat([0xa83a26,0x2a5a8a,0xc88a1a,0x3a7a44,0xd8d0c6][(i*3+k)%5]),x+(i-4+.3)*8*c-(-8)*0,y+10+k*2.6+1.3,z-(i-4+.3)*8*s,{ry,cast:false}); BX(10,12,12,_P(0xe8e4dc,.7),x-34*c,y+14,z+34*s,{ry,cast:false}); }
+function kBillboard(x,y,z,ry,col){ BX(.5,9,.5,_P(0x5a5e68,.6,.4),x-3,y+4.5,z,{ry,cast:false}); BX(.5,9,.5,_P(0x5a5e68,.6,.4),x+3,y+4.5,z,{ry,cast:false}); BX(9,4.4,.5,_P(col||0x2a5a8a,.7),x,y+10,z,{ry,cast:false}); BX(7.6,.5,.52,_P(0xf0e8d0,.8),x,y+10.9,z,{ry,cast:false}); BX(5,.5,.52,_P(0xf0e8d0,.8),x,y+9.2,z,{ry,cast:false}); }
+function kChurch(x,y,z,ry){ const wh=_P(0xe8e4d8,.8), rf=_P(0x4a4c58,.8), gold=_P(0xd8c070,.4,.6), c=Math.cos(ry), s=Math.sin(ry), at=(a,b)=>[x+c*a+s*b,z-s*a+c*b], [tx,tz]=at(0,-5.4);
+  BX(9,.6,15,_P(0x8a8478),x,y+.3,z,{ry,cast:false}); BX(7,5,12,wh,x,y+3.1,z,{ry,cast:true}); for(let i=0;i<4;i++) BX(7.6-i*1.8,.8,12.6,rf,x,y+6.1+i*.7,z,{ry,cast:false});
+  BX(3.2,9.5,3.2,wh,tx,y+4.9,tz,{ry,cast:true}); BX(3.7,.6,3.7,rf,tx,y+9.8,tz,{ry,cast:false}); BX(2.6,2.2,2.6,rf,tx,y+11.2,tz,{ry,cast:false}); BX(1.5,2.2,1.5,rf,tx,y+13.4,tz,{ry,cast:false}); BX(.3,1.8,.3,gold,tx,y+15.2,tz,{cast:false}); BX(1.1,.3,.3,gold,tx,y+15.4,tz,{cast:false});
+  for(const sd of [-1,1]) for(const k of [-3,0,3]){ const [wx,wz]=at(k,sd*3.55); BX(.9,2,.2,_P(0x2a3a4a,.2,.4),wx,y+3.4,wz,{ry,cast:false}); } }
+function kElevator(x,y,z){ const c=_P(0xc8c0b0,.8), d=_P(0x8a8478); BX(14,.6,10,d,x,y+.3,z,{cast:false}); for(let i=0;i<4;i++) BX(2.8,16,6,c,x-4.2+i*2.8,y+8.6,z,{cast:true}); BX(11,7,6.4,_P(0xa8a090,.8),x,y+19.6,z,{cast:true}); BX(11.6,.8,7,d,x,y+23.5,z,{cast:false}); BX(.4,5,.4,_P(0x5a5e68,.6,.4),x+4,y+26.3,z,{cast:false}); }
 const _cityWin=()=>cached('cityWin',()=>{ const tx=pxTex(draw(16,16,(x,p)=>{ for(let j=0;j<16;j++) for(let i=0;i<16;i++){ const win=(i%4>=1&&i%4<=2)&&(j%4>=1&&j%4<=2), lit=hash2(i>>2,j>>2)>.55; p(i,j,win?(lit?'#ffd890':'#1c2230'):'#4a5266'); } })); return std({map:tx,emissive:0xffffff,emissiveMap:tx,emissiveIntensity:.55,roughness:.85,wuv:.14}); });
-function envTower(x,y,z,w,d,h){ BX(w,h,d,_cityWin(),x,y+h/2,z,{cast:false}); BX(w*.5,h*.06,d*.5,plain(0x2a2e3a,.8),x,y+h+h*.03,z,{cast:false}); if(h>70) BX(.8,12,.8,plain(0x2a2e3a,.8),x,y+h+9,z,{cast:false}); }
-function envStack(x,y,z,ry){ const cs=[0xa83a26,0x2a5a8a,0x3a7a44,0xc88a1a,0xd8d0c6,0x2a7a7a,0x8a5a3a,0x4a4a8a]; const nx=1+((rand()*3)|0), nz=1+((rand()*2)|0);
-  for(let i=0;i<nx;i++) for(let j=0;j<nz;j++){ const n=1+((rand()*3)|0); for(let k=0;k<n;k++) BX(6.1,2.6,2.44,paintMat(cs[(rand()*cs.length)|0]),x+Math.cos(ry)*i*6.3-Math.sin(ry)*j*2.6,y+1.3+k*2.6,z-Math.sin(ry)*i*6.3+Math.cos(ry)*j*2.6,{ry,cast:true}); } }
-function envGantry(x,y,z,ry){ const yl=plain(0xe8b01c,.5,.3), dk=plain(0x3a3e48,.6,.3), c=Math.cos(ry), sn=Math.sin(ry), at=(a,b)=>[x+c*a-sn*b,z-sn*a+c*b];
-  for(const a of [-26,26]) for(const b of [-14,14]){ const [px,pz]=at(a,b); BX(2.4,46,2.4,yl,px,y+23,pz,{cast:false}); }
-  for(const b of [-14,14]){ const [px,pz]=at(0,b); BX(60,3.4,3,yl,px,y+46,pz,{ry,cast:false}); } for(const a of [-26,26]){ const [px,pz]=at(a,0); BX(3,3,30,yl,px,y+46,pz,{ry,cast:false}); }
-  const [tx,tz]=at(0,0); BX(9,6,9,dk,tx,y+42,tz,{ry,cast:false}); BX(1.2,30,1.2,dk,tx,y+25,tz,{cast:false}); }
-function envStack2(x,z,h,r,bands){ // a tall voxel chimney with painted bands
-  const y0=0; const nl=Math.round(h/3); for(let i=0;i<nl;i++){ const c=(bands&&Math.floor(i/3)%2)?plain(0xd82a1e,.7):plain(0xe8e4dc,.7); vcyl('y',y0+i*3,y0+i*3+3.05,x,0,z,r*(1-i/nl*.25),c,{cast:false}); } vcyl('y',h,h+2,x,0,z,r*.8,plain(0x2a2a30,.8),{cast:false}); BX(1.2,1.2,1.2,glowMat(0xff3030,2),x,h+3,z,{cast:false}); }
-// ---------- Rust: the yard sits in the middle of an endless desert of dunes ----------
-function rustDesert(sandTex){
-  const duneH=(x,z)=>{ const d=Math.hypot(Math.max(Math.abs(x)-61,0),Math.max(Math.abs(z)-41,0)), bl=smooth(0,30,d);
-    const r1=1-Math.abs(fbm(x*.010+5,z*.015+2,3)*2-1), r2=1-Math.abs(fbm(x*.03+11,z*.04+7,2)*2-1), far=smooth(110,330,d);
-    return bl*(r1*r1*15+r2*r2*3.5+fbm(x*.05,z*.05,2)*2)+far*32*r1-.14; };
-  const S=900, N=240, g=new THREE.PlaneGeometry(S,S,N,N); g.rotateX(-Math.PI/2); const pa=g.attributes.position, uv=g.attributes.uv;
-  for(let i=0;i<pa.count;i++){ const x=pa.getX(i), z=pa.getZ(i); pa.setY(i,Math.round(duneH(x,z)*1.5)/1.5); uv.setXY(i,x/30,z/20); }
-  g.computeVertexNormals(); const nr=g.attributes.normal, col=new Float32Array(pa.count*3), sd=SUN_DIR;
-  for(let i=0;i<pa.count;i++){ const x=pa.getX(i), z=pa.getZ(i), lit=clamp(nr.getX(i)*sd.x+nr.getY(i)*sd.y+nr.getZ(i)*sd.z,0,1), rip=Math.sin(x*.9+z*.35+fbm(x*.1,z*.1,2)*6)*.03, k=.78+.36*lit+rip, near=1-smooth(0,40,Math.hypot(Math.max(Math.abs(x)-61,0),Math.max(Math.abs(z)-41,0)))*0;
-    col[i*3]=k*1.04; col[i*3+1]=k*.95; col[i*3+2]=k*.8; }
-  g.setAttribute('color',new THREE.BufferAttribute(col,3));
-  const t=new THREE.Mesh(g,std({map:sandTex,vertexColors:true,flatShading:true,roughness:1})); t.receiveShadow=true; t.userData.noBake=true; t.frustumCulled=false; SR.add(t);
-  // voxel scenery, all of it out in the dunes beyond the yard
-  const RKM=[0xb8844a,0xa8743e,0xc8945a,0x98643a,0xd0a468].map(c=>plain(c,.95)), green=plain(0x4a7a3a,.9), green2=plain(0x3a6a2e,.9), wood=plain(0x6a5038,.9), bone=plain(0xe8e0cc,.8), dry=plain(0xa8884a,.95), rust=plain(0x8a4a2a,.6,.4);
-  const ok=(x,z)=>Math.abs(x)>66||Math.abs(z)>46, onD=(x,z)=>Math.round(duneH(x,z)*1.5)/1.5;
-  const cactus=(x,z)=>{ const y=onD(x,z), h=2+rand()*2.2; BX(.5,h,.5,green,x,y+h/2,z,{cast:false}); BX(.54,.2,.54,green2,x,y+h,z,{cast:false});
-    for(const sd of [-1,1]) if(rand()<.7){ const ah=.8+rand()*1.1, ay=y+h*.45+rand()*.5; BX(.7,.32,.32,green,x+sd*.5,ay,z,{cast:false}); BX(.32,ah,.32,green,x+sd*.84,ay+ah/2-.1,z,{cast:false}); BX(.34,.14,.34,green2,x+sd*.84,ay+ah-.05,z,{cast:false}); } };
-  const deadTree=(x,z)=>{ const y=onD(x,z), h=2.4+rand()*1.6; BX(.34,h,.34,wood,x,y+h/2,z,{cast:false}); for(let k=0;k<3;k++){ const dir=rand()<.5?-1:1, by=y+h*(.5+k*.18), bl=.8+rand()*.9; BX(bl,.2,.2,wood,x+dir*bl/2,by,z+(rand()-.5)*.4,{cast:false}); BX(.2,.5,.2,wood,x+dir*bl,by+.25,z,{cast:false}); } };
-  const butte=(x,z,w,h,lv)=>{ const y=Math.min(onD(x-w/2,z),onD(x+w/2,z),onD(x,z-w/2),onD(x,z+w/2))-.5; const n=Math.max(3,Math.round(h/2)); for(let k=0;k<n;k++){ const f=1-k/n*.55, lw=w*f*(1+((k*7)%3)*.04), lh=h/n; BX(lw,lh+.05,lw*.9,RKM[(k+((x*3)|0))%RKM.length],x+(k%2?.4:-.3),y+lh*k+lh/2,z,{cast:true}); } BX(w*.5,h*.16,w*.46,RKM[2],x,y+h+h*.08/ (1),z,{cast:false}); };
-  const boulders=(x,z)=>{ const y=onD(x,z); for(let k=0;k<4;k++){ const w=.6+rand()*1.4; BX(w,w*.7,w*.9,RKM[(rand()*5)|0],x+(rand()-.5)*2.6,y+w*.3,z+(rand()-.5)*2.6,{ry:rand()*6,cast:false}); } };
-  const skull=(x,z)=>{ const y=onD(x,z); BX(.34,.28,.3,bone,x,y+.14,z,{ry:rand()*6,cast:false}); BX(.2,.12,.22,bone,x+.12,y+.06,z,{cast:false}); for(const e of [-1,1]) BX(.07,.07,.04,plain(0x1a1410,.9),x+e*.08,y+.17,z+.16,{cast:false}); for(let k=0;k<5;k++) BX(.5,.07,.07,bone,x-.5+k*.2,y+.05,z+.5+((k%2)?.1:-.1),{ry:rand()*3,cast:false}); };
-  const tumble=(x,z)=>{ const y=onD(x,z); for(let i=0;i<3;i++) BX(.7,.7,.7,dry,x,y+.4,z,{rx:i*.8,ry:i*.9+.3,rz:i*.5,cast:false}); };
-  const ruin=(x,z)=>{ const y=onD(x,z), a=rand()*3; for(let i=0;i<6;i++){ const hh=1+((i*5)%3)*.8; BX(.9,hh,.7,RKM[i%5],x+Math.cos(a)*(i-3)*.9,y+hh/2,z+Math.sin(a)*(i-3)*.9,{ry:a,cast:true}); } };
-  const pole=(x,z)=>{ const y=onD(x,z); BX(.22,6,.22,wood,x,y+3,z,{cast:false}); BX(1.6,.16,.16,wood,x,y+5.5,z,{cast:false}); BX(1.2,.14,.14,wood,x,y+4.9,z,{cast:false}); };
-  const wreck=(x,z,ry)=>{ const y=onD(x,z); BX(4.4,.9,1.9,rust,x,y+.8,z,{ry,cast:true}); BX(1.9,.8,1.7,rust,x+Math.cos(ry)*-.3,y+1.6,z+Math.sin(ry)*.3,{ry,cast:true}); for(const [dx,dz] of [[-1.5,.95],[1.5,.95],[-1.5,-.95],[1.5,-.95]]) BX(.8,.8,.3,plain(0x1c1a1a,.9),x+dx*Math.cos(ry)+dz*Math.sin(ry),y+.4,z-dx*Math.sin(ry)+dz*Math.cos(ry),{ry,cast:false}); };
-  let tries=0, placed=0; const R2=(a,b)=>a+rand()*(b-a);
-  while(placed<340&&tries<4000){ tries++; const a=rand()*Math.PI*2, r=R2(70,230), x=Math.cos(a)*r*1.35, z=Math.sin(a)*r*.95; if(!ok(x,z)) continue; const k=rand();
-    if(k<.26) cactus(x,z); else if(k<.38) deadTree(x,z); else if(k<.55) boulders(x,z); else if(k<.64) skull(x,z); else if(k<.78) tumble(x,z); else if(k<.83) ruin(x,z); else if(k<.88) pole(x,z); else if(k<.9) wreck(x,z,rand()*6); else boulders(x,z); placed++; }
-  // far mesas and buttes on the horizon
-  for(let i=0;i<14;i++){ const a=i/14*Math.PI*2+rand()*.3, r=R2(260,380); butte(Math.cos(a)*r*1.1,Math.sin(a)*r*.9,R2(14,34),R2(14,30)); }
-  // a line of telegraph poles running off into the dunes, with a few close rocks and a lone road
-  for(let i=0;i<9;i++){ pole(-66-i*18,-30-i*4.5); }
-}
-function yardEnv(){
-  const gt=pxTex(draw(32,32,(x,p)=>{ for(let j=0;j<32;j++) for(let i=0;i<32;i++){ const n=hash2(i,j), c=n>.92?'#6a6660':n>.5?'#4a4852':'#3e3c46'; p(i,j,c); } }));
-  const L=envLand({fx:64,fz:48,blend:24,tex:gt,uvx:24,uvz:24,q:1,
-    h:(x,z,b)=>b*(fbm(x*.02+3,z*.02,3)*5+Math.max(0,fbm(x*.008,z*.01+9,3)-.45)*40),
-    col:(x,z,y,lit)=>{ const k=.62+.32*lit+(hash2(Math.floor(x/6),Math.floor(z/6))-.5)*.1, grass=smooth(2,9,y)*.55; return [k*(1-grass*.4),k*(1+grass*.05),k*(1-grass*.3)]; }});
-  const rail=plain(0x3a3a42,.5,.6), sl=plain(0x4a3a2a,.9);
-  for(const z of [-52,-56,52,56]){ BX(560,.12,.16,rail,0,.12,z,{cast:false}); } for(const z of [-54,54]) for(let x=-280;x<=280;x+=1.5) BX(.4,.1,3.6,sl,x,.07,z,{cast:false});
-  envScatter(L,26,75,150,[1.25,1.05],[[1,(x,z)=>envStack(x,L.onD(x,z),z,rand()*3)]],400);
-  for(let i=0;i<5;i++){ const a=(i/5)*6.28+.4; envGantry(Math.cos(a)*190*1.2,L.onD(Math.cos(a)*190,Math.sin(a)*190),Math.sin(a)*190*.95,a+1.57); }
-  for(let i=0;i<46;i++){ const a=i/46*6.28+rand()*.08, r=270+rand()*160, x=Math.cos(a)*r*1.25, z=Math.sin(a)*r*.95; envTower(x,L.onD(x,z),z,14+rand()*18,14+rand()*18,36+rand()*rand()*130); }
-  for(let i=0;i<5;i++){ const a=rand()*6.28, r=170+rand()*60; envStack2(Math.cos(a)*r*1.2,Math.sin(a)*r*.95,40+rand()*30,3.5,true); }
-  for(let i=0;i<14;i++){ const a=rand()*6.28, r=72+rand()*40, x=Math.cos(a)*r*1.2, z=Math.sin(a)*r*.95; if(!L.ok(x,z)) continue; const y=L.onD(x,z); BX(.6,16,.6,plain(0x5a5e68,.6,.4),x,y+8,z,{cast:false}); BX(3,1.2,1,glowMat(0xfff0c8,1.6),x,y+16,z,{cast:false}); }
-}
-function farmEnv(){
-  const gt=pxTex(draw(32,32,(x,p)=>{ for(let j=0;j<32;j++) for(let i=0;i<32;i++){ const n=hash2(i,j); p(i,j,n>.9?'#a89a6a':n>.45?'#8a8a5a':'#7a7c50'); } }));
-  const FIELD=[[1.05,.86,.4],[.5,.74,.32],[.62,.46,.34],[.58,.78,.38],[.95,.74,.32],[.4,.62,.3]];
-  const cell=(x,z)=>{ const cx=Math.floor(x/46), cz=Math.floor(z/46); return (hash2(cx+9,cz+4)*FIELD.length)|0; };
-  const L=envLand({fx:44,fz:34,blend:34,tex:gt,uvx:20,uvz:20,q:1.2,size:1000,cells:260,
-    h:(x,z,b)=>b*(fbm(x*.012+5,z*.012+1,3)*13+Math.max(0,fbm(x*.005,z*.006+4,3)-.4)*45),
-    col:(x,z,y,lit)=>{ const f=FIELD[cell(x,z)], rows=.9+.12*Math.sin((x*.9+z*.5)*(.4+hash2(Math.floor(x/46),Math.floor(z/46))*.5)), k=(.64+.34*lit)*rows, near=smooth(0,30,Math.hypot(Math.max(Math.abs(x)-44,0),Math.max(Math.abs(z)-34,0)));
-      return [lerp(.5,f[0],near)*k,lerp(.62,f[1],near)*k,lerp(.3,f[2],near)*k]; }});
-  const red=plain(0xb02a22,.7), white=plain(0xf0ece0,.7), roof=plain(0x4a4a52,.8), wood=plain(0x6a4a32,.9), wheat=plain(0xd8b040,.9), leaf=plain(0x3a6a2e,.9);
-  const barn=(x,z)=>{ const ry=((rand()*4)|0)*1.5708, y=L.onD(x,z); BX(14,6,22,red,x,y+3,z,{ry,cast:true}); for(let k=0;k<4;k++) BX(14-k*3.6,1.6,22,roof,x,y+6.8+k*1.5,z,{ry,cast:true}); BX(.8,6,.8,white,x+Math.cos(ry)*7,y+3,z-Math.sin(ry)*7,{cast:false}); BX(5,5,.4,white,x+Math.sin(ry)*11.1,y+3,z+Math.cos(ry)*11.1,{ry,cast:false}); };
-  const silo=(x,z)=>{ const y=L.onD(x,z); vcyl('y',y,y+18,x,0,z,3.4,plain(0xc8ccd4,.5,.5),{cast:true}); vcyl('y',y+18,y+20,x,0,z,2.4,plain(0x8a8e98,.5,.5),{cast:false}); for(let k=1;k<5;k++) vcyl('y',y+k*3.4,y+k*3.4+.3,x,0,z,3.6,plain(0x7a7e88,.5,.5),{cast:false}); };
-  const mill=(x,z)=>{ const y=L.onD(x,z); for(let k=0;k<7;k++) BX(5-k*.4,3,5-k*.4,k%2?white:plain(0xd8d4c8,.8),x,y+1.5+k*3,z,{cast:true}); BX(6,2,6,red,x,y+22,z,{cast:false}); const hub=y+22; BX(1.2,1.2,2,plain(0x3a3a42,.6),x,hub,z+3,{cast:false}); for(const [dx,dy] of [[0,1],[0,-1],[1,0],[-1,0]]) BX(dx?10:1.2,dy?10:1.2,.5,white,x+dx*5,hub+dy*5,z+4,{cast:false}); };
-  const tree=(x,z)=>{ const y=L.onD(x,z), k=.8+rand()*.8; BX(.6*k,3*k,.6*k,MT.bark,x,y+1.5*k,z,{cast:false}); const m=mesh(voxModel('treeTop'),MT.vox,x,y+2.6*k,z,{cast:false}); m.scale.setScalar(1.35*k); };
-  const bale=(x,z)=>{ const y=L.onD(x,z); vcyl('z',z-.7,z+.7,x,y+.7,0,.75,wheat,{cast:false}); };
-  const tuft=(x,z)=>{ const y=L.onD(x,z), c=FIELD[cell(x,z)]; if(c[0]<.9) return; for(let k=0;k<6;k++) BX(.07,.9,.07,wheat,x+(rand()-.5)*1.2,y+.45,z+(rand()-.5)*1.2,{cast:false}); };
-  envScatter(L,5,70,170,[1.15,1],[[1,barn]],200); envScatter(L,6,60,230,[1.2,1],[[1,silo]],300); envScatter(L,3,90,260,[1.2,1],[[1,mill]],200);
-  envScatter(L,120,52,330,[1.35,1.05],[[1,tree]],800); envScatter(L,30,50,200,[1.25,1],[[1,bale]],300); envScatter(L,520,48,150,[1.3,1.05],[[1,tuft]],2400);
-  // fence lines and a dirt road running away to the horizon
-  for(const z of [-46,46]) for(let x=-250;x<=250;x+=3){ const y=L.onD(x,z); BX(.18,1.2,.18,wood,x,y+.6,z,{cast:false}); if(x<250) BX(3,.12,.1,wood,x+1.5,y+.95,z,{cast:false}); }
-  for(let x=-300;x<=300;x+=6){ const z=-38+Math.sin(x*.02)*3; BX(6.2,.08,4,plain(0x8a6a44,.95),x,L.onD(x,z)+.02,z,{cast:false}); } }
-function nukeEnv(){
-  const gt=pxTex(draw(32,32,(x,p)=>{ for(let j=0;j<32;j++) for(let i=0;i<32;i++){ const n=hash2(i,j); p(i,j,n>.9?'#b89868':n>.45?'#a8885a':'#9a7c50'); } }));
-  const L=envLand({fx:38,fz:30,blend:26,tex:gt,uvx:26,uvz:26,q:1.2,
-    h:(x,z,b,d)=>b*(fbm(x*.014+2,z*.014+8,3)*9+Math.max(0,fbm(x*.006,z*.007+3,3)-.42)*60),
-    col:(x,z,y,lit)=>{ const k=.66+.36*lit, rock=smooth(5,26,y), n=hash2(Math.floor(x/9),Math.floor(z/9))*.1; return [k*(1.1+rock*.12)+n,k*(.86-rock*.14)+n,k*(.62-rock*.2)]; }});
-  const dust=plain(0xb89868,.95), rock=[0x9a6a44,0x8a5a3a,0xa87850].map(c=>plain(c,.95)), shrub=plain(0x6a7a3a,.9), wood=plain(0x6a5038,.9), hut=[0xe8e0cc,0xcfd8e0,0xe0c8b8].map(c=>plain(c,.8)), roofC=plain(0x8a3a2a,.8);
-  const cloud=(cx,cz,sc)=>{ // a voxel mushroom cloud on the horizon: dark stem, glowing fireball, billowing cap
-    const gl=glowMat(0xff7a28,1.6), gl2=glowMat(0xffb050,1.9), ash=plain(0x6a5a52,.95), ash2=plain(0x8a7a70,.95), top=plain(0xc8b8a8,.95);
-    for(let i=0;i<10;i++){ const y=i*14*sc, r=(14-i*.6)*sc; vcyl('y',y,y+14.2*sc,cx,0,cz,r,i<4?gl:ash,{cast:false}); }
-    for(let i=0;i<8;i++){ const y=(140+i*13)*sc, r=(18+Math.sin(i/7*3.1)*46)*sc; vcyl('y',y,y+13.5*sc,cx,0,cz,r,i<3?gl2:i<6?ash2:top,{cast:false}); }
-    vcyl('y',244*sc,268*sc,cx,0,cz,30*sc,top,{cast:false}); vcyl('y',0,10*sc,cx,0,cz,60*sc,plain(0x7a5a40,.95),{cast:false}); };
-  cloud(340,-50,1.5); cloud(-380,150,1.2);
-  const bush=(x,z)=>{ const y=L.onD(x,z), k=.6+rand()*.8; BX(1.1*k,.7*k,1.1*k,shrub,x,y+.35*k,z,{cast:false}); BX(.8*k,.6*k,.8*k,shrub,x+.2,y+.9*k,z,{cast:false}); };
-  const joshua=(x,z)=>{ const y=L.onD(x,z), h=2.6+rand()*2.2; BX(.4,h,.4,wood,x,y+h/2,z,{cast:false}); BX(.35,1.2,.35,wood,x+.5,y+h*.7,z,{cast:false}); BX(.9,.9,.9,shrub,x,y+h+.3,z,{cast:false}); BX(.8,.8,.8,shrub,x+.55,y+h*.7+.9,z,{cast:false}); };
-  const boulder=(x,z)=>{ const y=L.onD(x,z); for(let k=0;k<3;k++){ const w=1+rand()*3; BX(w,w*.7,w*.9,rock[(rand()*3)|0],x+(rand()-.5)*4,y+w*.3,z+(rand()-.5)*4,{ry:rand()*6,cast:false}); } };
-  const house=(x,z)=>{ const y=L.onD(x,z), ry=Math.round(rand()*2)*1.57; BX(7,3.2,6,hut[(rand()*3)|0],x,y+1.6,z,{ry,cast:true}); for(let k=0;k<3;k++) BX(7.4-k*2.2,.7,6.4,roofC,x,y+3.5+k*.7,z,{ry,cast:false}); };
-  const tower=(x,z)=>{ const y=L.onD(x,z), st=plain(0x6a6e78,.6,.4); for(const a of [-1,1]) for(const b of [-1,1]) BX(.5,34,.5,st,x+a*3,y+17,z+b*3,{cast:false}); for(let k=0;k<5;k++){ BX(6.4,.4,.4,st,x,y+4+k*7,z+3,{cast:false}); BX(6.4,.4,.4,st,x,y+4+k*7,z-3,{cast:false}); } BX(8,3.4,8,plain(0xd8d0c0,.8),x,y+35.7,z,{cast:true}); BX(1.2,1.2,1.2,glowMat(0xff3030,2),x,y+38.5,z,{cast:false}); };
-  const bunker=(x,z)=>{ const y=L.onD(x,z); BX(10,3,7,plain(0xa8a090,.9),x,y+1.5,z,{cast:true}); BX(7,1,5,plain(0x8a8272,.9),x,y+3.5,z,{cast:false}); BX(2,2,.4,plain(0x2a2a30,.9),x,y+1,z+3.6,{cast:false}); };
-  const pole=(x,z)=>{ const y=L.onD(x,z); BX(.3,9,.3,wood,x,y+4.5,z,{cast:false}); BX(2.4,.25,.25,wood,x,y+8.2,z,{cast:false}); };
-  envScatter(L,230,45,260,[1.4,1.1],[[5,bush],[2,joshua],[3,boulder]],1800); envScatter(L,34,95,250,[1.35,1.05],[[1,house]],500); envScatter(L,4,130,260,[1.3,1],[[1,tower]],200); envScatter(L,6,100,220,[1.3,1],[[1,bunker]],200);
-  for(let i=0;i<12;i++){ const x=-60-i*22, z=-58+Math.sin(i*.4)*4; pole(x,z); }
-  for(const s of [-1,1]) for(let x=-250;x<=250;x+=4){ const z=s*50, y=L.onD(x,z); BX(.12,2,.12,plain(0x6a6e78,.6,.4),x,y+1,z,{cast:false}); if(x<250) BX(4,.06,.06,plain(0x8a8e98,.5,.5),x+2,y+1.7,z,{cast:false}); } }
+const _G=(t)=>pxTex(draw(32,32,(x,p)=>{ for(let j=0;j<32;j++) for(let i=0;i<32;i++){ const n=hash2(i,j); p(i,j,t[n>.9?2:n>.45?1:0]); } }));
+function kWarehouse(x,y,z,ry,w,d){ const wl=_P(0x8a8e98,.6,.3), rf=_P(0x5a5e68,.7,.3), dr=_P(0x2a2e38), c=Math.cos(ry), s=Math.sin(ry), at=(a,b)=>[x+c*a+s*b,z-s*a+c*b];
+  BX(w+1,.6,d+1,_P(0x7a7a80),x,y+.3,z,{ry,cast:false}); BX(w,7,d,wl,x,y+4.1,z,{ry,cast:true}); BX(w+.8,.7,d+.8,rf,x,y+7.9,z,{ry,cast:false}); BX(w*.7,.7,d+.5,rf,x,y+8.5,z,{ry,cast:false}); BX(w*.36,.7,d+.3,rf,x,y+9.1,z,{ry,cast:false});
+  for(const sd of [-1,1]){ for(const k of [-.25,.25]){ const [px,pz]=at(w*k,sd*(d/2+.06)); BX(w*.18,4.6,.3,dr,px,y+2.9,pz,{ry,cast:false}); } for(let i=-3;i<=3;i++){ const [px,pz]=at(i*w*.13,sd*(d/2+.08)); BX(.5,.4,.3,_P(0xf0e8d0,.5),px,y+6.6,pz,{ry,cast:false}); } } }
+function kTank(x,y,z,r,h){ const m=_P(0xd8d4cc,.5,.4), b=_P(0x8a8e98,.5,.5); BX(r*2.6,.6,r*2.6,_P(0x7a7a80),x,y+.3,z,{cast:false}); vcyl('y',y+.6,y+h,x,0,z,r,m,{cast:true}); for(let k=1;k<4;k++) vcyl('y',y+h*k/4,y+h*k/4+.3,x,0,z,r+.2,b,{cast:false}); vcyl('y',y+h,y+h+1,x,0,z,r*.8,b,{cast:false}); BX(.9,h,.3,b,x+r+.1,y+h/2,z,{cast:false}); }
+const _dust=(c)=>_P(c,.95);
+MAPENV.yard=function(){
+  const E=makeEnv({fx:64,fz:48,blend:22,uvx:24,uvz:24,q:1,sink:.03,h:(x,z,b)=>b*smooth(54,110,Math.abs(z))*(fbm(x*.02+3,z*.02,3)*14+Math.max(0,fbm(x*.008,z*.01+9,3)-.45)*60)});
+  const rail=_P(0x3a3a42,.5,.6), sl=_P(0x4a3a2a,.9);
+  for(const z of [-54,54]) E.run(-300,z,300,z,2.4,sf=>{ for(const dz of [-.75,.75]) BX(600,.14,.16,rail,0,.14,z+dz,{cast:false}); for(let x=-300;x<=300;x+=1.6) BX(.4,.12,3.4,sl,x,.07,z,{cast:false}); });
+  E.scatter(34,72,170,[1.3,1.1],[[1,10,(x,z,y)=>kStack(x,y,z,Math.round(rand()*3)*1.5708),true]],700);
+  E.scatter(7,80,230,[1.3,1.05],[[1,17,(x,z,y)=>kWarehouse(x,y,z,Math.round(rand()*3)*1.5708,22+rand()*10,12+rand()*6),true]],500);
+  for(let i=0;i<5;i++){ const a=i/5*6.283+.5, r=190+rand()*40; E.put(Math.cos(a)*r*1.2,Math.sin(a)*r*.95,31,(x,z,y)=>kGantry(x,y,z,a+1.57),true); }
+  E.scatter(6,95,210,[1.25,1],[[1,9,(x,z,y)=>kTank(x,y,z,6+rand()*2,10+rand()*5),true]],300);
+  for(let i=0;i<5;i++){ const a=rand()*6.283, r=150+rand()*80; E.put(Math.cos(a)*r*1.2,Math.sin(a)*r*.95,7,(x,z,y)=>kChimney(x,y,z,42+rand()*26,3.4),true); }
+  for(let i=0;i<56;i++){ const a=i/56*6.283+rand()*.05, r=280+rand()*150, w=14+rand()*18, d=14+rand()*18, h=36+rand()*rand()*140; E.put(Math.cos(a)*r*1.25,Math.sin(a)*r*.95,Math.max(w,d)*.72+2,(x,z,y)=>kTowerCity(x,y,z,w,d,h),true); }
+  E.scatter(16,72,150,[1.2,1],[[1,2,(x,z,y)=>{ BX(.6,16,.6,_P(0x5a5e68,.6,.4),x,y+8,z,{cast:false}); BX(3.4,1.2,1,glowMat(0xfff0c8,1.6),x,y+16.2,z,{cast:false}); }]],200);
+  E.finish(_G(['#3a3840','#46444c','#5a5660']),(x,z,y,lit)=>{ const k=.6+.34*lit+(hash2(Math.floor(x/7),Math.floor(z/7))-.5)*.12, g=smooth(2,12,y)*.5; return [k*(1-g*.35),k*(1+g*.06),k*(1-g*.3)]; });
+};
+MAPENV.farm=function(){
+  const FIELD=[[1.05,.86,.4],[.5,.74,.32],[.62,.46,.34],[.58,.78,.38],[.95,.74,.32],[.4,.62,.3]], cell=(x,z)=>(hash2(Math.floor(x/46)+9,Math.floor(z/46)+4)*FIELD.length)|0;
+  const E=makeEnv({fx:44,fz:34,blend:34,uvx:20,uvz:20,q:1.2,size:1000,cells:260,sink:.03,h:(x,z,b)=>b*(fbm(x*.012+5,z*.012+1,3)*13+Math.max(0,fbm(x*.005,z*.006+4,3)-.4)*45)});
+  const wood=_P(0x6a4a32,.9), wheat=_P(0xd8b040,.9);
+  for(const z of [-47,47]) E.run(-260,z,260,z,1.6,sf=>{ for(let x=-260;x<=260;x+=3){ const y=sf(x,z); BX(.2,2.2,.2,wood,x,y+.4,z,{cast:false}); if(x<260){ BX(3,.12,.1,wood,x+1.5,y+.95,z,{cast:false}); BX(3,.12,.1,wood,x+1.5,y+.5,z,{cast:false}); } } });
+  E.scatter(6,70,190,[1.15,1],[[1,15,(x,z,y)=>kBarn(x,y,z,Math.round(rand()*3)*1.5708),true]],300);
+  E.scatter(4,80,200,[1.15,1],[[1,8,(x,z,y)=>kHouse(x,y,z,Math.round(rand()*3)*1.5708,[0xe8e0cc,0xd8c8b0,0xcfd8e0][(rand()*3)|0],0x8a3a2a,9,7),true]],300);
+  E.scatter(7,60,240,[1.2,1],[[1,6,(x,z,y)=>kSilo(x,y,z,16+rand()*6),true]],400);
+  E.scatter(3,95,270,[1.2,1],[[1,7,(x,z,y)=>kMill(x,y,z),true]],300);
+  E.scatter(140,52,340,[1.4,1.1],[[2,3.4,(x,z,y)=>kOak(x,y,z,.8+rand()*.8)],[1,3,(x,z,y)=>kPine(x,y,z,.7+rand()*.7)],[2,1.3,(x,z,y)=>kBush(x,y,z,1+rand()*.7,0x5a8a3a)]],1400);
+  E.scatter(34,50,210,[1.25,1],[[1,1.7,(x,z,y)=>vcyl('z',z-.7,z+.7,x,y+.75,0,.78,wheat,{cast:false})]],500);
+  E.scatter(620,48,150,[1.3,1.05],[[1,.9,(x,z,y)=>{ if(FIELD[cell(x,z)][0]<.9) return; for(let k=0;k<6;k++) BX(.07,.9,.07,wheat,x+(rand()-.5)*1.4,y+.45,z+(rand()-.5)*1.4,{cast:false}); }]],3200);
+  E.finish(_G(['#7a7c50','#8a8a5a','#a89a6a']),(x,z,y,lit)=>{ const f=FIELD[cell(x,z)], rows=.9+.12*Math.sin((x*.9+z*.5)*(.4+hash2(Math.floor(x/46),Math.floor(z/46))*.5)), k=(.64+.34*lit)*rows, nr=smooth(0,30,Math.hypot(Math.max(Math.abs(x)-44,0),Math.max(Math.abs(z)-34,0))); return [lerp(.5,f[0],nr)*k,lerp(.62,f[1],nr)*k,lerp(.3,f[2],nr)*k]; });
+};
+MAPENV.nuke=function(){
+  const E=makeEnv({fx:38,fz:30,blend:26,uvx:26,uvz:26,q:1.2,sink:.03,h:(x,z,b)=>b*(fbm(x*.014+2,z*.014+8,3)*9+Math.max(0,fbm(x*.006,z*.007+3,3)-.42)*60)});
+  const rk=[0x9a6a44,0x8a5a3a,0xa87850].map(c=>_P(c,.95)), fence=_P(0x6a6e78,.6,.4), wire=_P(0x8a8e98,.5,.5), wood=_P(0x6a5038,.9);
+  for(const s of [-1,1]) E.run(-260,s*52,260,s*52,1.5,sf=>{ for(let x=-260;x<=260;x+=4){ const y=sf(x,s*52); BX(.14,2.4,.14,fence,x,y+.6,s*52,{cast:false}); if(x<260){ BX(4,.06,.06,wire,x+2,y+1.9,s*52,{cast:false}); BX(4,.06,.06,wire,x+2,y+1.2,s*52,{cast:false}); } } });
+  E.run(-300,-60,-60,-60,1.8,sf=>{ for(let x=-300;x<=-60;x+=24) kPole(x,sf(x,-60),-60,9,0); });
+  E.put(340,-50,80,(x,z,y)=>kMushroom(x,z,1.5),true); E.put(-380,150,70,(x,z,y)=>kMushroom(x,z,1.2),true);
+  E.scatter(36,96,250,[1.35,1.05],[[1,8,(x,z,y)=>kHouse(x,y,z,Math.round(rand()*3)*1.5708,[0xe8e0cc,0xcfd8e0,0xe0c8b8][(rand()*3)|0],0x8a3a2a,7.6,6),true]],600);
+  E.scatter(5,130,260,[1.3,1],[[1,8,(x,z,y)=>kWatchTower(x,y,z,30+rand()*10),true]],250); E.scatter(7,100,230,[1.3,1],[[1,8,(x,z,y)=>kBunker(x,y,z,Math.round(rand()*3)*1.5708),true]],250);
+  E.scatter(250,45,260,[1.4,1.1],[[5,1.6,(x,z,y)=>kBush(x,y,z,.7+rand()*.8,0x6a7a3a)],[2,1.3,(x,z,y)=>{ const h=2.6+rand()*2.2, w=_P(0x6a5038), g=_P(0x6a7a3a); BX(.4,h,.4,w,x,y+h/2,z,{cast:false}); BX(.35,1.2,.35,w,x+.5,y+h*.7,z,{cast:false}); BX(.9,.9,.9,g,x,y+h+.3,z,{cast:false}); BX(.8,.8,.8,g,x+.55,y+h*.7+.9,z,{cast:false}); }],[3,3,(x,z,y)=>kRocks(x,y,z,1,rk)]],2200);
+  E.finish(_G(['#9a7c50','#a8885a','#b89868']),(x,z,y,lit)=>{ const k=.66+.36*lit, r=smooth(5,26,y), n=hash2(Math.floor(x/9),Math.floor(z/9))*.1; return [k*(1.1+r*.12)+n,k*(.86-r*.14)+n,k*(.62-r*.2)]; });
+};
+MAPENV.rust=function(){
+  const E=makeEnv({fx:61,fz:41,blend:30,uvx:30,uvz:20,q:1.5,size:900,cells:240,sink:.14,h:(x,z,b)=>{ const d=Math.hypot(Math.max(Math.abs(x)-61,0),Math.max(Math.abs(z)-41,0)), r1=1-Math.abs(fbm(x*.010+5,z*.015+2,3)*2-1), r2=1-Math.abs(fbm(x*.03+11,z*.04+7,2)*2-1), far=smooth(110,330,d); return b*(r1*r1*15+r2*r2*3.5+fbm(x*.05,z*.05,2)*2)+far*32*r1; }});
+  const rk=[0xb8844a,0xa8743e,0xc8945a,0x98643a].map(c=>_P(c,.95));
+  E.run(-310,-30,-70,-30+0,1.8,sf=>{ for(let x=-310;x<=-70;x+=20) kPole(x,sf(x,-30),-30,9,0); });
+  E.scatter(14,255,380,[1.1,.9],[[1,0,0]].map(e=>[1,22,(x,z,y)=>kButte(x,y,z,14+rand()*20,14+rand()*16),true]),240);
+  E.scatter(6,75,200,[1.3,1],[[1,5,(x,z,y)=>kRuin(x,y,z),true]],200); E.scatter(3,85,210,[1.3,1],[[1,5,(x,z,y)=>kWreck(x,y,z,rand()*6),true]],200);
+  E.scatter(340,66,260,[1.35,1],[[3,1.6,(x,z,y)=>kCactus(x,y,z)],[2,1.5,(x,z,y)=>kDeadTree(x,y,z)],[3,3.4,(x,z,y)=>kRocks(x,y,z,1,rk)],[1,1.2,(x,z,y)=>kBones(x,y,z)],[2,1.2,(x,z,y)=>kTumble(x,y,z)]],3200);
+  E.finish(_G(['#c49a62','#d4ae74','#dcb87e']),(x,z,y,lit)=>{ const rip=Math.sin(x*.9+z*.35+fbm(x*.1,z*.1,2)*6)*.03, k=.78+.36*lit+rip; return [k*1.04,k*.95,k*.8]; });
+};
+MAPENV.town=function(){
+  // the town keeps the shared green valley, so only add things where the ground is already flat and clear of the street's buildings
+  const flatOK=(x,z,r)=>{ const h0=terrainH(x,z); if(Math.abs(h0)>1.4) return false; for(const [dx,dz] of [[r,0],[-r,0],[0,r],[0,-r]]) if(Math.abs(terrainH(x+dx,z+dz)-h0)>.7) return false; return true; };
+  const E={occ:[]}; const colHit=(x,z,r)=>{ for(const c of COL){ if(x>c.minX-r&&x<c.maxX+r&&z>c.minZ-r&&z<c.maxZ+r) return true; } return false; };
+  const put=(x,z,r,fn)=>{ if(Math.abs(x)<66&&Math.abs(z)<34) return false; if(!flatOK(x,z,r)||colHit(x,z,r)) return false; for(const q of E.occ) if(Math.hypot(q[0]-x,q[1]-z)<q[2]+r) return false; E.occ.push([x,z,r]); fn(x,terrainH(x,z),z); return true; };
+  const scatter=(n,r0,r1,asp,list,tries)=>{ let placed=0,t=0; const tot=list.reduce((a,e)=>a+e[0],0); while(placed<n&&t<(tries||n*18)){ t++; const a=rand()*6.283, r=r0+rand()*(r1-r0), x=Math.cos(a)*r*asp[0], z=Math.sin(a)*r*asp[1]; let k=rand()*tot, e=list[0]; for(const c of list){ k-=c[0]; if(k<=0){ e=c; break; } } if(put(x,z,e[1],e[2])) placed++; } };
+  scatter(9,95,230,[1.5,1],[[1,8,(x,y,z)=>kHouse(x,y,z,Math.round(rand()*3)*1.5708,[0xd8c8b0,0xcfd8e0,0xe0d0a8,0xb8c8b0][(rand()*4)|0],[0x8a3a2a,0x4a5058,0x6a4a38][(rand()*3)|0],8.4,6.6)]],900);
+  put(150,-60,10,(x,y,z)=>kChurch(x,y,z,.3)); put(-140,70,10,(x,y,z)=>kElevator(x,y,z)); put(190,70,6,(x,y,z)=>kBillboard(x,y,z,.2,0x2a5a8a)); put(-190,-60,6,(x,y,z)=>kBillboard(x,y,z,-.2,0xa83a26));
+  scatter(70,80,260,[1.5,1.1],[[3,3.4,(x,y,z)=>kOak(x,y,z,.8+rand()*.8)],[2,3,(x,y,z)=>kPine(x,y,z,.7+rand()*.7)],[2,1.3,(x,y,z)=>kBush(x,y,z,1+rand()*.7)]],1200);
+};
+MAPENV.ship=function(){
+  const E={occ:[]}; const SEA=-6.7;
+  const put=(x,z,r,fn)=>{ if(Math.abs(x)<150&&Math.abs(z)<110) return false; for(const q of E.occ) if(Math.hypot(q[0]-x,q[1]-z)<q[2]+r) return false; E.occ.push([x,z,r]); fn(x,SEA,z); return true; };
+  const island=(x,y,z,w,h)=>{ const sand=_P(0xd8c490,.95), rock=_P(0x6a6a5a,.95), grass=_P(0x4a7a3a,.9); BX(w*1.25,3,w*1.1,sand,x,y+.5,z,{cast:false}); BX(w,3,w*.9,sand,x,y+2.5,z,{cast:false}); for(let k=0;k<4;k++){ const f=1-k*.2; BX(w*.8*f,h/4,w*.7*f,k<2?rock:grass,x+(k%2?.04:-.04)*w,y+3+h/4*k+h/8,z,{cast:false}); } for(let i=0;i<Math.round(w/4);i++){ const a=rand()*6.28, rr=w*.22*rand(), tx=x+Math.cos(a)*rr, tz=z+Math.sin(a)*rr; kPine(tx,y+3+h*.25,tz,.8+rand()*.5); } };
+  const lamp=(x,y,z)=>{ const c=_P(0xc42a1e,.7), w=_P(0xf0ece0,.7); BX(2.4,2.4,2.4,w,x,y+1.2,z,{cast:false}); BX(1.6,1.6,1.6,c,x,y+3,z,{cast:false}); BX(.4,2.6,.4,_P(0x5a5e68),x,y+5,z,{cast:false}); BX(.8,.8,.8,glowMat(0xffe8a0,1.6),x,y+6.4,z,{cast:false}); };
+  let t=0, n=0; while(n<10&&t++<200){ const a=rand()*6.283, r=300+rand()*260; if(put(Math.cos(a)*r*1.3,Math.sin(a)*r*.9,60,(x,y,z)=>island(x,y,z,50+rand()*60,18+rand()*26))) n++; }
+  put(430,-190,14,(x,y,z)=>kLighthouse(x,y,z)); put(-470,160,40,(x,y,z)=>kOilRig(x,y,z)); put(380,230,40,(x,y,z)=>kOilRig(x,y,z));
+  put(-300,-320,50,(x,y,z)=>kFarShip(x,y,z,.35)); put(260,320,50,(x,y,z)=>kFarShip(x,y,z,-.4)); put(-520,-80,50,(x,y,z)=>kFarShip(x,y,z,1.2));
+  t=0; n=0; while(n<10&&t++<300){ const a=rand()*6.283, r=170+rand()*90; if(put(Math.cos(a)*r*1.3,Math.sin(a)*r*.9,6,(x,y,z)=>lamp(x,y,z))) n++; }
+};
+
 MAPDEFS.rust={name:'Rust',desc:'A cramped oil yard in the middle of nowhere: a central derrick with a catwalk, container walls and rooftops, with sand dunes to the horizon.',desert:true,noTrees:[[-500,-500,500,500]],aw:28,ad:20,spawn:[[-25,0],[25,0]],ground:'#c49a62',tint:[1.5,1.1,.66],light:{nl:.3,expN:.92,hemiN:1.2},build(){
   const gT=pxTex(draw(64,64,(x,p)=>{ const SAND=['#c49a62','#cca46a','#d4ae74','#dcb87e','#bc925c'];
     for(let j=0;j<64;j++) for(let i=0;i<64;i++){ const n=tfbm(i/8,j/8,8,8,3), g=hash2(i,j); let c=pal(SAND,clamp(n*1.1-.05+(g-.5)*.22,0,.999));
@@ -3815,7 +3856,7 @@ MAPDEFS.rust={name:'Rust',desc:'A cramped oil yard in the middle of nowhere: a c
   const Y=MT.yellowMetal, C=[0xa83a26,0xc88a1a,0x2a5a8a,0x8a5a3a,0x3a7a44,0xd8d0c6,0x6a3a26];
   const signMat=std({map:pxTex(draw(64,24,(x,p)=>{ x.fillStyle='#b8501e'; x.fillRect(0,0,64,24); x.fillStyle='#f0d8a0'; x.fillRect(1,1,62,1); x.fillRect(1,22,62,1); x.fillRect(1,1,1,22); x.fillRect(62,1,1,22); crispText(x,'RUST',32,12,'bold 16px monospace','#fff0c8'); })),roughness:.8});
   const sandbag=plain(0xc8b078,.95), pipeM=plain(0x8a5a3a,.55,.5);
-  plane(120,80,sand,0,.02,0,4); nog(-60,-40,60,40); rustDesert(gT);
+  plane(120,80,sand,0,.02,0,4); nog(-60,-40,60,40);
   // --- raised concrete sidewalks along both long edges: kerb, joints, drains and painted kerb stripes give the floor some depth ---
   const conc=std({map:TX.side,normalMap:TX.sideN,color:0xf4e0b4,roughness:.92}), kerb=std({map:TX.side,color:0xe8d4a8,roughness:.9,wuv:.5});
   for(const sg of [-1,1]){ const zc=sg*17.75, zk=sg*15.55;
@@ -4770,7 +4811,7 @@ async function loadMap(id,progress){
     SR=new THREE.Group(); M.root.add(SR);
     if(progress) await progress(.3,'Building '+M.def.name);
     if(id!=='town') rand=rng(1337+[...id].reduce((a,c)=>a*31+c.charCodeAt(0)|0,7)); // same look every time, whatever order maps get built in
-    M.def.build(); _dp.length=0; if(MAPDECOR[id]) MAPDECOR[id]();
+    M.def.build(); _dp.length=0; if(MAPDECOR[id]) MAPDECOR[id](); if(MAPENV[id]) MAPENV[id]();
     { const seen=new Set(); M.COL=M.COL.filter(o=>{ const k=[o.x,o.z,o.w,o.d,o.h,o.y0,o.nb?1:0].map(v=>Math.round(v*50)).join(','); if(seen.has(k)) return false; seen.add(k); return true; }); COL=M.COL; } // drop exact duplicate colliders
     const mySR=SR; if(progress) await progress(.7,'Baking '+M.def.name);
     bake(mySR,M.root);
