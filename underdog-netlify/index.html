@@ -4204,6 +4204,15 @@ MAPENV.town=function(){
   MAPDEFS.town.noTrees=zones;
 };
 MAPENV.ship=function(){ /* open ocean only: no scenery at all */ };
+// SCENERY: 'flat' = only the maps themselves on plain flat ground to the horizon (current), 'full' = the whole outside world, 'void' = nothing at all around the map
+const SCENERY='flat';
+if(SCENERY!=='full'){ MAPDEFS.town.land=true; MAPDEFS.town.noTrees=[[-500,-500,500,500]]; }
+const FLATENV={town:{fx:60,fz:30,mat:'lawn',col:[.98,1,.82]},yard:{fx:64,fz:48,tex:()=>_T4(['#3a3840','#46444c','#5a5660','#4a464e'],'#6a6670','#2a282e',true),col:[.9,.9,.95]},
+  farm:{fx:44,fz:34,mat:'lawn',col:[.95,1,.8]},nuke:{fx:38,fz:30,tex:()=>_T4(['#a8885a','#b89868','#c8a876','#98784c'],'#d8b888','#7a5a38',true),col:[1.1,.86,.62]},
+  rust:{fx:61,fz:41,tex:()=>_T4(['#c49a62','#cca46a','#d4ae74','#dcb87e','#bc925c'],'#e8cc98','#9c7a50',false),col:[1.04,.95,.8]}};
+function flatEnv(id){ const c=FLATENV[id]; if(!c) return; const E=makeEnv({fx:c.fx,fz:c.fz,blend:10,uvx:c.mat?1:4,uvz:c.mat?1:4,q:1,size:2400,cells:8,sink:.03,h:()=>0});
+  let tex; if(c.mat){ const lm=TX.lawn.clone(), ln=TX.lawnN.clone(); for(const t of [lm,ln]){ t.repeat.set(.25,.25); t.needsUpdate=true; } tex=std({map:lm,normalMap:ln,vertexColors:true,flatShading:true,roughness:.97}); } else tex=c.tex();
+  E.finish(tex,(x,z,y,lit)=>{ const k=.64+.36*lit; return [c.col[0]*k,c.col[1]*k,c.col[2]*k]; }); }
 
 MAPDEFS.rust={name:'Rust',desc:'A cramped oil yard in the middle of nowhere: a central derrick with a catwalk, container walls and rooftops, with sand dunes to the horizon.',desert:true,noTrees:[[-500,-500,500,500]],aw:28,ad:20,spawn:[[-25,0],[25,0]],ground:'#c49a62',tint:[1.5,1.1,.66],light:{nl:.3,expN:.92,hemiN:1.2},build(){
   const gT=pxTex(draw(64,64,(x,p)=>{ const SAND=['#c49a62','#cca46a','#d4ae74','#dcb87e','#bc925c'];
@@ -5169,7 +5178,7 @@ async function loadMap(id,progress){
     SR=new THREE.Group(); M.root.add(SR);
     if(progress) await progress(.3,'Building '+M.def.name);
     if(id!=='town') rand=rng(1337+[...id].reduce((a,c)=>a*31+c.charCodeAt(0)|0,7)); // same look every time, whatever order maps get built in
-    M.def.build(); _dp.length=0; if(MAPDECOR[id]) MAPDECOR[id](); if(MAPENV[id]) MAPENV[id]();
+    M.def.build(); _dp.length=0; if(MAPDECOR[id]) MAPDECOR[id](); if(SCENERY==='full'){ if(MAPENV[id]) MAPENV[id](); } else if(SCENERY==='flat') flatEnv(id);
     { const seen=new Set(); M.COL=M.COL.filter(o=>{ const k=[o.x,o.z,o.w,o.d,o.h,o.y0,o.nb?1:0].map(v=>Math.round(v*50)).join(','); if(seen.has(k)) return false; seen.add(k); return true; }); COL=M.COL; } // drop exact duplicate colliders
     const mySR=SR; if(progress) await progress(.7,'Baking '+M.def.name);
     bake(mySR,M.root);
