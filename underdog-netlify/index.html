@@ -94,7 +94,7 @@ button{cursor:var(--curP)}
 
 #menu .mpane{padding-bottom:64px}
 #lan{overflow:auto;justify-content:flex-start;padding-top:calc(5vh + 8px);background:rgba(14,8,18,.94);gap:12px}
-#lan [hidden]{display:none!important} .lanbox{display:flex;flex-direction:column;gap:8px;align-items:center;padding:14px;width:min(640px,92vw);box-sizing:border-box}
+#lan [hidden]{display:none!important} .roomcode{font-size:64px;letter-spacing:12px;color:var(--gold);font-weight:700;text-shadow:0 4px 0 #140c12} .roomin{text-align:center;text-transform:uppercase;font-size:30px;letter-spacing:6px;max-width:300px} .lanbox{display:flex;flex-direction:column;gap:8px;align-items:center;padding:14px;width:min(640px,92vw);box-sizing:border-box}
 .lanbox textarea{width:100%;height:84px;resize:none;font:13px monospace;color:var(--ink);background:none;border:9px solid transparent;border-image:var(--fSlot) 3 fill / 9px stretch;image-rendering:pixelated;box-sizing:border-box;outline:none;word-break:break-all} .lanbox textarea:focus{border-image-source:var(--fGoldSlot)}
 #lanBar{position:absolute;top:8px;right:8px;z-index:9;display:none} #lanBar.show{display:block}
 #mrScopeBox{position:absolute;inset:0;pointer-events:none;z-index:6} #mrScopeBox .h-scope{z-index:1}
@@ -514,8 +514,12 @@ button:focus-visible{outline:3px solid #fff;outline-offset:6px}
 
   <div id="lan" class="overlay">
     <h2 class="o mtitle">LAN game</h2>
-    <p class="s">Play 1v1 against a friend on the same Wi-Fi or network. One of you hosts, the other joins, and you swap two short codes (message them or read them out). No account or server needed.</p>
+    <p class="s">Play 1v1 against a friend. One of you hosts and gets a short room code, the other picks Join and types it in. Best on the same Wi-Fi or network.</p>
     <div class="row"><button class="pbtn" id="lanHost">Host a game</button><button class="pbtn" id="lanJoin">Join a game</button><button class="pbtn ghost" id="lanBack">Back</button></div>
+    <div id="lanRoomBox" class="frame lanbox" hidden><b class="o">Your room code</b><div id="lanRoomCode" class="roomcode">------</div><button class="btn2" id="lanCopyRoom">Copy</button><span class="s">Tell your friend this code. They pick Join a game and type it in.</span></div>
+    <div id="lanJoinRoomBox" class="frame lanbox" hidden><b class="o">Type the room code</b><input id="lanRoomIn" class="tin roomin" maxlength="6" placeholder="ABC123" autocomplete="off" spellcheck="false"><button class="pbtn" id="lanRoomGo">Join</button></div>
+    <div class="row"><button class="btn2" id="lanManual">No internet? Connect with manual codes</button></div>
+    <div id="lanManualBox" class="row" hidden><button class="btn2" id="lanHostM">Host with codes</button><button class="btn2" id="lanJoinM">Join with codes</button></div>
     <div id="lanHostBox" class="frame lanbox" hidden>
       <b class="o">1. Send this code to your friend</b><textarea id="lanOffer" readonly spellcheck="false"></textarea><button class="btn2" id="lanCopyOffer">Copy</button>
       <b class="o">2. Paste the reply code they send back</b><textarea id="lanAnswerIn" spellcheck="false"></textarea><button class="pbtn" id="lanConnect">Connect</button>
@@ -6737,6 +6741,18 @@ const netGather=pc=>new Promise(res=>{ if(pc.iceGatheringState==='complete') ret
 const netR=o=>{ try{ if(NET.r&&NET.r.readyState==='open') NET.r.send(JSON.stringify(o)); }catch(e){} };
 const netU=o=>{ try{ if(NET.u&&NET.u.readyState==='open') NET.u.send(JSON.stringify(o)); }catch(e){} };
 function lanStatus(t){ const e=$('#lanStatus'); if(e) e.textContent=t; }
+// room codes: the two codes are swapped through a public message relay under a short room name, so players only type six characters
+const sigBase=()=>window.__SIG||localStorage.getItem('udSig')||'https://ntfy.sh';
+const ROOMCH='ABCDEFGHJKMNPQRSTUVWXYZ23456789', newRoom=()=>Array.from({length:6},()=>ROOMCH[(Math.random()*ROOMCH.length)|0]).join('');
+const sigTopic=r=>'udg-'+r.toLowerCase();
+function sigPub(room,obj){ return fetch(sigBase()+'/'+sigTopic(room),{method:'POST',body:JSON.stringify(obj)}); }
+function sigSub(room,fn){ try{ if(NET.es) NET.es.close(); }catch(e){} const es=new EventSource(sigBase()+'/'+sigTopic(room)+'/sse?since=all'); NET.es=es; es.onmessage=e=>{ try{ const m=JSON.parse(e.data); if(m.event==='message') fn(JSON.parse(m.message)); }catch(err){} }; return es; }
+async function lanHostRoom(){ const room=newRoom(), code=await netHostCreate(); NET.room=room; NET.gotAns=false;
+  sigSub(room,async m=>{ if(m.k==='answer'&&!NET.gotAns){ NET.gotAns=true; lanStatus('Friend found, connecting...'); try{ await netHostAccept(m.c); }catch(e){ NET.gotAns=false; lanStatus('That connection did not work. Ask them to try again.'); } } });
+  await sigPub(room,{k:'offer',c:code}); return room; }
+async function lanJoinRoom(room){ NET.gotOffer=false; NET.room=room; let tm=null;
+  sigSub(room,async m=>{ if(m.k==='offer'&&!NET.gotOffer){ NET.gotOffer=true; clearTimeout(tm); lanStatus('Room found, connecting...'); try{ const rep=await netJoin(m.c); await sigPub(room,{k:'answer',c:rep}); }catch(e){ lanStatus('Could not connect: '+e.message); } } });
+  tm=setTimeout(()=>{ if(!NET.gotOffer){ try{ NET.es&&NET.es.close(); }catch(e){} lanStatus('No room with that code. Check it with your friend.'); } },9000); }
 function netPC(){ netClose(true); const pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]}); NET.pc=pc;
   pc.onconnectionstatechange=()=>{ const st=pc.connectionState; if(st==='failed'||st==='closed'||st==='disconnected') setTimeout(()=>{ if(NET.pc===pc&&pc.connectionState!=='connected') netLost(); },2000); }; return pc; }
 function netWire(ch){ NET[ch.label]=ch; ch.onmessage=e=>{ try{ netMsg(JSON.parse(e.data)); }catch(err){} };
@@ -6745,15 +6761,15 @@ async function netHostCreate(){ const pc=netPC(); NET.role='host'; netWire(pc.cr
   await pc.setLocalDescription(await pc.createOffer()); await netGather(pc); return netEnc({d:pc.localDescription.toJSON?pc.localDescription.toJSON():pc.localDescription}); }
 async function netHostAccept(code){ const o=await netDec(code); await NET.pc.setRemoteDescription(o.d); }
 async function netJoin(code){ const o=await netDec(code), pc=netPC(); NET.role='client'; pc.ondatachannel=e=>netWire(e.channel); await pc.setRemoteDescription(o.d); await pc.setLocalDescription(await pc.createAnswer()); await netGather(pc); return netEnc({d:pc.localDescription.toJSON?pc.localDescription.toJSON():pc.localDescription}); }
-function netClose(keepRole){ try{ if(NET.u) NET.u.close(); if(NET.r) NET.r.close(); if(NET.pc) NET.pc.close(); }catch(e){} NET.u=NET.r=NET.pc=null; NET.on=false; if(!keepRole){ NET.role=null; NET.cl=false; } }
-function netOpen(){ NET.on=true; NET.cl=NET.role==='client'; NET.snaps=[]; NET.seenInit=false; NET.inp=null;
+function netClose(keepRole){ try{ if(NET.es) NET.es.close(); }catch(e){} NET.es=null; try{ if(NET.u) NET.u.close(); if(NET.r) NET.r.close(); if(NET.pc) NET.pc.close(); }catch(e){} NET.u=NET.r=NET.pc=null; NET.on=false; if(!keepRole){ NET.role=null; NET.cl=false; } }
+function netOpen(){ try{ if(NET.es) NET.es.close(); }catch(e){} NET.es=null; NET.on=true; NET.cl=NET.role==='client'; NET.snaps=[]; NET.seenInit=false; NET.inp=null;
   if(NET.role==='host'){ lanStatus('Connected! Pick your map in Play if you like, then start.'); $('#lanStart').hidden=false; } else lanStatus('Connected! Waiting for the host to start the match...'); }
 function netLost(){ if(!NET.on&&!NET.pc) return; const had=NET.on; netClose(); if(had){ toast('LAN connection lost'); if(G.state==='lanc'||G.mode==='lan') toMenu(); else lanStatus('Connection lost.'); } else lanStatus('Could not connect. Check the codes and try again.'); }
 function lanLeave(quiet){ if(NET.on&&NET.role==='host') netR({t:'bye'}); if(NET.on&&NET.role==='client') netR({t:'bye'});
   for(const m of NET.tr){ scene.remove(m); } NET.tr=[]; B.remote=false; B.mirror=false;
   if(G.mode==='lan'){ G.mode=NET.prevMode||'bot'; syncSeg('#modeSeg',G.mode); if(NET.restore){ Object.assign(G,NET.restore); NET.restore=null; } }
   if(G.state==='lanc') G.state='menu'; $('#lanBar').classList.remove('show'); $('#againBtn').hidden=false; netClose(); $('#lanStart').hidden=true; NET.pickOpen=false; }
-function openLan(){ showOverlay('#lan'); $('#lanHostBox').hidden=true; $('#lanJoinBox').hidden=true; $('#lanStart').hidden=!(NET.on&&NET.role==='host'); lanStatus(NET.on?'Connected.':''); }
+function openLan(){ showOverlay('#lan'); for(const id of ['lanRoomBox','lanJoinRoomBox','lanHostBox','lanJoinBox','lanManualBox']) $('#'+id).hidden=true; $('#lanStart').hidden=!(NET.on&&NET.role==='host'); lanStatus(NET.on?'Connected.':''); }
 // ---- host: send snapshots, take the guest's controls ----
 const r3=v=>Math.round(v*1000)/1000;
 const lanFS=f=>[r3(f.x),r3(f.y),r3(f.z),r3(f.yaw),r3(f.pitch),f.dead?1:0,r3(f.deadT||0),r3(f.vx||0),r3(f.vz||0),Math.round(f.hp||0),f.shotN||0,f.reloadT>0?r3(1-f.reloadT/Math.max(.01,f.stats.reload)):-1,f.blockT>0?1:0,f.slideT>0?1:0,r3(f.scopeK||0),f.onGround?1:0,r3(f.vy||0),f.wallT>0?1:0,r3(f.wallNX||0),r3(f.wallNZ||0),f.wjT>0?r3(f.wjT):0,f.ladder?1:0,f.ammo|0,f.score|0,r3(Math.max(0,f.blockCd||0)),r3(f.flash||0)];
@@ -6833,10 +6849,18 @@ function netMsg(m){
 (function(){ const cp=(el,btn)=>{ btn.addEventListener('click',()=>{ el.select(); try{ navigator.clipboard.writeText(el.value); }catch(e){ document.execCommand('copy'); } btn.textContent='Copied'; setTimeout(()=>btn.textContent='Copy',1200); }); };
   const stop=el=>el.addEventListener('keydown',e=>e.stopPropagation());
   for(const id of ['lanOffer','lanAnswerIn','lanOfferIn','lanReply']) stop($('#'+id)); cp($('#lanOffer'),$('#lanCopyOffer')); cp($('#lanReply'),$('#lanCopyReply'));
-  $('#lanHost').addEventListener('click',async()=>{ lanLeave(true); $('#lanHostBox').hidden=false; $('#lanJoinBox').hidden=true; $('#lanOffer').value=''; lanStatus('Making your code...'); try{ $('#lanOffer').value=await netHostCreate(); lanStatus('Send this code to your friend, then paste their reply below.'); }catch(e){ lanStatus('Could not make a code: '+e.message); } });
+  $('#lanHostM').addEventListener('click',async()=>{ lanLeave(true); $('#lanRoomBox').hidden=true; $('#lanJoinRoomBox').hidden=true; $('#lanHostBox').hidden=false; $('#lanJoinBox').hidden=true; $('#lanOffer').value=''; lanStatus('Making your code...'); try{ $('#lanOffer').value=await netHostCreate(); lanStatus('Send this code to your friend, then paste their reply below.'); }catch(e){ lanStatus('Could not make a code: '+e.message); } });
   $('#lanConnect').addEventListener('click',async()=>{ try{ lanStatus('Connecting...'); await netHostAccept($('#lanAnswerIn').value); }catch(e){ lanStatus('That reply code did not work. Ask for it again.'); } });
-  $('#lanJoin').addEventListener('click',()=>{ lanLeave(true); $('#lanJoinBox').hidden=false; $('#lanHostBox').hidden=true; $('#lanReply').value=''; lanStatus('Paste the host\'s code to start.'); });
+  $('#lanJoinM').addEventListener('click',()=>{ lanLeave(true); $('#lanRoomBox').hidden=true; $('#lanJoinRoomBox').hidden=true; $('#lanJoinBox').hidden=false; $('#lanHostBox').hidden=true; $('#lanReply').value=''; lanStatus('Paste the host\'s code to start.'); });
   $('#lanMakeReply').addEventListener('click',async()=>{ try{ lanStatus('Making your reply...'); $('#lanReply').value=await netJoin($('#lanOfferIn').value); lanStatus('Send this reply to the host. This screen will say Connected when they press Connect.'); }catch(e){ lanStatus('That code did not work. Ask the host for a fresh one.'); } });
+  const hideAll=()=>{ for(const id of ['lanRoomBox','lanJoinRoomBox','lanHostBox','lanJoinBox']) $('#'+id).hidden=true; };
+  stop($('#lanRoomIn'));
+  $('#lanHost').addEventListener('click',async()=>{ lanLeave(true); hideAll(); $('#lanRoomBox').hidden=false; $('#lanRoomCode').textContent='......'; lanStatus('Making your room...'); try{ const r=await lanHostRoom(); $('#lanRoomCode').textContent=r; lanStatus('Waiting for your friend to join...'); }catch(e){ lanStatus('Could not make a room ('+e.message+'). Try the manual codes below.'); } });
+  $('#lanJoin').addEventListener('click',()=>{ lanLeave(true); hideAll(); $('#lanJoinRoomBox').hidden=false; $('#lanRoomIn').value=''; $('#lanRoomIn').focus(); lanStatus('Type the room code your friend sees.'); });
+  $('#lanRoomGo').addEventListener('click',async()=>{ const r=($('#lanRoomIn').value||'').toUpperCase().replace(/[^A-Z0-9]/g,''); if(r.length<6){ lanStatus('Room codes are 6 characters.'); return; } lanStatus('Looking for the room...'); try{ await lanJoinRoom(r); }catch(e){ lanStatus('Could not connect ('+e.message+').'); } });
+  $('#lanRoomIn').addEventListener('keydown',e=>{ if(e.key==='Enter') $('#lanRoomGo').click(); });
+  $('#lanCopyRoom').addEventListener('click',()=>{ try{ navigator.clipboard.writeText($('#lanRoomCode').textContent); }catch(e){} $('#lanCopyRoom').textContent='Copied'; setTimeout(()=>$('#lanCopyRoom').textContent='Copy',1200); });
+  $('#lanManual').addEventListener('click',()=>{ $('#lanManualBox').hidden=!$('#lanManualBox').hidden; });
   $('#lanStart').addEventListener('click',()=>lanHostStart());
   $('#lanBack').addEventListener('click',()=>{ if(!NET.on) lanLeave(true); showOverlay('#menu'); });
   $('#lanLeave').addEventListener('click',()=>{ lanLeave(true); toMenu(); }); })();
