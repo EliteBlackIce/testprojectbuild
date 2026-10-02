@@ -4210,6 +4210,13 @@ if(SCENERY!=='full'){ MAPDEFS.town.land=true; MAPDEFS.town.noTrees=[[-500,-500,5
 const FLATENV={town:{fx:60,fz:30,mat:'lawn',col:[.98,1,.82]},yard:{fx:64,fz:48,tex:()=>_T4(['#3a3840','#46444c','#5a5660','#4a464e'],'#6a6670','#2a282e',true),col:[.9,.9,.95]},
   farm:{fx:44,fz:34,mat:'lawn',col:[.95,1,.8]},nuke:{fx:38,fz:30,tex:()=>_T4(['#a8885a','#b89868','#c8a876','#98784c'],'#d8b888','#7a5a38',true),col:[1.1,.86,.62]},
   rust:{fx:61,fz:41,tex:()=>_T4(['#c49a62','#cca46a','#d4ae74','#dcb87e','#bc925c'],'#e8cc98','#9c7a50',false),col:[1.04,.95,.8]}};
+// strip everything the map built outside its play box (props, cars, buildings, trees, tufts...) so only the playable box remains
+const SCRUB_MARGIN=3;
+function scrubOutside(srRoot,mapRoot,def){ const aw=(def.aw||30)+SCRUB_MARGIN, ad=(def.ad||14)+SCRUB_MARGIN; srRoot.updateMatrixWorld(true); mapRoot.updateMatrixWorld(true); const bb=new THREE.Box3(), c=new THREE.Vector3(), kill=[]; let n=0;
+  const test=(o)=>{ if(o.isInstancedMesh){ const m=new THREE.Matrix4(), v=new THREE.Vector3(), q=new THREE.Quaternion(), sc=new THREE.Vector3(), z=new THREE.Matrix4().makeScale(0,0,0); for(let i=0;i<o.count;i++){ o.getMatrixAt(i,m); m.premultiply(o.matrixWorld); v.setFromMatrixPosition(m); if(Math.abs(v.x)>aw||Math.abs(v.z)>ad){ o.setMatrixAt(i,z); n++; } } o.instanceMatrix.needsUpdate=true; return; }
+    if(!o.isMesh||o.userData.noBake) return; bb.setFromObject(o); bb.getCenter(c); if(Math.abs(c.x)>aw||Math.abs(c.z)>ad) kill.push(o); };
+  srRoot.traverse(test); if(mapRoot!==srRoot) mapRoot.traverse(o=>{ if(o.isInstancedMesh) test(o); });
+  for(const o of kill){ if(o.parent) o.parent.remove(o); n++; } return n; }
 function flatEnv(id){ const c=FLATENV[id]; if(!c) return; const E=makeEnv({fx:c.fx,fz:c.fz,blend:10,uvx:c.mat?1:4,uvz:c.mat?1:4,q:1,size:2400,cells:8,sink:.03,h:()=>0});
   let tex; if(c.mat){ const lm=TX.lawn.clone(), ln=TX.lawnN.clone(); for(const t of [lm,ln]){ t.repeat.set(.25,.25); t.needsUpdate=true; } tex=std({map:lm,normalMap:ln,vertexColors:true,flatShading:true,roughness:.97}); } else tex=c.tex();
   E.finish(tex,(x,z,y,lit)=>{ const k=.64+.36*lit; return [c.col[0]*k,c.col[1]*k,c.col[2]*k]; }); }
@@ -5178,7 +5185,7 @@ async function loadMap(id,progress){
     SR=new THREE.Group(); M.root.add(SR);
     if(progress) await progress(.3,'Building '+M.def.name);
     if(id!=='town') rand=rng(1337+[...id].reduce((a,c)=>a*31+c.charCodeAt(0)|0,7)); // same look every time, whatever order maps get built in
-    M.def.build(); _dp.length=0; if(MAPDECOR[id]) MAPDECOR[id](); if(SCENERY==='full'){ if(MAPENV[id]) MAPENV[id](); } else if(SCENERY==='flat') flatEnv(id);
+    M.def.build(); _dp.length=0; if(MAPDECOR[id]) MAPDECOR[id](); if(SCENERY==='full'){ if(MAPENV[id]) MAPENV[id](); } else { if(id!=='ship') scrubOutside(SR,M.root,M.def); if(SCENERY==='flat') flatEnv(id); }
     { const seen=new Set(); M.COL=M.COL.filter(o=>{ const k=[o.x,o.z,o.w,o.d,o.h,o.y0,o.nb?1:0].map(v=>Math.round(v*50)).join(','); if(seen.has(k)) return false; seen.add(k); return true; }); COL=M.COL; } // drop exact duplicate colliders
     const mySR=SR; if(progress) await progress(.7,'Baking '+M.def.name);
     bake(mySR,M.root);

@@ -79,3 +79,10 @@ The play areas themselves are unchanged. Outside them every map now has real dep
 - **Rust:** layered mesas and arches, an oil field of pumpjacks and derricks, a tank farm and flare stack, a shanty camp with fire barrels, a junkyard, a tanker train on a rail spur, pipelines and a dry riverbed.
 - **Sunset Town:** the main street continues with a downtown of lettered shops, a church and school to the east, fenced houses to the west, street lamps and a pole line, and levelled lots so nothing floats on the hills.
 - **Cargo Ship:** open ocean, nothing else.
+
+### Scenery switch
+
+`SCENERY` (in `index.html`, next to `MAPENV.ship`) controls the world outside each map:
+- `'flat'` (current): only the playable box, on plain flat ground to the horizon. Everything outside the box is removed, including the props, buildings, cars and trees the maps themselves build there (`scrubOutside`, margin `SCRUB_MARGIN` m).
+- `'void'`: same but no ground at all.
+- `'full'`: the full detailed outside world, and nothing is removed.
