@@ -6817,7 +6817,7 @@ function netMsg(m){
     case 'choose': if(G.state==='pick'&&G.picker&&G.picker.remote) choose(m.i|0); break;
     case 'init': lanClientInit(m); break;
     case 'meta': lanApplyMeta(m); break;
-    case 'snap': NET.snaps.push({rt:performance.now(),s:m.s,f:m.f,b:m.b,pz:m.pz}); if(NET.snaps.length>12) NET.snaps.shift(); break;
+    case 'snap': NET.snaps.push({rt:performance.now(),s:m.s,rd:m.rd,f:m.f,b:m.b,pz:m.pz}); if(NET.snaps.length>12) NET.snaps.shift(); break;
     case 'banner': if(G.state==='lanc') showBanner(m.a,m.b,m.c||undefined); break;
     case 'hideBanner': hideBanner(); break;
     case 'pick': if(G.state==='lanc') lanShowPick(m); break;
