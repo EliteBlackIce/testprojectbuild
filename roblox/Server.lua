@@ -138,11 +138,11 @@ rays.Intensity = 0.12
 rays.Parent = Lighting
 
 ------------------------------------------------------------------ map: Freight Yard
-local mapOld = Workspace:FindFirstChild("FreightYard")
-if mapOld then mapOld:Destroy() end
+-- the place file already contains the baked map; only build a fresh one if it is missing
+local baked = Workspace:FindFirstChild("FreightYard")
 local MAP = Instance.new("Model")
 MAP.Name = "FreightYard"
-MAP.Parent = Workspace
+if not baked then MAP.Parent = Workspace end
 
 local function part(name, size, pos, color, material, ry)
 	local p = Instance.new("Part")
