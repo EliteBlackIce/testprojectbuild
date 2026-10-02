@@ -90,6 +90,8 @@ Every map now has a dense, detailed ring of real structures right outside the pl
 - **Atomic Acres:** pastel ranch-house streets (carport, picture window, chimney, swamp cooler, antenna) with lawns, mannequin families and picket fences wrapped around the fenced test site.
 - **Rust:** workshops, a control building with labs, bunkhouse cabins, tank rows and pipe racks around the oil yard; the dunes near the play area are lower so the buildings can be seen.
 
+**Originals kept:** nothing the maps build around themselves is removed any more (the houses, warehouses, silos, derricks, poles, lamps and roads each map came with). The new scenery is planned around those footprints (`ORIG`, `origHit`), the ground is flattened under them so they never float or sink, and instanced grass or crops that would poke through a new building are hidden. In Town the new streets use the map's own road, kerb, pavement and lamp, and continue them.
+
 ### Scenery switch
 
 `SCENERY` (in `index.html`, next to `MAPENV.ship`) controls the world outside each map:
