@@ -93,6 +93,7 @@ button{cursor:var(--curP)}
 #kcam .kch{position:absolute;right:4vw;bottom:11vh;font-size:16px;color:var(--muted);text-shadow:0 2px 0 #000}
 
 #menu .mpane{padding-bottom:64px}
+#mrScopeBox{position:absolute;inset:0;pointer-events:none;z-index:6} #mrScopeBox .h-scope{z-index:1}
 #mrp{position:absolute;left:0;right:0;bottom:0;display:none;flex-direction:column;gap:6px;padding:10px 16px 14px;z-index:7;background:linear-gradient(transparent,rgba(10,6,12,.88) 30%)} #mrp.show{display:flex}
 #mrp .mrtop{display:flex;gap:18px;align-items:center;flex-wrap:wrap} #mrp .mrtop b{font-size:24px} #mrp .mrkeys{margin-left:auto;font-size:14px;color:var(--muted)}
 #mrp .mrbar,#mrp .mrrow{display:flex;gap:12px;align-items:center;flex-wrap:wrap} #mrp #mrSeek{flex:1 1 260px;width:auto;min-width:160px} #mrp .mrrow{justify-content:space-between}
@@ -528,6 +529,7 @@ button:focus-visible{outline:3px solid #fff;outline-offset:6px}
     <div class="row"><button class="pbtn" id="againBtn">Rematch</button><button class="pbtn ghost" id="mrBtn">Watch replay</button><button class="pbtn ghost" id="menuBtn">Menu</button></div>
   </div>
 
+  <div id="mrScopeBox"><div class="h-scope" id="mrScope"><i></i></div></div>
   <div id="mrp">
     <div class="mrtop"><b class="o">Match replay</b><span id="mrInfo" class="s"></span><span class="s mrkeys">Space pause · Left/Right skip 5s · Tab or 1-4 switch view · Esc exit</span></div>
     <div class="mrbar"><button class="pbtn ghost" id="mrPlay">Pause</button><input type="range" id="mrSeek" min="0" max="1000" value="0"><span id="mrTime" class="s"></span><div class="seg" id="mrSpd"><button data-v=".5">0.5x</button><button data-v="1" class="on">1x</button><button data-v="2">2x</button><button data-v="4">4x</button></div></div>
@@ -5770,7 +5772,7 @@ $('#bindsBack').addEventListener('click',closeBinds); $('#devBack').addEventList
 $('#dTabOpt').addEventListener('click',()=>{ DEV.tab='opt'; renderDev(); }); $('#dTabCards').addEventListener('click',()=>{ DEV.tab='cards'; renderDev(); });
 $('#bindsReset').addEventListener('click',()=>{ CAP=null; const dev=BIND_DEV, sv=SAVE.binds; BINDS[dev]=JSON.parse(JSON.stringify(DEF_BINDS[dev])); for(const a in BINDS[dev]) BINDS[dev][a]=BINDS[dev][a].concat([null,null,null]).slice(0,3); saveBinds(); renderBinds(); toast('Controls reset'); });
 function resume(){ if(G.noLock||!needsLock()){ G.paused=false; showOverlay(null); } else requestLock(); }
-function toMenu(){ G.tournMatch=false; if(G.state==='replay') endReplayQuiet(); if(MV){ const M=MV; MV=null; for(const m of M.tr) scene.remove(m); FIGHTERS.forEach((f,i)=>{ Object.assign(f,M.save[i]); f.kcHide=false; }); G.rpOn=false; RPV=null; camera.layers.disable(2); $('#mrp').classList.remove('show'); } podiumCleanup(); VOTE.on=false; hideRecap(); G.state='menu'; G.paused=false; clearBullets(); hideBanner(); HUDS.forEach(h=>h.el.classList.remove('on')); wrap.classList.remove('split','tb','lr');
+function toMenu(){ G.tournMatch=false; if(G.state==='replay') endReplayQuiet(); if(MV){ const M=MV; MV=null; for(const m of M.tr) scene.remove(m); FIGHTERS.forEach((f,i)=>{ Object.assign(f,M.save[i]); f.kcHide=false; }); G.rpOn=false; RPV=null; camera.layers.disable(2); $('#mrp').classList.remove('show'); $('#mrScope').style.opacity=0; } podiumCleanup(); VOTE.on=false; hideRecap(); G.state='menu'; G.paused=false; clearBullets(); hideBanner(); HUDS.forEach(h=>h.el.classList.remove('on')); wrap.classList.remove('split','tb','lr');
   $('#letterbox').classList.remove('off'); for(const f of FIGHTERS) if(f.view) f.view.vm.visible=false; showOverlay('#menu'); updatePadInfo(); if(isLocked()) document.exitPointerLock(); resize(); }
 function toast(t){ const e=$('#toast'); e.textContent=t; e.style.opacity=1; clearTimeout(toast.t); toast.t=setTimeout(()=>e.style.opacity=0,2600); }
 
@@ -5843,7 +5845,7 @@ async function startMatch(){
 }
 function startRound(){
   clearBullets(); resetFighter(P,MAP.def.spawn[0]); resetFighter(B,MAP.def.spawn[1]); G.round++;
-  recClear(); MR.round++; MR.rounds.push({n:MR.round,t0:MR.t,t1:MR.t,w:-1}); G.state='countdown'; G.timer=1.8; G.fightShown=false; G.slow=0; G.roundT=0; G.sudden=false; hideRecap(); SFX.countdown();
+  recClear(); MR.round++; MR.rounds.push({n:MR.round,t0:MR.t,t1:MR.t,w:-1,map:MAP&&MAP.id}); G.state='countdown'; G.timer=1.8; G.fightShown=false; G.slow=0; G.roundT=0; G.sudden=false; hideRecap(); SFX.countdown();
   if(G.rules==='chaos'&&G.round>1) for(const f of FIGHTERS){ const c=drawCards(1,0,f)[0]; c.apply(f.stats); clampStats(f.stats); f.cards.push(c); if(f.human) renderCards(f); f.hp=f.stats.maxHp; f.ammo=f.stats.ammo; toast('Chaos: '+f.name+' got '+c.name); }
   renderScore(); showBanner('Round '+G.round,'Get ready'); mouseDown=false;
 }
@@ -5977,7 +5979,7 @@ function recClear(){ REC.length=0; RECT=0; }
 const MR={frames:[],t:0,last:-1,round:0,rounds:[],map:null,night:false,cap:40000};
 function mrReset(){ MR.frames=[]; MR.t=0; MR.last=-1; MR.round=0; MR.rounds=[]; MR.map=MAP&&MAP.id; MR.night=!!G.night; }
 function recTick(dt){ RECT+=dt; MR.t+=dt;
-  const fd=FIGHTERS.map(f=>[f.x,f.y,f.z,f.yaw,f.pitch,f.dead?1:0,f.deadT||0, f.vx||0,f.vz||0, Math.round(f.hp||0), f.st?f.st.shots:0, f.reloadT>0?1-f.reloadT/Math.max(.01,f.stats.reload):-1, f.blockT>0?1:0, f.slideT>0?1:0, f.scopeK||0]);
+  const fd=FIGHTERS.map(f=>[f.x,f.y,f.z,f.yaw,f.pitch,f.dead?1:0,f.deadT||0, f.vx||0,f.vz||0, Math.round(f.hp||0), f.st?f.st.shots:0, f.reloadT>0?1-f.reloadT/Math.max(.01,f.stats.reload):-1, f.blockT>0?1:0, f.slideT>0?1:0, f.scopeK||0, f.onGround?1:0, f.vy||0, f.wallT>0?1:0, f.wallNX||0, f.wallNZ||0, f.wjT>0?f.wjT:0, f.ladder?1:0]);
   const fr={t:RECT,f:fd,b:[]};
   for(const b of G.bullets){ if(fr.b.length>=14) break; if(b.m&&!b.saw) fr.b.push([b.m.position.x,b.m.position.y,b.m.position.z,b.grenade?1:0]); }
   REC.push(fr); while(REC.length>2&&RECT-REC[0].t>7.4) REC.shift();
@@ -5985,18 +5987,20 @@ function recTick(dt){ RECT+=dt; MR.t+=dt;
 // puts every fighter, tracer shot and gun animation where the recording says they were at time t, and looks through pov's eyes
 function mrPose(S,arr,t,rdt,pov){
   let i=S.i||0; if(arr[i].t>t) i=0; while(i<arr.length-2&&arr[i+1].t<=t) i++; S.i=i;
-  const a=arr[i], b=arr[Math.min(i+1,arr.length-1)], k=b.t>a.t?clamp((t-a.t)/(b.t-a.t),0,1):0; S.sh=S.sh||[];
+  if(S.lt===undefined||t<S.lt||t-S.lt>.25) S.sh=[]; S.lt=t; // a seek must not fire a phantom shot
+  const a=arr[i], b=arr[Math.min(i+1,arr.length-1)], k=b.t>a.t?clamp((t-a.t)/(b.t-a.t),0,1):0;
   FIGHTERS.forEach((f,n)=>{ const A=a.f[n], B2=b.f[n]; if(!A||!B2) return; f.x=lerp(A[0],B2[0],k); f.y=lerp(A[1],B2[1],k); f.z=lerp(A[2],B2[2],k); let dy=B2[3]-A[3]; dy=Math.atan2(Math.sin(dy),Math.cos(dy)); f.yaw=A[3]+dy*k; f.pitch=lerp(A[4],B2[4],k); f.dead=!!B2[5]; f.deadT=B2[6];
-    f.vx=lerp(A[7],B2[7],k); f.vz=lerp(A[8],B2[8],k); f.hp=B2[9]; const rl=B2[11]; f.reloadT=rl>=0?(1-rl)*f.stats.reload:0; f.blockT=B2[12]?.3:0; f.slideT=B2[13]?.3:0; f.scopeK=B2[14]||0; f.inspectT=0;
-    const sh=B2[10]; if(S.sh[n]===undefined||sh<S.sh[n]) S.sh[n]=sh; else if(sh>S.sh[n]){ S.sh[n]=sh; const Fx=f.fx; Fx.kick=1; Fx.kickRot=1; Fx.kickYaw=RR(-1,1); Fx.flashT=.05; }
+    f.vx=lerp(A[7],B2[7],k); f.vz=lerp(A[8],B2[8],k); f.hp=B2[9]; const rl=B2[11]; f.reloadT=rl>=0?(1-rl)*f.stats.reload:0; f.blockT=B2[12]?.3:0; f.slideT=B2[13]?.3:0; f.scopeK=lerp(A[14]||0,B2[14]||0,k); f.inspectT=0;
+    f.onGround=!!B2[15]; f.vy=lerp(A[16]||0,B2[16]||0,k); f.wallT=B2[17]?.2:0; f.wallNX=B2[18]||0; f.wallNZ=B2[19]||0; f.wjT=B2[20]||0; f.ladder=B2[21]?true:null;
+    const sh=B2[10]; if(S.sh[n]===undefined||sh<S.sh[n]) S.sh[n]=sh; else if(sh>S.sh[n]){ S.sh[n]=sh; const Fx=f.fx; Fx.kick=1; Fx.kickRot=1; Fx.kickYaw=RR(-1,1); Fx.flashT=.05; f.fireT=(f.fireT||0)+.01; }
     syncRig(f,Math.min(.05,rdt)); });
   const bs=b.b; S.tr.forEach((m,n)=>{ const q=a.b[n]; if(!q||!bs[n]){ m.visible=false; return; } m.visible=true; m.position.set(lerp(q[0],bs[n][0],k),lerp(q[1],bs[n][1],k),lerp(q[2],bs[n][2],k)); const dx=bs[n][0]-q[0], dy=bs[n][1]-q[1], dz=bs[n][2]-q[2]; if(dx*dx+dy*dy+dz*dz>1e-8) m.lookAt(m.position.x+dx,m.position.y+dy,m.position.z+dz); });
-  // first person through pov's eyes, their own body hidden so nothing blocks the view; their gun and hands are drawn by the viewmodel pass
+  // first person through pov's eyes with the game's own camera: slide dip and tilt, speed kick, sniper zoom, death roll. Their own body is hidden; their gun and hands come from the viewmodel pass.
   for(const f of FIGHTERS) f.kcHide=(f===pov); if(pov.rig){ pov.rig.g.visible=false; pov.rig.blob.visible=false; } RPV=pov;
-  const eye=eyePos(pov), fwd=new THREE.Vector3(-Math.sin(pov.yaw)*Math.cos(pov.pitch),Math.sin(pov.pitch),-Math.cos(pov.yaw)*Math.cos(pov.pitch)); let roll=0;
-  if(pov.dead){ const tt=Math.min(1,pov.deadT/.6); eye.y=lerp(eye.y,pov.y+.35,1-Math.pow(1-tt,3)); roll=.45*tt; }
-  camera.position.copy(eye); camera.up.set(0,1,0); camera.lookAt(eye.x+fwd.x,eye.y+fwd.y,eye.z+fwd.z); if(roll) camera.rotateZ(roll); camera.updateMatrixWorld();
-  for(const m of S.tr) if(m.visible&&m.position.distanceTo(eye)<.6) m.visible=false; }
+  const sf=pov.fx.shake; pov.fx.shake=0; placeCamera(pov,camera); pov.fx.shake=sf; pov.fov=pov.fov||G.fov; 
+  for(const m of S.tr) if(m.visible&&m.position.distanceTo(camera.position)<.6) m.visible=false;
+  { const sc=$('#mrScope'); if(sc&&G.state==='mreplay'){ const sk=pov.scopeK||0; sc.style.opacity=sk>.3?Math.min(1,(sk-.3)/.5):0; } } }
+const snapF=f=>({x:f.x,y:f.y,z:f.z,yaw:f.yaw,pitch:f.pitch,dead:f.dead,deadT:f.deadT,vx:f.vx,vz:f.vz,reloadT:f.reloadT,blockT:f.blockT,slideT:f.slideT,scopeK:f.scopeK,hp:f.hp,onGround:f.onGround,vy:f.vy,wallT:f.wallT,wallNX:f.wallNX,wallNZ:f.wallNZ,wjT:f.wjT,ladder:f.ladder,fireT:f.fireT,fov:f.fov,inspectT:f.inspectT});
 function vmSetWeapon(V,wid){ wid=wid||'rifle'; if(!V||!V.VM||!V.VM.guns||!V.VM.guns[wid]) return; for(const k in V.VM.guns) V.VM.guns[k].g.visible=k===wid; const GN=V.VM.guns[wid]; V.VM.mag=GN.mag; V.VM.muzzle.position.z=GN.muz; }
 let RPV=null;
 function pollKcPad(){ const gp=navigator.getGamepads?navigator.getGamepads():[]; for(const g of gp){ if(g&&g.buttons&&g.buttons.some((b,i)=>i<4&&b.pressed)){ kcSkip(); return; } } }
@@ -6005,7 +6009,7 @@ function kcSkip(){ if(G.state==="replay"&&KC&&KC.real>.5) endReplay(); }
 function startReplay(){
   if(!G.killcam||REC.length<24||!G.winner) return false;
   const last=REC[REC.length-1], t0=Math.max(REC[0].t,last.t-5.6);
-  KC={i:0,t:t0,end:last.t,hold:.9,save:FIGHTERS.map(f=>({x:f.x,y:f.y,z:f.z,yaw:f.yaw,pitch:f.pitch,dead:f.dead,deadT:f.deadT})),huds:HUDS.map(h=>h.el.classList.contains('on')),cp:new THREE.Vector3(),ready:false,real:0,tr:[]};
+  KC={i:0,t:t0,end:last.t,hold:.9,save:FIGHTERS.map(snapF),huds:HUDS.map(h=>h.el.classList.contains('on')),cp:new THREE.Vector3(),ready:false,real:0,tr:[]};
   const geo=new THREE.BoxGeometry(.07,.07,.5), mat=new THREE.MeshBasicMaterial({color:new THREE.Color(3,2.2,.8)});
   for(let k=0;k<14;k++){ const m=new THREE.Mesh(geo,mat); m.visible=false; m.frustumCulled=false; scene.add(m); KC.tr.push(m); }
   hideBanner(); hideRecap(); HUDS.forEach(h=>h.el.classList.remove('on')); if(isLocked()) document.exitPointerLock();
@@ -6018,14 +6022,13 @@ function endReplay(){ if(G.state!=='replay'||!KC) return; for(const f of FIGHTER
   for(const f of FIGHTERS) syncRig(f,.05); afterRound(); }
 function replayTick(rdt){ if(!KC) return;
   KC.real+=rdt; const rest=KC.end-KC.t, slow=rest<KC.hold&&rest>-1?.3:1; KC.t+=rdt*slow; if(KC.t>=KC.end){ KC.t=KC.end; KC.after=(KC.after||0)+rdt; if(KC.after>.9) return endReplay(); }
-  const rest2=KC.end-KC.t, zoom=clamp(1-rest2/KC.hold,0,1)*(rest2<KC.hold?1:0);
-  mrPose(KC,REC,KC.t,rdt,G.winner); camera.fov=(+($('#fov')&&$('#fov').value)||75)-zoom*6; camera.updateProjectionMatrix(); }
+    mrPose(KC,REC,KC.t,rdt,G.winner); }
 /* ================= match replay: watch the whole match again, from anyone's point of view ================= */
 let MV=null;
 async function mvStart(ret){ if(MV||MR.frames.length<20){ if(!MV) toast('Play a match first'); return; }
-  if(MR.map&&(!MAP||MAP.id!==MR.map)){ await ensureMap(MR.map); }
+  { const m0=(MR.rounds[0]&&MR.rounds[0].map)||MR.map; if(m0&&(!MAP||MAP.id!==m0)) await ensureMap(m0); }
   const fr=MR.frames, last=fr[fr.length-1];
-  MV={i:0,t:fr[0].t,t0:fr[0].t,end:last.t,speed:1,paused:false,pov:P,ret,tr:[],sh:[],huds:HUDS.map(h=>h.el.classList.contains('on')),save:FIGHTERS.map(f=>({x:f.x,y:f.y,z:f.z,yaw:f.yaw,pitch:f.pitch,dead:f.dead,deadT:f.deadT,vx:f.vx,vz:f.vz,reloadT:f.reloadT,blockT:f.blockT,slideT:f.slideT,scopeK:f.scopeK,hp:f.hp})),ui:0};
+  MV={i:0,t:fr[0].t,t0:fr[0].t,end:last.t,speed:1,paused:false,pov:P,ret,tr:[],sh:[],huds:HUDS.map(h=>h.el.classList.contains('on')),save:FIGHTERS.map(snapF),ui:0};
   const geo=new THREE.BoxGeometry(.07,.07,.5), mat=new THREE.MeshBasicMaterial({color:new THREE.Color(3,2.2,.8)});
   for(let k=0;k<14;k++){ const m=new THREE.Mesh(geo,mat); m.visible=false; m.frustumCulled=false; scene.add(m); MV.tr.push(m); }
   hideBanner(); hideRecap(); HUDS.forEach(h=>h.el.classList.remove('on')); if(isLocked()) document.exitPointerLock(); clearBullets(); showOverlay(null);
@@ -6040,10 +6043,12 @@ function mvUI(force){ if(!MV) return; const dur=MV.end-MV.t0, el=MV.t-MV.t0, fmt
   if(force||!MV.seeking) $('#mrSeek').value=Math.round(clamp(el/dur,0,1)*1000); $('#mrTime').textContent=fmt(el)+' / '+fmt(dur); $('#mrPlay').textContent=MV.paused?'Play':'Pause';
   let rn=0; MR.rounds.forEach((r,i)=>{ if(MV.t>=r.t0) rn=i; }); $('#mrRounds').querySelectorAll('button').forEach((b,i)=>b.classList.toggle('on',i===rn));
   const f=MV.pov; $('#mrInfo').textContent=(f.name||'Player')+'  ·  HP '+Math.max(0,Math.round(f.hp||0)); }
-function mvTick(rdt){ if(!MV) return; if(!MV.paused){ MV.t+=rdt*MV.speed; if(MV.t>=MV.end){ MV.t=MV.end; MV.paused=true; } } mrPose(MV,MR.frames,MV.t,rdt,MV.pov); camera.fov=(+($('#fov')&&$('#fov').value)||75); camera.updateProjectionMatrix(); if((MV.ui+=rdt)>.1){ MV.ui=0; mvUI(false); } }
+function mvTick(rdt){ if(!MV) return; if(!MV.paused){ MV.t+=rdt*MV.speed; if(MV.t>=MV.end){ MV.t=MV.end; MV.paused=true; } } mvMap(); mrPose(MV,MR.frames,MV.t,rdt,MV.pov); if((MV.ui+=rdt)>.1){ MV.ui=0; mvUI(false); } }
+// every round can be on a different map (random rotation): load the right one as the timeline crosses into it
+function mvMap(){ if(!MV||MV.loading) return; let rn=0; MR.rounds.forEach((r,i)=>{ if(MV.t>=r.t0) rn=i; }); const want=MR.rounds[rn]&&MR.rounds[rn].map; if(want&&MAP&&MAP.id!==want){ MV.loading=true; const was=MV.paused; MV.paused=true; ensureMap(want).then(()=>{ if(MV){ MV.loading=false; MV.paused=was; } }); } }
 function mvEnd(){ if(!MV) return; const M=MV; MV=null; for(const m of M.tr) scene.remove(m);
   FIGHTERS.forEach((f,i)=>{ Object.assign(f,M.save[i]); f.kcHide=false; }); HUDS.forEach((h,i)=>{ if(M.huds[i]) h.el.classList.add('on'); }); vmSetWeapon(VV[0],P.weapon);
-  G.rpOn=false; RPV=null; camera.layers.disable(2); $('#mrp').classList.remove('show'); layoutViews(); for(const f of FIGHTERS) syncRig(f,.05);
+  G.rpOn=false; RPV=null; camera.layers.disable(2); $('#mrp').classList.remove('show'); $('#mrScope').style.opacity=0; layoutViews(); for(const f of FIGHTERS) syncRig(f,.05); { const lm=MR.rounds.length&&MR.rounds[MR.rounds.length-1].map; if(lm&&MAP&&MAP.id!==lm) ensureMap(lm); }
   if(M.ret==='over'){ G.state='over'; $('#letterbox').classList.remove('off'); showOverlay('#over'); } else { G.state='menu'; $('#letterbox').classList.remove('off'); showOverlay('#menu'); } }
 addEventListener('keydown',e=>{ if(G.state!=='mreplay'||!MV) return; const k=e.key; if(k===' '){ e.preventDefault(); MV.paused=!MV.paused; mvUI(true); } else if(k==='ArrowLeft'){ MV.t=Math.max(MV.t0,MV.t-5); mvUI(true); } else if(k==='ArrowRight'){ MV.t=Math.min(MV.end,MV.t+5); mvUI(true); } else if(k==='Tab'){ e.preventDefault(); mvPov(FIGHTERS.indexOf(MV.pov)+1); } else if(/^[1-4]$/.test(k)){ mvPov(+k-1); } else if(k==='Escape'){ mvEnd(); } },true);
 function afterRound(){ if(G.winner.score>=G.target&&G.tournMatch&&TN.match) tournDone(G.winner); else if(G.winner.score>=G.target) gameOver(G.winner); else startPick(other(G.winner)); }
