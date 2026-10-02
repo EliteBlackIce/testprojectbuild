@@ -80,9 +80,19 @@ The play areas themselves are unchanged. Outside them every map now has real dep
 - **Sunset Town:** the main street continues with a downtown of lettered shops, a church and school to the east, fenced houses to the west, street lamps and a pole line, and levelled lots so nothing floats on the hills.
 - **Cargo Ship:** open ocean, nothing else.
 
+## Scenery, near ring (buildings that continue the map)
+
+Every map now has a dense, detailed ring of real structures right outside the play area, planned on rectangular lots so nothing overlaps (checked with a part-level overlap audit: every mesh against every other builder's meshes):
+
+- **Sunset Town:** the street runs on east and west with a full town grid around it: a back lane and an alley, three rows of lots, cross streets with kerbs, pavements and crosswalks. Detailed two-storey houses (garage, porch, chimney, gutters, shutters, AC units), apartment blocks (balconies, fire escape, rooftop plant), shops, a diner, a petrol station, a church and a school, plus garages and sheds on the alley right behind the play area, street lamps, power poles with wires, hydrants, benches, parked cars and woodland behind. The ground is flat across the whole band and the mountains start further out. The floating light cones from street lamps are gone.
+- **Freight Yard:** gate roads east and west with a gatehouse, weighbridge, queued trucks, warehouses, offices, a fuel stop and a tank farm; container rows along the map edge and beside the rails; warehouse rows behind the 48 m roads.
+- **Harvest Farm:** machinery shed, glasshouses, grain bins, windpump and well, second farmhouse, fenced paddocks with cows and sheep, orchard and hay bales beside the lanes.
+- **Atomic Acres:** pastel ranch-house streets (carport, picture window, chimney, swamp cooler, antenna) with lawns, mannequin families and picket fences wrapped around the fenced test site.
+- **Rust:** workshops, a control building with labs, bunkhouse cabins, tank rows and pipe racks around the oil yard; the dunes near the play area are lower so the buildings can be seen.
+
 ### Scenery switch
 
 `SCENERY` (in `index.html`, next to `MAPENV.ship`) controls the world outside each map:
-- `'flat'` (current): only the playable box, on plain flat ground to the horizon. Everything outside the box is removed, including the props, buildings, cars and trees the maps themselves build there (`scrubOutside`, margin `SCRUB_MARGIN` m).
+- `'flat'`: only the playable box, on plain flat ground to the horizon. Everything outside the box is removed, including the props, buildings, cars and trees the maps themselves build there (`scrubOutside`, margin `SCRUB_MARGIN` m).
 - `'void'`: same but no ground at all.
-- `'full'`: the full detailed outside world, and nothing is removed.
+- `'full'` (current): the full detailed outside world.
