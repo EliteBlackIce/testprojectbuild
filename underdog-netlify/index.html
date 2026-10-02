@@ -3282,7 +3282,7 @@ MAPDEFS.yard={name:'Freight Yard',desc:'Container stacks and a raised catwalk, w
 
 /* ================= MAP 3: Harvest Farm (barn with a hayloft) ================= */
 MAPDEFS.farm={name:'Harvest Farm',desc:'A big barn with a hayloft, silos and hay bales, in golden fields that run to the horizon.',spawn:[[-27,0],[27,0]],land:true,noTrees:[[-500,-500,500,500]],ground:'#40602c',light:{sunD:1.15,hemiD:2,hemiN:2.6,sunN:1.7,expD:1.12,expN:1.3,nl:1.4,fogN:.8},build(){
-  plane(64,3.6,MT.dirt,0,.03,0,2); plane(3.6,26,MT.dirt,0,.031,0,2); plane(15,13,MT.dirt,0,.029,0,2); nog(-33,-2.2,33,2.2); nog(-2.2,-14,2.2,14); nog(-8,-7,8,7);
+  const dirtN=cached('dirtN2',()=>std({map:_T4(['#7a5634','#86603a','#6a4a2c','#92693e'],'#b8a080','#3e2a1a',true,true),roughness:.95})); plane(64,3.6,dirtN,0,.03,0,4); plane(3.6,26,dirtN,0,.031,0,4); plane(15,13,dirtN,0,.029,0,4); nog(-33,-2.2,33,2.2); nog(-2.2,-14,2.2,14); nog(-8,-7,8,7);
   const wall=(x,z,w,d,h,y0,mat)=>{ y0=y0||0; BX(w,h-y0,d,mat||MT.barn,x,y0+(h-y0)/2,z); col(x,z,w,d,h,y0); };
   const X=7, Z=5, H=6.2, T=.3, W=MT.white, top=3.2, Y0=2.9, rl=(x1,z1,x2,z2)=>{ const cx=(x1+x2)/2, cz=(z1+z2)/2, w=Math.abs(x2-x1), d=Math.abs(z2-z1);
     BX(w+.1,.12,d+.1,MT.logs,cx,top+.95,cz,{cast:false}); BX(w+.06,.08,d+.06,MT.logs,cx,top+.5,cz,{cast:false}); const n=Math.max(1,Math.round(Math.max(w,d)/1.6)); for(let i=0;i<=n;i++) BX(.12,1,.12,MT.logs,x1+(x2-x1)*i/n,top+.5,z1+(z2-z1)*i/n,{cast:false});
@@ -3715,11 +3715,11 @@ function makeEnv(o){
   // near: props right outside the playable area, d0..d1 metres beyond its edge
   E.near=(n,d0,d1,list,tries)=>{ let placed=0, t=0; while(placed<n&&t<(tries||n*30)){ t++; const x=(rand()*2-1)*(o.fx+d1), z=(rand()*2-1)*(o.fz+d1), d=Math.hypot(Math.max(Math.abs(x)-o.fx,0),Math.max(Math.abs(z)-o.fz,0)); if(d<d0||d>d1) continue; const e=pick(list); if(E.put(x,z,e[1],e[2],e[3],e[4])) placed++; } if(window.__ENVCHK) console.log('near',placed,'/',n); return placed; };
   let G=null; E.surf=(x,z)=>{ if(!G) return E.hf(x,z); const fx=(x+S/2)/cs, fz=(z+S/2)/cs, i=clamp(Math.floor(fx),0,N-1), j=clamp(Math.floor(fz),0,N-1), tx=fx-i, tz=fz-j, h=(a,b)=>G[b*(N+1)+a]; return lerp(lerp(h(i,j),h(i+1,j),tx),lerp(h(i,j+1),h(i+1,j+1),tx),tz); };
-  E.finish=(tex,colf)=>{ if(tex){ const g=new THREE.PlaneGeometry(S,S,N,N); g.rotateX(-Math.PI/2); const pa=g.attributes.position, uv=g.attributes.uv; G=new Float32Array(pa.count);
+  E.finish=(tex,colf)=>{ if(tex){ const tmat=tex.isMaterial?tex:null; const g=new THREE.PlaneGeometry(S,S,N,N); g.rotateX(-Math.PI/2); const pa=g.attributes.position, uv=g.attributes.uv; G=new Float32Array(pa.count);
       for(let i=0;i<pa.count;i++){ const x=pa.getX(i), z=pa.getZ(i), y=E.hf(x,z); pa.setY(i,y); uv.setXY(i,x/(o.uvx||30),z/(o.uvz||o.uvx||20)); const ix=Math.round((x+S/2)/cs), iz=Math.round((z+S/2)/cs); G[iz*(N+1)+ix]=y; }
       g.computeVertexNormals(); const nr=g.attributes.normal, col=new Float32Array(pa.count*3), sd=SUN_DIR;
       for(let i=0;i<pa.count;i++){ const x=pa.getX(i), z=pa.getZ(i), y=pa.getY(i), lit=clamp(nr.getX(i)*sd.x+nr.getY(i)*sd.y+nr.getZ(i)*sd.z,0,1), c=colf(x,z,y,lit); col[i*3]=c[0]; col[i*3+1]=c[1]; col[i*3+2]=c[2]; }
-      g.setAttribute('color',new THREE.BufferAttribute(col,3)); const t=new THREE.Mesh(g,std({map:tex,vertexColors:true,flatShading:true,roughness:1})); t.receiveShadow=true; t.userData.noBake=true; t.frustumCulled=false; SR.add(t); }
+      g.setAttribute('color',new THREE.BufferAttribute(col,3)); const t=new THREE.Mesh(g,tmat||std({map:tex,vertexColors:true,flatShading:true,roughness:1})); t.receiveShadow=true; t.userData.noBake=true; t.frustumCulled=false; SR.add(t); }
     for(const e of E.queue){ if(e.run) e.run(E.surf); else envTrack(e.tag,()=>e.fn(e.x,e.z,e.flat?e.y:E.surf(e.x,e.z))); } E.queue.length=0; return E; };
   return E; }
 const _P=(c,r,m)=>plain(c,r===undefined?.85:r,m||0);
@@ -3730,7 +3730,7 @@ function LB(x,y,z,ry){ ry=ry||0; const c=Math.cos(ry), s=Math.sin(ry), at=(a,b)=
     H(a0,a1,y0,b,r,m,o){ /* voxel cylinder lying along the local x axis, centre height y0 */ const L=Math.abs(a1-a0), mid=at((a0+a1)/2,b); for(const [t1,t2] of [[2*r,1.2*r],[1.2*r,2*r],[1.6*r,1.6*r]]) BX(L,t1,t2,m,mid[0],y+y0,mid[1],Object.assign({ry,cast:false},o)); } }; }
 // pixel-art sign boards with real lettering
 function _signMat(txt,bg,fg,w,h,sub){ return cached('sg'+txt+bg+fg+(sub||''),()=>std({map:pxTex(draw(w||64,h||24,(x,p)=>{ x.fillStyle=bg; x.fillRect(0,0,w||64,h||24); x.fillStyle=fg; x.fillRect(1,1,(w||64)-2,1); x.fillRect(1,(h||24)-2,(w||64)-2,1); x.fillRect(1,1,1,(h||24)-2); x.fillRect((w||64)-2,1,1,(h||24)-2); if(sub){ crispText(x,txt,(w||64)/2,(h||24)*.36,'bold '+Math.round((h||24)*.42)+'px monospace',fg); crispText(x,sub,(w||64)/2,(h||24)*.74,'bold '+Math.round((h||24)*.22)+'px monospace',fg); } else crispText(x,txt,(w||64)/2,(h||24)/2,'bold '+Math.round((h||24)*.5)+'px monospace',fg); })),roughness:.8})); }
-const _T4=(P,hi,lo,str)=>pxTex(draw(64,64,(x,p)=>{ for(let j=0;j<64;j++) for(let i=0;i<64;i++){ const n=clamp(tfbm(i/8,j/8,8,8,3)*.75+(hash2(i,j)-.5)*.5+.12,0,.999); let c=pal(P,n); const g=hash2(i*7+3,j*5+1); if(str&&g>.94) c=hi; else if(str&&g<.05) c=lo; p(i,j,c); } }));
+const _T4=(P,hi,lo,str,near)=>pxTex(draw(64,64,(x,p)=>{ for(let j=0;j<64;j++) for(let i=0;i<64;i++){ const n=clamp(tfbm(i/8,j/8,8,8,3)*.75+(hash2(i,j)-.5)*.5+.12,0,.999); let c=pal(P,n); const g=hash2(i*7+3,j*5+1); if(str&&g>.94) c=hi; else if(str&&g<.05) c=lo; p(i,j,c); } }),{near:!!near});
 const _cityWin=()=>cached('cityWin',()=>{ const tx=pxTex(draw(16,16,(x,p)=>{ for(let j=0;j<16;j++) for(let i=0;i<16;i++){ const win=(i%4>=1&&i%4<=2)&&(j%4>=1&&j%4<=2), lit=hash2(i>>2,j>>2)>.55; p(i,j,win?(lit?'#ffd890':'#1c2230'):'#4a5266'); } })); return std({map:tx,emissive:0xffffff,emissiveMap:tx,emissiveIntensity:.55,roughness:.85,wuv:.14}); });
 // ----- scenery models (box built; real depth: foundations, trim, frames, sills, shutters, roofs with overhang) -----
 function kOak(x,y,z,k){ const t=_P(0x5a3c24), g1=_P(0x3e7a34), g2=_P(0x4a8a3c), g3=_P(0x5c9a46), g4=_P(0x346a2c); BX(.8*k,2.6*k,.8*k,t,x,y+1.3*k,z,{cast:false}); BX(1.1*k,.5*k,1.1*k,t,x,y+.25*k,z,{cast:false}); BX(.5*k,.4*k,1.4*k,t,x,y+2.1*k,z+.6*k,{cast:false}); BX(1.4*k,.4*k,.5*k,t,x-.6*k,y+2.4*k,z,{cast:false});
@@ -3919,7 +3919,7 @@ MAPENV.yard=function(){
 MAPENV.farm=function(){
   const FIELD=[[1.05,.86,.4],[.5,.74,.32],[.62,.46,.34],[.58,.78,.38],[.95,.74,.32],[.4,.62,.3]], cell=(x,z)=>(hash2(Math.floor(x/46)+9,Math.floor(z/46)+4)*FIELD.length)|0;
   const lz=(x)=>Math.sin(x*.018)*7*smooth(44,100,Math.abs(x)), lane=(x,z)=>Math.abs(x)>40&&Math.abs(z-lz(x))<2.3;
-  const E=makeEnv({fx:44,fz:34,blend:34,uvx:4,uvz:4,q:1.2,size:1000,cells:260,sink:.03,h:(x,z,b)=>b*(fbm(x*.012+5,z*.012+1,3)*13+Math.max(0,fbm(x*.005,z*.006+4,3)-.4)*45)});
+  const E=makeEnv({fx:44,fz:34,blend:34,uvx:1,uvz:1,q:1.2,size:1000,cells:260,sink:.03,h:(x,z,b)=>b*(fbm(x*.012+5,z*.012+1,3)*13+Math.max(0,fbm(x*.005,z*.006+4,3)-.4)*45)});
   const wood=_P(0x6a4a32,.9), wheat=_P(0xd8b040,.9), wd2=_P(0x8a6a48,.9);
   // the farm lane: nothing grows or stands on it
   for(const sg of [-1,1]) for(let x=40;x<=340;x+=3) E.occ.push([sg*x,lz(sg*x),3.6]);
@@ -3934,7 +3934,7 @@ MAPENV.farm=function(){
   E.scatter(150,52,340,[1.4,1.1],[_oak(.8),_oak(1.1),_oak(1.5),_pine(.8),_pine(1.1),_bush(1,0x5a8a3a),_bush(1.5,0x6a9a40),[1,1.3,(x,z,y)=>{ const fl=[0xf2d24a,0xf0f0f0,0xe8508a][(rand()*3)|0]; for(let k=0;k<5;k++){ const px=x+(rand()-.5)*1.4, pz=z+(rand()-.5)*1.4; BX(.1,.8,.1,_P(0x4a7a3a),px,y+.4,pz,{cast:false}); BX(.34,.34,.34,_P(fl),px,y+.9,pz,{cast:false}); } }]],1600);
   E.scatter(34,50,210,[1.25,1],[[1,1.7,(x,z,y)=>vcyl('z',z-.7,z+.7,x,y+.75,0,.78,wheat,{cast:false})]],500);
   E.scatter(620,48,150,[1.3,1.05],[[1,.9,(x,z,y)=>{ if(FIELD[cell(x,z)][0]<.9) return; for(let k=0;k<6;k++) BX(.07,.9,.07,wheat,x+(rand()-.5)*1.4,y+.45,z+(rand()-.5)*1.4,{cast:false}); }]],3200);
-  E.finish(_T4(['#8a9a58','#9aa862','#aab46c','#7a8a50'],'#c8d080','#5a6a38',true),(x,z,y,lit)=>{ const f=FIELD[cell(x,z)], rows=.9+.12*Math.sin((x*.9+z*.5)*(.4+hash2(Math.floor(x/46),Math.floor(z/46))*.5)), k=(.64+.34*lit)*rows, nr=smooth(0,30,Math.hypot(Math.max(Math.abs(x)-44,0),Math.max(Math.abs(z)-34,0))); let r=lerp(.5,f[0],nr)*k, g=lerp(.62,f[1],nr)*k, b=lerp(.3,f[2],nr)*k;
+  E.finish((()=>{ const lm=TX.lawn.clone(), ln=TX.lawnN.clone(); for(const t of [lm,ln]){ t.repeat.set(.25,.25); t.needsUpdate=true; } return std({map:lm,normalMap:ln,vertexColors:true,flatShading:true,roughness:.97}); })(),(x,z,y,lit)=>{ const f=FIELD[cell(x,z)], rows=.9+.12*Math.sin((x*.9+z*.5)*(.4+hash2(Math.floor(x/46),Math.floor(z/46))*.5)), k=(.64+.34*lit)*rows, nr=smooth(0,30,Math.hypot(Math.max(Math.abs(x)-44,0),Math.max(Math.abs(z)-34,0))); let r=lerp(.95,f[0]*1.75,nr)*k, g=lerp(1,f[1]*1.3,nr)*k, b=lerp(.8,f[2]*1.1,nr)*k;
     if(lane(x,z)||(Math.abs(x)>40&&Math.abs(z-lz(x))<3.2)){ const t=Math.abs(z-lz(x))<2.3?1:.4, kk=(.7+.3*lit)*(.92+hash2(Math.floor(x/2),Math.floor(z/2))*.12); r=lerp(r,.82*kk,t); g=lerp(g,.62*kk,t); b=lerp(b,.4*kk,t); } return [r,g,b]; });
 };
 MAPENV.nuke=function(){
