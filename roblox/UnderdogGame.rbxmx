@@ -1,6 +1,6 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
 <Item class="Model" referent="RBX0"><Properties><string name="Name">UnderdogGame</string></Properties>
-<Item class="Script" referent="RBX1"><Properties><string name="Name">Server</string><ProtectedString name="Source"><![CDATA[-- UNDERDOG (Roblox prototype) - SERVER SCRIPT
+<Item class="Script" referent="RBX11"><Properties><string name="Name">Server</string><ProtectedString name="Source"><![CDATA[-- UNDERDOG (Roblox prototype) - SERVER SCRIPT
 -- Builds the Freight Yard map, runs the round loop, weapons and power cards.
 local Players = game:GetService("Players")
 local RS = game:GetService("ReplicatedStorage")
@@ -9,6 +9,19 @@ local Debris = game:GetService("Debris")
 local StarterGui = game:GetService("StarterGui")
 local Workspace = game:GetService("Workspace")
 
+-- if anything goes wrong, show the error ON SCREEN (a blue message box) so it can be read without the Output panel
+local function showErr(err)
+	warn("Underdog error: " .. tostring(err))
+	local m = Instance.new("Message")
+	m.Text = "UNDERDOG ERROR - take a photo and send it:\n" .. string.sub(tostring(err), 1, 600)
+	m.Parent = Workspace
+end
+local booting = Instance.new("Message")
+booting.Text = "Underdog server script is running..."
+booting.Parent = Workspace
+print("Underdog server started")
+
+local function main()
 local WINS_TO_WIN = 5
 local ROUND_TIME = 120
 local MIN_PLAYERS = 2
@@ -607,6 +620,7 @@ local function countdown(n)
 end
 
 task.spawn(function()
+	local ok0, err0 = xpcall(function()
 	while true do
 		-- wait for enough players
 		while #Players:GetPlayers() < MIN_PLAYERS do
@@ -695,9 +709,20 @@ task.spawn(function()
 			end
 		end
 	end
+end, debug.traceback)
+	if not ok0 then showErr(err0) end
 end)
+
+booting:Destroy()
+end
+
+local ok, err = xpcall(main, debug.traceback)
+if not ok then
+	booting:Destroy()
+	showErr(err)
+end
 ]]></ProtectedString></Properties></Item>
-<Item class="LocalScript" referent="RBX2"><Properties><string name="Name">Client</string><bool name="Disabled">true</bool><ProtectedString name="Source"><![CDATA[-- UNDERDOG (Roblox prototype) - CLIENT SCRIPT (LocalScript)
+<Item class="LocalScript" referent="RBX12"><Properties><string name="Name">Client</string><bool name="Disabled">true</bool><ProtectedString name="Source"><![CDATA[-- UNDERDOG (Roblox prototype) - CLIENT SCRIPT (LocalScript)
 -- First person camera, HUD, shooting input, power-card picker.
 local Players = game:GetService("Players")
 local RS = game:GetService("ReplicatedStorage")

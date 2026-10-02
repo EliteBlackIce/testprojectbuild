@@ -4,7 +4,9 @@ Files
 - `UnderdogGame.rbxmx` - drag-and-drop model (contains both scripts)
 - `Server.lua`, `Client.lua` - the same scripts as plain text, if you'd rather paste them by hand
 
-Import
+Easiest: double-click `Underdog.rbxlx` (a ready-made place). If it does not open, right-click it -> Open With -> Roblox Studio.
+
+Other import options
 1. Roblox Studio -> New -> Baseplate. Delete the `Baseplate` part and `SpawnLocation` in Workspace.
 2. Drag `UnderdogGame.rbxmx` into the 3D view (or right-click Workspace -> Insert from File...).
 3. Press Test -> Local Server, Players: 2 -> Start (the game needs 2 players; for solo testing set `MIN_PLAYERS = 1` at the top of `Server`).
