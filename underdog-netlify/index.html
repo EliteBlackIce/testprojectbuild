@@ -3773,7 +3773,7 @@ function farmEnv(){
     col:(x,z,y,lit)=>{ const f=FIELD[cell(x,z)], rows=.9+.12*Math.sin((x*.9+z*.5)*(.4+hash2(Math.floor(x/46),Math.floor(z/46))*.5)), k=(.64+.34*lit)*rows, near=smooth(0,30,Math.hypot(Math.max(Math.abs(x)-44,0),Math.max(Math.abs(z)-34,0)));
       return [lerp(.5,f[0],near)*k,lerp(.62,f[1],near)*k,lerp(.3,f[2],near)*k]; }});
   const red=plain(0xb02a22,.7), white=plain(0xf0ece0,.7), roof=plain(0x4a4a52,.8), wood=plain(0x6a4a32,.9), wheat=plain(0xd8b040,.9), leaf=plain(0x3a6a2e,.9);
-  const barn=(x,z,ry)=>{ const y=L.onD(x,z); BX(14,6,22,red,x,y+3,z,{ry,cast:true}); for(let k=0;k<4;k++) BX(14-k*3.6,1.6,22,roof,x,y+6.8+k*1.5,z,{ry,cast:true}); BX(.8,6,.8,white,x+Math.cos(ry)*7,y+3,z-Math.sin(ry)*7,{cast:false}); BX(5,5,.4,white,x+Math.sin(ry)*11.1,y+3,z+Math.cos(ry)*11.1,{ry,cast:false}); };
+  const barn=(x,z)=>{ const ry=((rand()*4)|0)*1.5708, y=L.onD(x,z); BX(14,6,22,red,x,y+3,z,{ry,cast:true}); for(let k=0;k<4;k++) BX(14-k*3.6,1.6,22,roof,x,y+6.8+k*1.5,z,{ry,cast:true}); BX(.8,6,.8,white,x+Math.cos(ry)*7,y+3,z-Math.sin(ry)*7,{cast:false}); BX(5,5,.4,white,x+Math.sin(ry)*11.1,y+3,z+Math.cos(ry)*11.1,{ry,cast:false}); };
   const silo=(x,z)=>{ const y=L.onD(x,z); vcyl('y',y,y+18,x,0,z,3.4,plain(0xc8ccd4,.5,.5),{cast:true}); vcyl('y',y+18,y+20,x,0,z,2.4,plain(0x8a8e98,.5,.5),{cast:false}); for(let k=1;k<5;k++) vcyl('y',y+k*3.4,y+k*3.4+.3,x,0,z,3.6,plain(0x7a7e88,.5,.5),{cast:false}); };
   const mill=(x,z)=>{ const y=L.onD(x,z); for(let k=0;k<7;k++) BX(5-k*.4,3,5-k*.4,k%2?white:plain(0xd8d4c8,.8),x,y+1.5+k*3,z,{cast:true}); BX(6,2,6,red,x,y+22,z,{cast:false}); const hub=y+22; BX(1.2,1.2,2,plain(0x3a3a42,.6),x,hub,z+3,{cast:false}); for(const [dx,dy] of [[0,1],[0,-1],[1,0],[-1,0]]) BX(dx?10:1.2,dy?10:1.2,.5,white,x+dx*5,hub+dy*5,z+4,{cast:false}); };
   const tree=(x,z)=>{ const y=L.onD(x,z), k=.8+rand()*.8; BX(.6*k,3*k,.6*k,MT.bark,x,y+1.5*k,z,{cast:false}); const m=mesh(voxModel('treeTop'),MT.vox,x,y+2.6*k,z,{cast:false}); m.scale.setScalar(1.35*k); };
@@ -3795,7 +3795,7 @@ function nukeEnv(){
     for(let i=0;i<10;i++){ const y=i*14*sc, r=(14-i*.6)*sc; vcyl('y',y,y+14.2*sc,cx,0,cz,r,i<4?gl:ash,{cast:false}); }
     for(let i=0;i<8;i++){ const y=(140+i*13)*sc, r=(18+Math.sin(i/7*3.1)*46)*sc; vcyl('y',y,y+13.5*sc,cx,0,cz,r,i<3?gl2:i<6?ash2:top,{cast:false}); }
     vcyl('y',244*sc,268*sc,cx,0,cz,30*sc,top,{cast:false}); vcyl('y',0,10*sc,cx,0,cz,60*sc,plain(0x7a5a40,.95),{cast:false}); };
-  cloud(430,-60,1.15); cloud(-440,140,.9);
+  cloud(340,-50,1.5); cloud(-380,150,1.2);
   const bush=(x,z)=>{ const y=L.onD(x,z), k=.6+rand()*.8; BX(1.1*k,.7*k,1.1*k,shrub,x,y+.35*k,z,{cast:false}); BX(.8*k,.6*k,.8*k,shrub,x+.2,y+.9*k,z,{cast:false}); };
   const joshua=(x,z)=>{ const y=L.onD(x,z), h=2.6+rand()*2.2; BX(.4,h,.4,wood,x,y+h/2,z,{cast:false}); BX(.35,1.2,.35,wood,x+.5,y+h*.7,z,{cast:false}); BX(.9,.9,.9,shrub,x,y+h+.3,z,{cast:false}); BX(.8,.8,.8,shrub,x+.55,y+h*.7+.9,z,{cast:false}); };
   const boulder=(x,z)=>{ const y=L.onD(x,z); for(let k=0;k<3;k++){ const w=1+rand()*3; BX(w,w*.7,w*.9,rock[(rand()*3)|0],x+(rand()-.5)*4,y+w*.3,z+(rand()-.5)*4,{ry:rand()*6,cast:false}); } };
