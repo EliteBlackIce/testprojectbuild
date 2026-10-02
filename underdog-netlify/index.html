@@ -3155,8 +3155,8 @@ function lightTower(x,z){ for(const [dx,dz] of [[-.3,-.3],[.3,-.3],[-.3,.3],[.3,
   nightLight(x+fx*6,10,z+fzz*6,0xf0f4ff,14,40); col(x,z,.7,.7,11); }
 
 /* ================= MAP 2: Freight Yard (multi-level) ================= */
-MAPDEFS.yard={name:'Freight Yard',desc:'Container stacks and a raised catwalk. Fight on two levels.',spawn:[[-27,0],[27,0]],noTrees:[[-76,29,76,43],[-76,-43,76,-29],[-66,-92,66,-64],[-70,-35,-30,32],[30,-35,70,32],[-62,-60,-58,-56]],ground:'#3a3842',light:{nl:.3,expN:.95,hemiN:1.2},build(){
-  plane(120,60,MT.yard,0,.02,0,4); nog(-60,-30,60,30);
+MAPDEFS.yard={name:'Freight Yard',desc:'Container stacks and a raised catwalk, with the harbour and city skyline behind. Fight on two levels.',spawn:[[-27,0],[27,0]],land:true,noTrees:[[-500,-500,500,500]],ground:'#3a3842',light:{nl:.3,expN:.95,hemiN:1.2},build(){
+  plane(120,60,MT.yard,0,.02,0,4); nog(-60,-30,60,30); yardEnv();
   puddles([[-20,3,4,2],[-8,-4,3,1.4],[6,4,5,2],[18,-2,3,1.2],[-2,10,3,1.3],[2,-10,3,1.3],[25,9,2.4,1.2],[-25,-9,2.4,1.2]],60,28,0,0);
   for(const z of [-3.9,3.9]) for(let x=-28;x<28;x+=4) BX(2,.01,.16,MT.paintY,x,.035,z,{cast:false});
   for(const [x,z] of [[-12,0],[12,0],[0,7.5],[0,-7.5]]) BX(.8,.02,.8,MT.grating,x,.03,z,{cast:false});
@@ -3281,8 +3281,8 @@ MAPDEFS.yard={name:'Freight Yard',desc:'Container stacks and a raised catwalk. F
 }};
 
 /* ================= MAP 3: Harvest Farm (barn with a hayloft) ================= */
-MAPDEFS.farm={name:'Harvest Farm',desc:'A big barn with a hayloft, silos and hay bales.',spawn:[[-27,0],[27,0]],ground:'#40602c',light:{sunD:1.15,hemiD:2,hemiN:2.6,sunN:1.7,expD:1.12,expN:1.3,nl:1.4,fogN:.8},build(){
-  plane(64,3.6,MT.dirt,0,.03,0,2); plane(3.6,26,MT.dirt,0,.031,0,2); plane(15,13,MT.dirt,0,.029,0,2);
+MAPDEFS.farm={name:'Harvest Farm',desc:'A big barn with a hayloft, silos and hay bales, in golden fields that run to the horizon.',spawn:[[-27,0],[27,0]],land:true,noTrees:[[-500,-500,500,500]],ground:'#40602c',light:{sunD:1.15,hemiD:2,hemiN:2.6,sunN:1.7,expD:1.12,expN:1.3,nl:1.4,fogN:.8},build(){
+  farmEnv(); plane(64,3.6,MT.dirt,0,.03,0,2); plane(3.6,26,MT.dirt,0,.031,0,2); plane(15,13,MT.dirt,0,.029,0,2);
   const wall=(x,z,w,d,h,y0,mat)=>{ y0=y0||0; BX(w,h-y0,d,mat||MT.barn,x,y0+(h-y0)/2,z); col(x,z,w,d,h,y0); };
   const X=7, Z=5, H=6.2, T=.3, W=MT.white, top=3.2, Y0=2.9, rl=(x1,z1,x2,z2)=>{ const cx=(x1+x2)/2, cz=(z1+z2)/2, w=Math.abs(x2-x1), d=Math.abs(z2-z1);
     BX(w+.1,.12,d+.1,MT.logs,cx,top+.95,cz,{cast:false}); BX(w+.06,.08,d+.06,MT.logs,cx,top+.5,cz,{cast:false}); const n=Math.max(1,Math.round(Math.max(w,d)/1.6)); for(let i=0;i<=n;i++) BX(.12,1,.12,MT.logs,x1+(x2-x1)*i/n,top+.5,z1+(z2-z1)*i/n,{cast:false});
@@ -3540,9 +3540,9 @@ function nukeHouse2(tf,wallC,roofC,accent){ const P=v=>v*tf, wm=sidingMat(wallC)
   BX(.5,.08,.5,MT.bulb,P(-17.5),FB-.05,P(0),{cast:false}); BX(.5,.08,.5,MT.bulb,P(-19.2),FB-.05,P(-.85),{cast:false}); BX(.5,.08,.5,MT.bulb,P(-19.2),F+2.75,P(-1.5),{cast:false});
   dayLight(P(-17.5),2.3,P(0),0xffd8a8,2.2,9); dayLight(P(-19.2),F+2.3,P(-1.5),0xffd8a8,1.6,8);
 }
-MAPDEFS.nuke={name:'Atomic Acres',desc:'A classic two-house cul-de-sac with a bus in the middle. Close, fast and chaotic.',aw:30,ad:21,spawn:[[-27,0],[27,0]],ground:'#8a7a58',tint:[1.45,1.08,.62],light:{sunD:1.12,hemiD:1.9,hemiN:2.6,sunN:1.7,expD:1.1,expN:1.3,nl:1.3,fogN:.8},build(){
+MAPDEFS.nuke={name:'Atomic Acres',desc:'A classic two-house cul-de-sac with a bus in the middle, at an atomic test site with a mushroom cloud on the horizon. Close, fast and chaotic.',land:true,noTrees:[[-500,-500,500,500]],aw:30,ad:21,spawn:[[-27,0],[27,0]],ground:'#8a7a58',tint:[1.45,1.08,.62],light:{sunD:1.12,hemiD:1.9,hemiN:2.6,sunN:1.7,expD:1.1,expN:1.3,nl:1.3,fogN:.8},build(){
   const lawn=std({map:TX.lawn,normalMap:TX.lawnN,color:0xe8f0d8,roughness:.97});
-  plane(60,42,lawn,0,.012,0,4); plane(18,42,MT.asph,0,.03,0); nog(-60,-32,60,32);
+  nukeEnv(); plane(60,42,lawn,0,.012,0,4); plane(18,42,MT.asph,0,.03,0); nog(-60,-32,60,32);
   for(let z=-20;z<21;z+=3) BX(.16,.01,1.4,MT.paintY,0,.04,z,{cast:false});
   for(const s of [-1,1]){ plane(1.6,42,MT.side,s*9.8,.045,0,1.6); BX(.2,.12,42,MT.curb,s*9,.06,0,{cast:false});
     plane(.5,2,MT.side,s*10.85,.046,0,1.6); plane(3.6,5.6,MT.pad,s*12.4,.047,s*10.65,2); BX(3.6,.012,.06,plain(0x8e877d,.95),s*12.4,.049,s*10.65-2.8,{cast:false}); BX(3.6,.012,.06,plain(0x8e877d,.95),s*12.4,.049,s*10.65+2.8,{cast:false}); plane(5,6,MT.pad,s*-26,.045,0,2);
@@ -3694,6 +3694,30 @@ MAPDEFS.nuke={name:'Atomic Acres',desc:'A classic two-house cul-de-sac with a bu
 }};
 
 /* ================= MAP 5: Rust (a cramped desert oil yard, inspired by the classic small-map feel) ================= */
+// ---------- per-map landscapes: every map gets its own ground, horizon and scenery instead of the shared green hills ----------
+function envLand(o){
+  const fx=o.fx, fz=o.fz, bl=o.blend||30, q=o.q||1.5;
+  const hf=(x,z)=>{ const d=Math.hypot(Math.max(Math.abs(x)-fx,0),Math.max(Math.abs(z)-fz,0)); return o.h(x,z,smooth(0,bl,d),d)-.14; };
+  const onD=(x,z)=>Math.round(hf(x,z)*q)/q, S=o.size||900, N=o.cells||240, g=new THREE.PlaneGeometry(S,S,N,N); g.rotateX(-Math.PI/2);
+  const pa=g.attributes.position, uv=g.attributes.uv; for(let i=0;i<pa.count;i++){ const x=pa.getX(i), z=pa.getZ(i); pa.setY(i,onD(x,z)); uv.setXY(i,x/(o.uvx||30),z/(o.uvz||20)); }
+  g.computeVertexNormals(); const nr=g.attributes.normal, col=new Float32Array(pa.count*3), sd=SUN_DIR;
+  for(let i=0;i<pa.count;i++){ const x=pa.getX(i), z=pa.getZ(i), y=pa.getY(i), lit=clamp(nr.getX(i)*sd.x+nr.getY(i)*sd.y+nr.getZ(i)*sd.z,0,1), c=o.col(x,z,y,lit); col[i*3]=c[0]; col[i*3+1]=c[1]; col[i*3+2]=c[2]; }
+  g.setAttribute('color',new THREE.BufferAttribute(col,3));
+  const t=new THREE.Mesh(g,std({map:o.tex,vertexColors:true,flatShading:true,roughness:1})); t.receiveShadow=true; t.userData.noBake=true; t.frustumCulled=false; SR.add(t);
+  return {hf,onD,ok:(x,z)=>Math.abs(x)>fx||Math.abs(z)>fz}; }
+function envScatter(L,n,r0,r1,asp,fns,tries){ let placed=0, t=0; const tot=fns.reduce((a,f)=>a+f[0],0); while(placed<n&&t<(tries||n*14)){ t++; const a=rand()*Math.PI*2, r=r0+rand()*(r1-r0), x=Math.cos(a)*r*asp[0], z=Math.sin(a)*r*asp[1]; if(!L.ok(x,z)) continue;
+    let k=rand()*tot, f=fns[0]; for(const e of fns){ k-=e[0]; if(k<=0){ f=e; break; } } f[1](x,z); placed++; } }
+// a distant skyscraper with lit windows
+const _cityWin=()=>cached('cityWin',()=>{ const tx=pxTex(draw(16,16,(x,p)=>{ for(let j=0;j<16;j++) for(let i=0;i<16;i++){ const win=(i%4>=1&&i%4<=2)&&(j%4>=1&&j%4<=2), lit=hash2(i>>2,j>>2)>.55; p(i,j,win?(lit?'#ffd890':'#1c2230'):'#4a5266'); } })); return std({map:tx,emissive:0xffffff,emissiveMap:tx,emissiveIntensity:.55,roughness:.85,wuv:.14}); });
+function envTower(x,y,z,w,d,h){ BX(w,h,d,_cityWin(),x,y+h/2,z,{cast:false}); BX(w*.5,h*.06,d*.5,plain(0x2a2e3a,.8),x,y+h+h*.03,z,{cast:false}); if(h>70) BX(.8,12,.8,plain(0x2a2e3a,.8),x,y+h+9,z,{cast:false}); }
+function envStack(x,y,z,ry){ const cs=[0xa83a26,0x2a5a8a,0x3a7a44,0xc88a1a,0xd8d0c6,0x2a7a7a,0x8a5a3a,0x4a4a8a]; const nx=1+((rand()*3)|0), nz=1+((rand()*2)|0);
+  for(let i=0;i<nx;i++) for(let j=0;j<nz;j++){ const n=1+((rand()*3)|0); for(let k=0;k<n;k++) BX(6.1,2.6,2.44,paintMat(cs[(rand()*cs.length)|0]),x+Math.cos(ry)*i*6.3-Math.sin(ry)*j*2.6,y+1.3+k*2.6,z-Math.sin(ry)*i*6.3+Math.cos(ry)*j*2.6,{ry,cast:true}); } }
+function envGantry(x,y,z,ry){ const yl=plain(0xe8b01c,.5,.3), dk=plain(0x3a3e48,.6,.3), c=Math.cos(ry), sn=Math.sin(ry), at=(a,b)=>[x+c*a-sn*b,z-sn*a+c*b];
+  for(const a of [-26,26]) for(const b of [-14,14]){ const [px,pz]=at(a,b); BX(2.4,46,2.4,yl,px,y+23,pz,{cast:false}); }
+  for(const b of [-14,14]){ const [px,pz]=at(0,b); BX(60,3.4,3,yl,px,y+46,pz,{ry,cast:false}); } for(const a of [-26,26]){ const [px,pz]=at(a,0); BX(3,3,30,yl,px,y+46,pz,{ry,cast:false}); }
+  const [tx,tz]=at(0,0); BX(9,6,9,dk,tx,y+42,tz,{ry,cast:false}); BX(1.2,30,1.2,dk,tx,y+25,tz,{cast:false}); }
+function envStack2(x,z,h,r,bands){ // a tall voxel chimney with painted bands
+  const y0=0; const nl=Math.round(h/3); for(let i=0;i<nl;i++){ const c=(bands&&Math.floor(i/3)%2)?plain(0xd82a1e,.7):plain(0xe8e4dc,.7); vcyl('y',y0+i*3,y0+i*3+3.05,x,0,z,r*(1-i/nl*.25),c,{cast:false}); } vcyl('y',h,h+2,x,0,z,r*.8,plain(0x2a2a30,.8),{cast:false}); BX(1.2,1.2,1.2,glowMat(0xff3030,2),x,h+3,z,{cast:false}); }
 // ---------- Rust: the yard sits in the middle of an endless desert of dunes ----------
 function rustDesert(sandTex){
   const duneH=(x,z)=>{ const d=Math.hypot(Math.max(Math.abs(x)-61,0),Math.max(Math.abs(z)-41,0)), bl=smooth(0,30,d);
@@ -3727,6 +3751,61 @@ function rustDesert(sandTex){
   // a line of telegraph poles running off into the dunes, with a few close rocks and a lone road
   for(let i=0;i<9;i++){ pole(-66-i*18,-30-i*4.5); }
 }
+function yardEnv(){
+  const gt=pxTex(draw(32,32,(x,p)=>{ for(let j=0;j<32;j++) for(let i=0;i<32;i++){ const n=hash2(i,j), c=n>.92?'#6a6660':n>.5?'#4a4852':'#3e3c46'; p(i,j,c); } }));
+  const L=envLand({fx:64,fz:48,blend:24,tex:gt,uvx:24,uvz:24,q:1,
+    h:(x,z,b)=>b*(fbm(x*.02+3,z*.02,3)*5+Math.max(0,fbm(x*.008,z*.01+9,3)-.45)*40),
+    col:(x,z,y,lit)=>{ const k=.62+.32*lit+(hash2(Math.floor(x/6),Math.floor(z/6))-.5)*.1, grass=smooth(2,9,y)*.55; return [k*(1-grass*.4),k*(1+grass*.05),k*(1-grass*.3)]; }});
+  const rail=plain(0x3a3a42,.5,.6), sl=plain(0x4a3a2a,.9);
+  for(const z of [-52,-56,52,56]){ BX(560,.12,.16,rail,0,.12,z,{cast:false}); } for(const z of [-54,54]) for(let x=-280;x<=280;x+=1.5) BX(.4,.1,3.6,sl,x,.07,z,{cast:false});
+  envScatter(L,26,75,150,[1.25,1.05],[[1,(x,z)=>envStack(x,L.onD(x,z),z,rand()*3)]],400);
+  for(let i=0;i<5;i++){ const a=(i/5)*6.28+.4; envGantry(Math.cos(a)*190*1.2,L.onD(Math.cos(a)*190,Math.sin(a)*190),Math.sin(a)*190*.95,a+1.57); }
+  for(let i=0;i<46;i++){ const a=i/46*6.28+rand()*.08, r=270+rand()*160, x=Math.cos(a)*r*1.25, z=Math.sin(a)*r*.95; envTower(x,L.onD(x,z),z,14+rand()*18,14+rand()*18,36+rand()*rand()*130); }
+  for(let i=0;i<5;i++){ const a=rand()*6.28, r=170+rand()*60; envStack2(Math.cos(a)*r*1.2,Math.sin(a)*r*.95,40+rand()*30,3.5,true); }
+  for(let i=0;i<14;i++){ const a=rand()*6.28, r=72+rand()*40, x=Math.cos(a)*r*1.2, z=Math.sin(a)*r*.95; if(!L.ok(x,z)) continue; const y=L.onD(x,z); BX(.6,16,.6,plain(0x5a5e68,.6,.4),x,y+8,z,{cast:false}); BX(3,1.2,1,glowMat(0xfff0c8,1.6),x,y+16,z,{cast:false}); }
+}
+function farmEnv(){
+  const gt=pxTex(draw(32,32,(x,p)=>{ for(let j=0;j<32;j++) for(let i=0;i<32;i++){ const n=hash2(i,j); p(i,j,n>.9?'#a89a6a':n>.45?'#8a8a5a':'#7a7c50'); } }));
+  const FIELD=[[1.05,.86,.4],[.5,.74,.32],[.62,.46,.34],[.58,.78,.38],[.95,.74,.32],[.4,.62,.3]];
+  const cell=(x,z)=>{ const cx=Math.floor(x/46), cz=Math.floor(z/46); return (hash2(cx+9,cz+4)*FIELD.length)|0; };
+  const L=envLand({fx:44,fz:34,blend:34,tex:gt,uvx:20,uvz:20,q:1.2,size:1000,cells:260,
+    h:(x,z,b)=>b*(fbm(x*.012+5,z*.012+1,3)*13+Math.max(0,fbm(x*.005,z*.006+4,3)-.4)*45),
+    col:(x,z,y,lit)=>{ const f=FIELD[cell(x,z)], rows=.9+.12*Math.sin((x*.9+z*.5)*(.4+hash2(Math.floor(x/46),Math.floor(z/46))*.5)), k=(.64+.34*lit)*rows, near=smooth(0,30,Math.hypot(Math.max(Math.abs(x)-44,0),Math.max(Math.abs(z)-34,0)));
+      return [lerp(.5,f[0],near)*k,lerp(.62,f[1],near)*k,lerp(.3,f[2],near)*k]; }});
+  const red=plain(0xb02a22,.7), white=plain(0xf0ece0,.7), roof=plain(0x4a4a52,.8), wood=plain(0x6a4a32,.9), wheat=plain(0xd8b040,.9), leaf=plain(0x3a6a2e,.9);
+  const barn=(x,z,ry)=>{ const y=L.onD(x,z); BX(14,6,22,red,x,y+3,z,{ry,cast:true}); for(let k=0;k<4;k++) BX(14-k*3.6,1.6,22,roof,x,y+6.8+k*1.5,z,{ry,cast:true}); BX(.8,6,.8,white,x+Math.cos(ry)*7,y+3,z-Math.sin(ry)*7,{cast:false}); BX(5,5,.4,white,x+Math.sin(ry)*11.1,y+3,z+Math.cos(ry)*11.1,{ry,cast:false}); };
+  const silo=(x,z)=>{ const y=L.onD(x,z); vcyl('y',y,y+18,x,0,z,3.4,plain(0xc8ccd4,.5,.5),{cast:true}); vcyl('y',y+18,y+20,x,0,z,2.4,plain(0x8a8e98,.5,.5),{cast:false}); for(let k=1;k<5;k++) vcyl('y',y+k*3.4,y+k*3.4+.3,x,0,z,3.6,plain(0x7a7e88,.5,.5),{cast:false}); };
+  const mill=(x,z)=>{ const y=L.onD(x,z); for(let k=0;k<7;k++) BX(5-k*.4,3,5-k*.4,k%2?white:plain(0xd8d4c8,.8),x,y+1.5+k*3,z,{cast:true}); BX(6,2,6,red,x,y+22,z,{cast:false}); const hub=y+22; BX(1.2,1.2,2,plain(0x3a3a42,.6),x,hub,z+3,{cast:false}); for(const [dx,dy] of [[0,1],[0,-1],[1,0],[-1,0]]) BX(dx?10:1.2,dy?10:1.2,.5,white,x+dx*5,hub+dy*5,z+4,{cast:false}); };
+  const tree=(x,z)=>{ const y=L.onD(x,z), k=.8+rand()*.8; BX(.6*k,3*k,.6*k,MT.bark,x,y+1.5*k,z,{cast:false}); const m=mesh(voxModel('treeTop'),MT.vox,x,y+2.6*k,z,{cast:false}); m.scale.setScalar(1.35*k); };
+  const bale=(x,z)=>{ const y=L.onD(x,z); vcyl('z',z-.7,z+.7,x,y+.7,0,.75,wheat,{cast:false}); };
+  const tuft=(x,z)=>{ const y=L.onD(x,z), c=FIELD[cell(x,z)]; if(c[0]<.9) return; for(let k=0;k<6;k++) BX(.07,.9,.07,wheat,x+(rand()-.5)*1.2,y+.45,z+(rand()-.5)*1.2,{cast:false}); };
+  envScatter(L,5,70,170,[1.15,1],[[1,barn]],200); envScatter(L,6,60,230,[1.2,1],[[1,silo]],300); envScatter(L,3,90,260,[1.2,1],[[1,mill]],200);
+  envScatter(L,120,52,330,[1.35,1.05],[[1,tree]],800); envScatter(L,30,50,200,[1.25,1],[[1,bale]],300); envScatter(L,520,48,150,[1.3,1.05],[[1,tuft]],2400);
+  // fence lines and a dirt road running away to the horizon
+  for(const z of [-46,46]) for(let x=-250;x<=250;x+=3){ const y=L.onD(x,z); BX(.18,1.2,.18,wood,x,y+.6,z,{cast:false}); if(x<250) BX(3,.12,.1,wood,x+1.5,y+.95,z,{cast:false}); }
+  for(let x=-300;x<=300;x+=6){ const z=-38+Math.sin(x*.02)*3; BX(6.2,.08,4,plain(0x8a6a44,.95),x,L.onD(x,z)+.02,z,{cast:false}); } }
+function nukeEnv(){
+  const gt=pxTex(draw(32,32,(x,p)=>{ for(let j=0;j<32;j++) for(let i=0;i<32;i++){ const n=hash2(i,j); p(i,j,n>.9?'#b89868':n>.45?'#a8885a':'#9a7c50'); } }));
+  const L=envLand({fx:38,fz:30,blend:26,tex:gt,uvx:26,uvz:26,q:1.2,
+    h:(x,z,b,d)=>b*(fbm(x*.014+2,z*.014+8,3)*9+Math.max(0,fbm(x*.006,z*.007+3,3)-.42)*60),
+    col:(x,z,y,lit)=>{ const k=.66+.36*lit, rock=smooth(5,26,y), n=hash2(Math.floor(x/9),Math.floor(z/9))*.1; return [k*(1.1+rock*.12)+n,k*(.86-rock*.14)+n,k*(.62-rock*.2)]; }});
+  const dust=plain(0xb89868,.95), rock=[0x9a6a44,0x8a5a3a,0xa87850].map(c=>plain(c,.95)), shrub=plain(0x6a7a3a,.9), wood=plain(0x6a5038,.9), hut=[0xe8e0cc,0xcfd8e0,0xe0c8b8].map(c=>plain(c,.8)), roofC=plain(0x8a3a2a,.8);
+  const cloud=(cx,cz,sc)=>{ // a voxel mushroom cloud on the horizon: dark stem, glowing fireball, billowing cap
+    const gl=glowMat(0xff7a28,1.6), gl2=glowMat(0xffb050,1.9), ash=plain(0x6a5a52,.95), ash2=plain(0x8a7a70,.95), top=plain(0xc8b8a8,.95);
+    for(let i=0;i<10;i++){ const y=i*14*sc, r=(14-i*.6)*sc; vcyl('y',y,y+14.2*sc,cx,0,cz,r,i<4?gl:ash,{cast:false}); }
+    for(let i=0;i<8;i++){ const y=(140+i*13)*sc, r=(18+Math.sin(i/7*3.1)*46)*sc; vcyl('y',y,y+13.5*sc,cx,0,cz,r,i<3?gl2:i<6?ash2:top,{cast:false}); }
+    vcyl('y',244*sc,268*sc,cx,0,cz,30*sc,top,{cast:false}); vcyl('y',0,10*sc,cx,0,cz,60*sc,plain(0x7a5a40,.95),{cast:false}); };
+  cloud(430,-60,1.15); cloud(-440,140,.9);
+  const bush=(x,z)=>{ const y=L.onD(x,z), k=.6+rand()*.8; BX(1.1*k,.7*k,1.1*k,shrub,x,y+.35*k,z,{cast:false}); BX(.8*k,.6*k,.8*k,shrub,x+.2,y+.9*k,z,{cast:false}); };
+  const joshua=(x,z)=>{ const y=L.onD(x,z), h=2.6+rand()*2.2; BX(.4,h,.4,wood,x,y+h/2,z,{cast:false}); BX(.35,1.2,.35,wood,x+.5,y+h*.7,z,{cast:false}); BX(.9,.9,.9,shrub,x,y+h+.3,z,{cast:false}); BX(.8,.8,.8,shrub,x+.55,y+h*.7+.9,z,{cast:false}); };
+  const boulder=(x,z)=>{ const y=L.onD(x,z); for(let k=0;k<3;k++){ const w=1+rand()*3; BX(w,w*.7,w*.9,rock[(rand()*3)|0],x+(rand()-.5)*4,y+w*.3,z+(rand()-.5)*4,{ry:rand()*6,cast:false}); } };
+  const house=(x,z)=>{ const y=L.onD(x,z), ry=Math.round(rand()*2)*1.57; BX(7,3.2,6,hut[(rand()*3)|0],x,y+1.6,z,{ry,cast:true}); for(let k=0;k<3;k++) BX(7.4-k*2.2,.7,6.4,roofC,x,y+3.5+k*.7,z,{ry,cast:false}); };
+  const tower=(x,z)=>{ const y=L.onD(x,z), st=plain(0x6a6e78,.6,.4); for(const a of [-1,1]) for(const b of [-1,1]) BX(.5,34,.5,st,x+a*3,y+17,z+b*3,{cast:false}); for(let k=0;k<5;k++){ BX(6.4,.4,.4,st,x,y+4+k*7,z+3,{cast:false}); BX(6.4,.4,.4,st,x,y+4+k*7,z-3,{cast:false}); } BX(8,3.4,8,plain(0xd8d0c0,.8),x,y+35.7,z,{cast:true}); BX(1.2,1.2,1.2,glowMat(0xff3030,2),x,y+38.5,z,{cast:false}); };
+  const bunker=(x,z)=>{ const y=L.onD(x,z); BX(10,3,7,plain(0xa8a090,.9),x,y+1.5,z,{cast:true}); BX(7,1,5,plain(0x8a8272,.9),x,y+3.5,z,{cast:false}); BX(2,2,.4,plain(0x2a2a30,.9),x,y+1,z+3.6,{cast:false}); };
+  const pole=(x,z)=>{ const y=L.onD(x,z); BX(.3,9,.3,wood,x,y+4.5,z,{cast:false}); BX(2.4,.25,.25,wood,x,y+8.2,z,{cast:false}); };
+  envScatter(L,230,45,260,[1.4,1.1],[[5,bush],[2,joshua],[3,boulder]],1800); envScatter(L,34,95,250,[1.35,1.05],[[1,house]],500); envScatter(L,4,130,260,[1.3,1],[[1,tower]],200); envScatter(L,6,100,220,[1.3,1],[[1,bunker]],200);
+  for(let i=0;i<12;i++){ const x=-60-i*22, z=-58+Math.sin(i*.4)*4; pole(x,z); }
+  for(const s of [-1,1]) for(let x=-250;x<=250;x+=4){ const z=s*50, y=L.onD(x,z); BX(.12,2,.12,plain(0x6a6e78,.6,.4),x,y+1,z,{cast:false}); if(x<250) BX(4,.06,.06,plain(0x8a8e98,.5,.5),x+2,y+1.7,z,{cast:false}); } }
 MAPDEFS.rust={name:'Rust',desc:'A cramped oil yard in the middle of nowhere: a central derrick with a catwalk, container walls and rooftops, with sand dunes to the horizon.',desert:true,noTrees:[[-500,-500,500,500]],aw:28,ad:20,spawn:[[-25,0],[25,0]],ground:'#c49a62',tint:[1.5,1.1,.66],light:{nl:.3,expN:.92,hemiN:1.2},build(){
   const gT=pxTex(draw(64,64,(x,p)=>{ const SAND=['#c49a62','#cca46a','#d4ae74','#dcb87e','#bc925c'];
     for(let j=0;j<64;j++) for(let i=0;i<64;i++){ const n=tfbm(i/8,j/8,8,8,3), g=hash2(i,j); let c=pal(SAND,clamp(n*1.1-.05+(g-.5)*.22,0,.999));
@@ -4701,7 +4780,7 @@ async function loadMap(id,progress){
   // only the current map may exist in the scene: every other map is taken out entirely, not just hidden
   for(const k in MAPS){ const o=MAPS[k]; if(o===M){ if(!o.root.parent) scene.add(o.root); } else { o.root.visible=false; if(o.root.parent) o.root.parent.remove(o.root); } }
   const tt=M.def.tint||[1,1,1]; MT.terrain.color.setRGB(tt[0],tt[1],tt[2]);
-  maskPines(M.def.noTrees); pineTint(M.def.pineTint||null); if(SHARED.terrain) SHARED.terrain.visible=!(M.def.ocean||M.def.desert); applyMapLight();
+  maskPines(M.def.noTrees); pineTint(M.def.pineTint||null); if(SHARED.terrain) SHARED.terrain.visible=!(M.def.ocean||M.def.desert||M.def.land); applyMapLight();
 }
 function applyNightLights(){ if(!MAP) return;
   const want=MAP.NIGHTL.filter(l=>l.kind==='day'||G_NIGHT).sort((a,b)=>a.prio-b.prio), on=new Set(want.slice(0,Math.max(0,LIGHT_BUDGET-1)));
