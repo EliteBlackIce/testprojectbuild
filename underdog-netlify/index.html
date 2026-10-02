@@ -7226,9 +7226,10 @@ const b64e=u=>{ let s='';  for(let i=0;i<u.length;i+=8192) s+=String.fromCharCod
 const b64d=t=>Uint8Array.from(atob(t),c=>c.charCodeAt(0));
 async function netEnc(obj){ const raw=new TextEncoder().encode(JSON.stringify(obj)); if(window.CompressionStream){ const cs=new CompressionStream('deflate-raw'), w=cs.writable.getWriter(); w.write(raw); w.close(); return 'Z'+b64e(new Uint8Array(await new Response(cs.readable).arrayBuffer())); } return 'R'+b64e(raw); }
 async function netDec(t){ t=(t||'').trim().replace(/\s+/g,''); const k=t[0], u=b64d(t.slice(1)); if(k==='Z'){ const ds=new DecompressionStream('deflate-raw'), w=ds.writable.getWriter(); w.write(u); w.close(); return JSON.parse(new TextDecoder().decode(new Uint8Array(await new Response(ds.readable).arrayBuffer()))); } return JSON.parse(new TextDecoder().decode(u)); }
-const netGather=pc=>new Promise(res=>{ if(pc.iceGatheringState==='complete') return res(); let first=0, done=false, iv=0; const fin=()=>{ if(done) return; done=true; clearTimeout(t); clearInterval(iv); res(); }; const t=setTimeout(fin,3500);
-  pc.addEventListener('icegatheringstatechange',()=>{ if(pc.iceGatheringState==='complete') fin(); }); pc.addEventListener('icecandidate',e=>{ if(e.candidate&&!first) first=performance.now(); });
-  iv=setInterval(()=>{ if(first&&performance.now()-first>1500) fin(); },100); }); // done once candidates stopped arriving (no waiting out a dead STUN server)
+const netGather=pc=>new Promise(res=>{ if(pc.iceGatheringState==='complete') return res(); let done=false, srf=0; const t0=performance.now(), fin=()=>{ if(done) return; done=true; clearTimeout(t); clearInterval(iv); res(); }, t=setTimeout(fin,3500);
+  pc.addEventListener('icegatheringstatechange',()=>{ if(pc.iceGatheringState==='complete') fin(); });
+  pc.addEventListener('icecandidate',e=>{ if(e.candidate){ const ty=(/ typ (\w+)/.exec(e.candidate.candidate)||[])[1]; (NET.cand=NET.cand||{})[ty]=((NET.cand||{})[ty]||0)+1; if((ty==='srflx'||ty==='relay')&&!srf) srf=performance.now(); } });
+  const iv=setInterval(()=>{ if(srf&&performance.now()-srf>500) fin(); },100); }); // wait for the STUN (public-address) candidate too: some LANs only connect through it
 // ---------- LAN netcode settings (tune here or live with the F4 overlay) ----------
 // tickHz: snapshots the host sends per second. inHz: inputs the guest sends per second. interp: how the guest smooths the OTHER player
 // (auto = a couple of snapshot intervals plus measured jitter). predict: the guest moves its own player locally and the host only corrects it.
@@ -7294,8 +7295,8 @@ async function lanHostRoom(){ const room=newRoom(), code=await netHostCreate(); 
 async function lanJoinRoom(room){ NET.gotOffer=false; NET.room=room; let tm=null;
   sigSub(room,async m=>{ if(m.k==='offer'&&!NET.gotOffer){ NET.gotOffer=true; clearTimeout(tm); lanStatus('Room found, connecting...'); try{ const rep=await netJoin(m.c); await sigPub(room,{k:'answer',c:rep}); }catch(e){ lanStatus('Could not connect: '+e.message); } } });
   tm=setTimeout(()=>{ if(!NET.gotOffer){ try{ NET.es&&NET.es.close(); }catch(e){} lanStatus('No room with that code. Check it with your friend.'); } },9000); }
-function netPC(){ netClose(true); const pc=new RTCPeerConnection({iceServers:NETCFG.stun?[{urls:'stun:stun.l.google.com:19302'}]:[]}); NET.pc=pc;
-  pc.onconnectionstatechange=()=>{ const st=pc.connectionState; if(st==='failed'||st==='closed'||st==='disconnected') setTimeout(()=>{ if(NET.pc===pc&&pc.connectionState!=='connected') netLost(); },2000); }; return pc; }
+function netPC(){ netClose(true); NET.cand={}; const pc=new RTCPeerConnection({iceServers:NETCFG.stun?[{urls:'stun:stun.l.google.com:19302'}]:[]}); NET.pc=pc;
+  pc.oniceconnectionstatechange=()=>{ NET.lastIce='ice '+pc.iceConnectionState; }; pc.onconnectionstatechange=()=>{ const st=pc.connectionState; if(st==='failed'||st==='closed'||st==='disconnected') setTimeout(()=>{ if(NET.pc===pc&&pc.connectionState!=='connected') netLost(); },2000); }; return pc; }
 function netWire(ch){ NET[ch.label]=ch; ch.onmessage=e=>netRecv(ch,e.data);
   ch.onopen=()=>{ if(NET.u&&NET.r&&NET.u.readyState==='open'&&NET.r.readyState==='open'&&!NET.on) netOpen(); }; ch.onclose=()=>{ if(NET.on) netLost(); }; }
 async function netHostCreate(){ const pc=netPC(); NET.role='host'; netWire(pc.createDataChannel('u',{ordered:false,maxRetransmits:0})); netWire(pc.createDataChannel('r'));
@@ -7305,7 +7306,7 @@ async function netJoin(code){ const o=await netDec(code), pc=netPC(); NET.role='
 function netClose(keepRole){ try{ if(NET.es) NET.es.close(); }catch(e){} NET.es=null; try{ if(NET.u) NET.u.close(); if(NET.r) NET.r.close(); if(NET.pc) NET.pc.close(); }catch(e){} NET.u=NET.r=NET.pc=null; NET.on=false; if(!keepRole){ NET.role=null; NET.cl=false; } }
 function netOpen(){ try{ if(NET.es) NET.es.close(); }catch(e){} NET.es=null; NET.on=true; NS.rtt=0; NS.rttWin=[]; NS.snapLost=NS.inLost=0; NS.lastSq=0; NS.t0=performance.now(); NS.probeT=0; NS.conn='connecting'; NET.q=0; NET.sq=0; NET.hist=[]; NET.ptr.forEach(m=>scene.remove(m.m)); NET.ptr=[]; NET.cl=NET.role==='client'; NET.snaps=[]; NET.seenInit=false; NET.inp=null;
   if(NET.role==='host'){ lanStatus('Connected! Pick your map in Play if you like, then start.'); $('#lanStart').hidden=false; } else lanStatus('Connected! Waiting for the host to start the match...'); }
-function netLost(){ if(!NET.on&&!NET.pc) return; const had=NET.on; netClose(); if(had){ toast('LAN connection lost'); if(G.state==='lanc'||G.mode==='lan') toMenu(); else lanStatus('Connection lost.'); } else lanStatus('Could not connect. Check the codes and try again.'); }
+function netLost(){ if(!NET.on&&!NET.pc) return; const had=NET.on; netClose(); if(had){ toast('LAN connection lost'); if(G.state==='lanc'||G.mode==='lan') toMenu(); else lanStatus('Connection lost.'); } else lanStatus('Could not connect ('+(NET.lastIce||'ice failed')+'; candidates '+JSON.stringify(NET.cand||{})+'). Try again; if you are on different networks both of you need internet access.'); }
 function lanLeave(quiet){ if(NET.on&&NET.role==='host') netR({t:'bye'}); if(NET.on&&NET.role==='client') netR({t:'bye'});
   for(const m of NET.tr){ scene.remove(m); } NET.tr=[]; B.remote=false; B.mirror=false;
   if(G.mode==='lan'){ G.mode=NET.prevMode||'bot'; syncSeg('#modeSeg',G.mode); if(NET.restore){ Object.assign(G,NET.restore); NET.restore=null; } }
