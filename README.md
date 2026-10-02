@@ -57,3 +57,14 @@ Then open http://localhost:8000. Press F3 in game for the debug overlay.
 - **Unique landscapes:** Freight Yard now sits in a harbour with a city skyline, gantry cranes and chimneys on the horizon; Harvest Farm is golden fields with barns, silos, windmills and hay bales; Atomic Acres is a desert test site with a mushroom cloud on the horizon; Rust is sand dunes; the Cargo Ship is open ocean; Sunset Town keeps its green valley.
 - **Scenery overhaul:** every map's outside world is built on a placement system that keeps everything flat-padded, spaced apart and clear of the playable area, so nothing floats, sinks or overlaps (checked by an overlap test). Detailed voxel houses (shutters, porches, chimneys), barns, silos, windmills, churches, warehouses, skyscrapers, gantries and more, plus props right outside each map (cars, trucks, tractors, hay, barrels, tents, pumpjacks, lettered signs and billboards). The Cargo Ship is plain open ocean.
 - **LAN:** replays now work for both players (kill cam after each round and the match replay), map vote and per-round rotation work, and the guest sees bullets at their real size.
+
+## LAN netcode (how it works)
+
+The host runs the real simulation; the joining player sends inputs and draws the result, but now **predicts its own movement and shots locally**:
+
+- **Prediction + reconciliation:** the guest steps its own player with the same movement code as the host and keeps a short input history. Each snapshot carries the host's position of the guest at the last input it processed; the guest compares it to where it was at that input and eases any difference away (tiny differences are ignored, big ones snap). No waiting for the server to see your own movement.
+- **Instant shooting:** muzzle flash, recoil, sound, shell and tracer play the moment you click. The host still decides what actually hits. Fire clicks use an edge counter, so a quick tap can't be lost between packets.
+- **Lag compensation:** when the guest's bullet reaches the host it tests against the host player's position rewound by the guest's ping + interpolation delay, so what you aimed at is what gets hit.
+- **Other player:** shown from snapshots stamped with the host's own clock, with an adaptive buffer (about one snapshot + measured jitter, roughly 25 ms on a clean LAN).
+- **Tick rate:** 60 snapshots/s and 60 inputs/s by default (`NETCFG.tickHz`, `NETCFG.inHz`), about 19 KB/s down and 8 KB/s up. All tunables live in `NETCFG` (top of the LAN section in `index.html`, also saved from the F4 overlay).
+- **Overlay (F4):** connection route (LAN direct / NAT / relay), RTT, tick rate, FPS, packet rates, loss, prediction error and corrections.

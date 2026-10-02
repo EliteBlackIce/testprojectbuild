@@ -5756,8 +5756,9 @@ function updateBullets(dt){
       if(!dead) for(const t of FIGHTERS){
         if(t.dead||(t===b.owner&&(!b.bounced||b.saw))) continue;
         if(b.hitSet&&b.hitSet.has(t)) continue;
-        const dx=t.x-b.x, dz2=t.z-b.z, rr=t.r+b.size;
-        if(dx*dx+dz2*dz2<rr*rr&&b.y>t.y-b.size&&b.y<t.y+(t.slideT>0?1.1:BODY_H)+b.size){
+        const rw=(b.owner.remote&&!t.remote&&NS.comp>0)?rewindPos(t,NS.comp):null, tx=rw?rw.x:t.x, ty=rw?rw.y:t.y, tz=rw?rw.z:t.z;
+        const dx=tx-b.x, dz2=tz-b.z, rr=t.r+b.size;
+        if(dx*dx+dz2*dz2<rr*rr&&b.y>ty-b.size&&b.y<ty+(t.slideT>0?1.1:BODY_H)+b.size){
           if(t.blockT>0){ sparks(b.x,b.y,b.z,14,[1.5,3,6],6); t.shieldPop=.25; SFX.deflect(b.x,b.z);
             if(t.stats.parry&&t.blockT>t.stats.blockDur-.25){ t.ammo=t.stats.ammo; t.reloadT=0; sparks(t.x,t.y+1.3,t.z,16,[5,4.4,1.4],5); if(t.human) t.fx.hitFx=.12; }
             if(t.stats.reflect&&!b.grenade){ const sh=b.owner; b.owner=t; const v=new THREE.Vector3(sh.x-b.x,sh.y+1.1-b.y,sh.z-b.z).normalize(); b.vx=v.x*b.spd; b.vy=v.y*b.spd; b.vz=v.z*b.spd; b.bounced=false; b.hitSet=null; b.life=2.5;
@@ -6378,7 +6379,13 @@ function controlHuman(f,dt){
     if(BINDS.pad.block.some(b=>b!=null&&p.pr[b]&&!(f.weapon==='sniper'&&BINDS.pad.scope.includes(b)))) block=true;
     if(padPr(p,'slide')) slide=true; if(padPr(p,'reload')) reload=true; ['ability','ability2','ability3','ability4'].forEach((a,i)=>{ if(padPr(p,a)) abil[i]=true; }); if(padPr(p,'pause')) pause=true;
   }
-  if(NET.cl){ const C=NET.cin; C.fi=fi; C.si=si; C.fire=fire?1:0; C.scope=scopeHeld?1:0; C.yaw=f.yaw; C.pitch=f.pitch; if(jump) C.j++; if(block) C.b++; if(reload) C.r++; if(slide) C.s++; abil.forEach((q,i)=>{ if(q) C.a[i]++; }); return pause; }
+  if(NET.cl){ const C=NET.cin; C.fi=fi; C.si=si; C.fire=fire?1:0; C.scope=scopeHeld?1:0; C.yaw=f.yaw; C.pitch=f.pitch; if(fire&&!NET.pFire) C.fc++; NET.pFire=fire; if(jump) C.j++; if(block) C.b++; if(reload) C.r++; if(slide) C.s++; abil.forEach((q,i)=>{ if(q) C.a[i]++; });
+    // client-side prediction: the guest moves its own player at once; the host only corrects it
+    if(NETCFG.predict&&NET.hs==='playing'&&!f.dead){ const wantScope=scopeHeld&&f.weapon==='sniper'&&f.reloadT<=0; f.scopeK=lerp(f.scopeK||0,wantScope?1:0,Math.min(1,dt*12));
+      const fx=-Math.sin(f.yaw), fz=-Math.cos(f.yaw), rxv=Math.cos(f.yaw), rzv=-Math.sin(f.yaw); let mx=fx*fi+rxv*si, mz=fz*fi+rzv*si; const l=Math.hypot(mx,mz); if(l>1){ mx/=l; mz/=l; } if(f.frozenT>0){ mx=mz=0; jump=slide=false; fire=false; }
+      f.mx=mx; f.mz=mz; if(jump) doJump(f); if(slide) doSlide(f); if(reload) doReload(f); NET.wantFire=fire; }
+    else { NET.wantFire=false; if(!NETCFG.predict){} else { f.mx=f.mz=0; } }
+    return pause; }
   if(f.frozenT>0){ fi=si=0; fire=jump=slide=false; abil=[false,false,false,false]; }
   const wantScope=scopeHeld&&f.weapon==='sniper'&&!f.dead&&f.reloadT<=0; f.scopeK=lerp(f.scopeK||0,wantScope?1:0,Math.min(1,dt*12));
   const fx=-Math.sin(f.yaw), fz=-Math.cos(f.yaw), rxv=Math.cos(f.yaw), rzv=-Math.sin(f.yaw);
@@ -6676,6 +6683,7 @@ function loop(now){
       for(const f of humans()){ const o=other(f); if(hasLOS(eyePos(f),new THREE.Vector3(o.x,o.y+1.2,o.z))) o.seenT=Math.max(o.seenT,1.2); }
     } else { jumpQ=blockQ=reloadQ=slideQ=false; abilQ.fill(false); if(DEV.on&&DEV.freecam) fcTick(dt); for(const f of FIGHTERS){ f.mx=f.mz=0; if(f.human&&G.state==='countdown'){ const p=getPad(f.input.pad); if(p){ const [rx,ry]=dz(p.axes[2]||0,p.axes[3]||0,.14); f.yaw-=curve(rx)*3.4*(f.padSens||G.padSens)*dt; f.pitch=clamp(f.pitch-curve(ry)*2.3*(f.padSens||G.padSens)*dt,-1.45,1.45); } } } }
     for(const f of FIGHTERS) updateFighter(f,dt);
+    if(NET.on&&NET.role==='host'&&G.mode==='lan') lanHostPost();
     liftTick(dt);
     updateBullets(dt);
     if(G.state==='playing'||G.state==='roundEnd') recTick(rdt);
@@ -6684,7 +6692,7 @@ function loop(now){
   }
   if(G.state==='replay'){ pollKcPad(); replayTick(rdt); if(NET.cl&&NET.lastS&&NET.lastS!=='replay'&&KC&&KC.real>.3) endReplay(); }
   if(G.state==='mreplay') mvTick(rdt);
-  if(G.state==='lanc') lanClientTick(rdt); else if(NET.on&&NET.role==='host'&&G.mode==='lan') lanHostTick(rdt);
+  netStatsTick(raw); if(G.state==='lanc') lanClientTick(rdt); else if(NET.on&&NET.role==='host'&&G.mode==='lan') lanHostTick(rdt);
   if(G.bannerT>0){ G.bannerT-=rdt; if(G.bannerT<=0&&G.state==='playing') hideBanner(); }
   voteTick(rdt);
   if(G.state==='pick'&&G.picker.isBot){ G.pickT+=rdt;
@@ -6997,15 +7005,67 @@ function tnInit(){
   tnEl('tBrMenu').onclick=tnLeave; tnEl('tBrNew').onclick=()=>{ tnReset(); tnPane('tSetup'); tnRenderSetup(); }; tnEl('tChampNew').onclick=()=>{ tnReset(); tnPane('tSetup'); tnRenderSetup(); }; tnEl('tChampMenu').onclick=()=>{ tnReset(); tnLeave(); }; }
 
 /* ================= LAN play: the host runs the match, the guest sends controls and sees the host's world ================= */
-const NET={on:false,role:null,cl:false,pc:null,u:null,r:null,snaps:[],inp:null,inT:0,seenInit:false,seen:{j:0,b:0,r:0,s:0,a:[0,0,0,0]},cin:{fi:0,si:0,fire:0,scope:0,yaw:0,pitch:0,j:0,b:0,r:0,s:0,a:[0,0,0,0]},sendT:0,hs:'',tr:[],prevMode:null,noRelay:false,sh:[0,0],delay:90};
+const NET={on:false,role:null,cl:false,pc:null,u:null,r:null,snaps:[],inp:null,inT:0,seenInit:false,seen:{j:0,b:0,r:0,s:0,fc:0,a:[0,0,0,0]},cin:{fi:0,si:0,fire:0,fc:0,scope:0,yaw:0,pitch:0,j:0,b:0,r:0,s:0,a:[0,0,0,0]},sendT:0,hs:'',tr:[],prevMode:null,noRelay:false,sh:[0,0],delay:90,q:0,sq:0,hist:[],ptr:[],pFire:false,wantFire:false,lastShotT:0,comp:0,gInterp:45};
 const LAN_OK=id=>id!=='ship';
 const b64e=u=>{ let s='';  for(let i=0;i<u.length;i+=8192) s+=String.fromCharCode.apply(null,u.subarray(i,i+8192)); return btoa(s); };
 const b64d=t=>Uint8Array.from(atob(t),c=>c.charCodeAt(0));
 async function netEnc(obj){ const raw=new TextEncoder().encode(JSON.stringify(obj)); if(window.CompressionStream){ const cs=new CompressionStream('deflate-raw'), w=cs.writable.getWriter(); w.write(raw); w.close(); return 'Z'+b64e(new Uint8Array(await new Response(cs.readable).arrayBuffer())); } return 'R'+b64e(raw); }
 async function netDec(t){ t=(t||'').trim().replace(/\s+/g,''); const k=t[0], u=b64d(t.slice(1)); if(k==='Z'){ const ds=new DecompressionStream('deflate-raw'), w=ds.writable.getWriter(); w.write(u); w.close(); return JSON.parse(new TextDecoder().decode(new Uint8Array(await new Response(ds.readable).arrayBuffer()))); } return JSON.parse(new TextDecoder().decode(u)); }
-const netGather=pc=>new Promise(res=>{ if(pc.iceGatheringState==='complete') return res(); const t=setTimeout(res,3500); pc.addEventListener('icegatheringstatechange',()=>{ if(pc.iceGatheringState==='complete'){ clearTimeout(t); res(); } }); });
-const netR=o=>{ try{ if(NET.r&&NET.r.readyState==='open') NET.r.send(JSON.stringify(o)); }catch(e){} };
-const netU=o=>{ try{ if(NET.u&&NET.u.readyState==='open') NET.u.send(JSON.stringify(o)); }catch(e){} };
+const netGather=pc=>new Promise(res=>{ if(pc.iceGatheringState==='complete') return res(); let first=0, done=false, iv=0; const fin=()=>{ if(done) return; done=true; clearTimeout(t); clearInterval(iv); res(); }; const t=setTimeout(fin,3500);
+  pc.addEventListener('icegatheringstatechange',()=>{ if(pc.iceGatheringState==='complete') fin(); }); pc.addEventListener('icecandidate',e=>{ if(e.candidate&&!first) first=performance.now(); });
+  iv=setInterval(()=>{ if(first&&performance.now()-first>1500) fin(); },100); }); // done once candidates stopped arriving (no waiting out a dead STUN server)
+// ---------- LAN netcode settings (tune here or live with the F4 overlay) ----------
+// tickHz: snapshots the host sends per second. inHz: inputs the guest sends per second. interp: how the guest smooths the OTHER player
+// (auto = a couple of snapshot intervals plus measured jitter). predict: the guest moves its own player locally and the host only corrects it.
+const NETCFG=Object.assign({tickHz:60,inHz:60,interpAuto:true,interpTicks:2.2,interpFixed:45,interpMin:22,interpMax:140,extrapMax:80,
+  predict:true,corrRate:12,deadzone:.08,deadY:.16,snapDist:1.8,snapY:1.3,shotPredict:true,lagComp:true,compMax:.25,stun:true,simLatency:0,simLoss:0,overlay:false},
+  (()=>{ try{ return JSON.parse(localStorage.getItem('udNetCfg')||'{}'); }catch(e){ return {}; } })());
+NETCFG.simLatency=0; NETCFG.simLoss=0;
+const netCfgSave=()=>{ try{ localStorage.setItem('udNetCfg',JSON.stringify(NETCFG)); }catch(e){} };
+const NS={rtt:0,rttMin:0,rttWin:[],jit:0,txB:0,txP:0,rxB:0,rxP:0,txBs:0,txPs:0,rxBs:0,rxPs:0,snapRx:0,snapRxs:0,snapTx:0,snapTxs:0,inRx:0,inRxs:0,inTx:0,inTxs:0,snapLost:0,inLost:0,hostSeenSnapLost:0,hostSeenInLost:0,
+  err:0,corr:0,corrS:0,hard:0,hardS:0,interp:NETCFG.interpFixed,comp:0,conn:'-',connDetail:'',t0:0,pingT:0,probeT:0,lastSq:0,snapInt:1/60,snapJit:0,lastSnapAt:0};
+function netSendRaw(ch,s,unrel){ try{ if(ch&&ch.readyState==='open'){ NS.txB+=s.length; NS.txP++; ch.send(s); } }catch(e){} }
+function netSend(ch,o,unrel){ const s=JSON.stringify(o), L=NETCFG.simLatency; if(L>0){ setTimeout(()=>netSendRaw(ch,s,unrel),L/2*(.8+Math.random()*.4)); } else netSendRaw(ch,s,unrel); }
+function netRecv(ch,data){ NS.rxB+=data.length; NS.rxP++; if(NETCFG.simLoss>0&&ch.label==='u'&&Math.random()*100<NETCFG.simLoss) return; try{ netMsg(JSON.parse(data)); }catch(err){ NS.msgErr=(NS.msgErr||0)+1; if(NS.msgErr<6) console.error('net message error: '+err.message); } }
+async function netProbe(){ const pc=NET.pc; if(!pc||!pc.getStats) return; try{ const st=await pc.getStats(); const by={}; st.forEach(r=>{ by[r.id]=r; }); let pair=null;
+    st.forEach(r=>{ if(r.type==='transport'&&r.selectedCandidatePairId&&by[r.selectedCandidatePairId]) pair=by[r.selectedCandidatePairId]; });
+    if(!pair) st.forEach(r=>{ if(r.type==='candidate-pair'&&(r.selected||(r.nominated&&r.state==='succeeded'))) pair=r; });
+    if(!pair){ NS.conn='connecting'; return; } const L=by[pair.localCandidateId]||{}, Rm=by[pair.remoteCandidateId]||{}, lt=L.candidateType, rt=Rm.candidateType;
+    NS.conn=(lt==='relay'||rt==='relay')?'RELAY (TURN server)':(lt==='host'&&rt==='host')?'LAN direct (host-host '+(L.protocol||'udp').toUpperCase()+')':(lt==='srflx'||lt==='prflx'||rt==='srflx'||rt==='prflx')?'NAT route ('+lt+'/'+rt+', not pure LAN)':(lt||'?')+'/'+(rt||'?');
+    NS.connDetail=(L.address||L.ip||'?')+' -> '+(Rm.address||Rm.ip||'?')+(pair.currentRoundTripTime?'  ice-rtt '+Math.round(pair.currentRoundTripTime*1000)+'ms':''); }catch(e){} }
+function netStatsTick(raw){ const now=performance.now();
+  if(!NET.on){ NS.conn='-'; netOverlayTick(); return; }
+  if(now-NS.pingT>400){ NS.pingT=now; netSend(NET.u,{t:'ping',c:now},true); }
+  if(now-NS.probeT>2500){ NS.probeT=now; netProbe(); }
+  if(now-NS.t0>=1000){ const d=(now-NS.t0)/1000; NS.t0=now; NS.txPs=NS.txP/d; NS.txBs=NS.txB/d; NS.rxPs=NS.rxP/d; NS.rxBs=NS.rxB/d; NS.snapRxs=NS.snapRx/d; NS.snapTxs=NS.snapTx/d; NS.inRxs=NS.inRx/d; NS.inTxs=NS.inTx/d; NS.corrS=NS.corr/d; NS.hardS=NS.hard/d;
+    NS.txP=NS.txB=NS.rxP=NS.rxB=NS.snapRx=NS.snapTx=NS.inRx=NS.inTx=NS.corr=NS.hard=0; }
+  netOverlayTick(); }
+function netPing(m){ const r=performance.now()-m.c; NS.rtt=NS.rtt?NS.rtt*.8+r*.2:r; NS.jit=NS.jit*.85+Math.abs(r-NS.rtt)*.15; NS.rttWin.push(r); if(NS.rttWin.length>20) NS.rttWin.shift(); NS.rttMin=Math.min(...NS.rttWin); }
+let netOv=null, netOvT=0;
+function netOverlayTick(){ if(!NETCFG.overlay){ if(netOv) netOv.style.display='none'; return; } const now=performance.now(); if(now-netOvT<200) return; netOvT=now;
+  if(!netOv){ netOv=document.createElement('pre'); netOv.id='netdbg'; netOv.style.cssText='position:fixed;right:8px;top:8px;z-index:70;margin:0;padding:8px 10px;background:rgba(8,6,14,.86);color:#9cf0a8;font:12px/1.35 UDPixel,monospace;border:2px solid #3a3a52;pointer-events:none;white-space:pre'; document.body.appendChild(netOv); }
+  netOv.style.display='block'; const f1=v=>(Math.round(v*10)/10), pct=(a,b)=>b>0?Math.round(a/b*1000)/10:0, role=NET.role||'-';
+  const lossIn=NS.snapLost+NS.inLost>=0?'':'', snapN=Math.max(1,NS.lastSq), L=[];
+  L.push('NET '+role.toUpperCase()+(NET.on?'':' (offline)')+'   [F4 hide]');
+  L.push('route  '+NS.conn); if(NS.connDetail) L.push('       '+NS.connDetail);
+  L.push('RTT    '+f1(NS.rtt)+' ms  (min '+f1(NS.rttMin)+', jitter '+f1(NS.jit)+')');
+  L.push('tick   '+f1(role==='host'?NS.snapTxs:NS.snapRxs)+'/s  target '+NETCFG.tickHz+'   input '+f1(role==='host'?NS.inRxs:NS.inTxs)+'/s target '+NETCFG.inHz);
+  L.push('fps    '+Math.round(G.fpsEma||0));
+  L.push('send   '+f1(NS.txPs)+' pkt/s  '+f1(NS.txBs/1024)+' KB/s');
+  L.push('recv   '+f1(NS.rxPs)+' pkt/s  '+f1(NS.rxBs/1024)+' KB/s');
+  L.push('loss   snapshots '+NS.snapLost+' lost ('+pct(NS.snapLost,snapN)+'%)   inputs '+NS.inLost+' lost');
+  if(role==='client'){ L.push('predict '+(NETCFG.predict?'ON':'OFF')+'  err '+f1(NS.err*100)+' cm  corrections '+f1(NS.corrS)+'/s  snaps '+f1(NS.hardS)+'/s');
+    L.push('interp '+f1(NS.interp)+' ms '+(NETCFG.interpAuto?'(auto)':'(fixed)')+'  shot-predict '+(NETCFG.shotPredict?'ON':'OFF')); }
+  else L.push('lag-comp '+(NETCFG.lagComp?'ON':'OFF')+'  rewind '+Math.round(NS.comp*1000)+' ms');
+  L.push('sim    +'+NETCFG.simLatency+'ms  loss '+NETCFG.simLoss+'%');
+  L.push('keys   F6 tick  F7 predict  F8 +lat  F9 +loss  F10 interp');
+  netOv.textContent=L.join('\n'); }
+addEventListener('keydown',e=>{ const k=e.key; if(k!=='F4'&&!(NETCFG.overlay&&/^F(6|7|8|9|10)$/.test(k))) return; e.preventDefault();
+  if(k==='F4') NETCFG.overlay=!NETCFG.overlay; else if(k==='F6') NETCFG.tickHz=NETCFG.tickHz===30?60:NETCFG.tickHz===60?120:30; else if(k==='F7') NETCFG.predict=!NETCFG.predict;
+  else if(k==='F8') NETCFG.simLatency=({0:40,40:80,80:150,150:0})[NETCFG.simLatency]||0; else if(k==='F9') NETCFG.simLoss=({0:3,3:8,8:15,15:0})[NETCFG.simLoss]||0; else if(k==='F10') NETCFG.interpAuto=!NETCFG.interpAuto;
+  netCfgSave(); netOvT=0; });
+const netR=o=>netSend(NET.r,o,false);
+const netU=o=>netSend(NET.u,o,true);
 function lanStatus(t){ const e=$('#lanStatus'); if(e) e.textContent=t; }
 // room codes: the two codes are swapped through a public message relay under a short room name, so players only type six characters
 const sigBase=()=>window.__SIG||localStorage.getItem('udSig')||'https://ntfy.sh';
@@ -7019,16 +7079,16 @@ async function lanHostRoom(){ const room=newRoom(), code=await netHostCreate(); 
 async function lanJoinRoom(room){ NET.gotOffer=false; NET.room=room; let tm=null;
   sigSub(room,async m=>{ if(m.k==='offer'&&!NET.gotOffer){ NET.gotOffer=true; clearTimeout(tm); lanStatus('Room found, connecting...'); try{ const rep=await netJoin(m.c); await sigPub(room,{k:'answer',c:rep}); }catch(e){ lanStatus('Could not connect: '+e.message); } } });
   tm=setTimeout(()=>{ if(!NET.gotOffer){ try{ NET.es&&NET.es.close(); }catch(e){} lanStatus('No room with that code. Check it with your friend.'); } },9000); }
-function netPC(){ netClose(true); const pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]}); NET.pc=pc;
+function netPC(){ netClose(true); const pc=new RTCPeerConnection({iceServers:NETCFG.stun?[{urls:'stun:stun.l.google.com:19302'}]:[]}); NET.pc=pc;
   pc.onconnectionstatechange=()=>{ const st=pc.connectionState; if(st==='failed'||st==='closed'||st==='disconnected') setTimeout(()=>{ if(NET.pc===pc&&pc.connectionState!=='connected') netLost(); },2000); }; return pc; }
-function netWire(ch){ NET[ch.label]=ch; ch.onmessage=e=>{ try{ netMsg(JSON.parse(e.data)); }catch(err){} };
+function netWire(ch){ NET[ch.label]=ch; ch.onmessage=e=>netRecv(ch,e.data);
   ch.onopen=()=>{ if(NET.u&&NET.r&&NET.u.readyState==='open'&&NET.r.readyState==='open'&&!NET.on) netOpen(); }; ch.onclose=()=>{ if(NET.on) netLost(); }; }
 async function netHostCreate(){ const pc=netPC(); NET.role='host'; netWire(pc.createDataChannel('u',{ordered:false,maxRetransmits:0})); netWire(pc.createDataChannel('r'));
   await pc.setLocalDescription(await pc.createOffer()); await netGather(pc); return netEnc({d:pc.localDescription.toJSON?pc.localDescription.toJSON():pc.localDescription}); }
 async function netHostAccept(code){ const o=await netDec(code); await NET.pc.setRemoteDescription(o.d); }
 async function netJoin(code){ const o=await netDec(code), pc=netPC(); NET.role='client'; pc.ondatachannel=e=>netWire(e.channel); await pc.setRemoteDescription(o.d); await pc.setLocalDescription(await pc.createAnswer()); await netGather(pc); return netEnc({d:pc.localDescription.toJSON?pc.localDescription.toJSON():pc.localDescription}); }
 function netClose(keepRole){ try{ if(NET.es) NET.es.close(); }catch(e){} NET.es=null; try{ if(NET.u) NET.u.close(); if(NET.r) NET.r.close(); if(NET.pc) NET.pc.close(); }catch(e){} NET.u=NET.r=NET.pc=null; NET.on=false; if(!keepRole){ NET.role=null; NET.cl=false; } }
-function netOpen(){ try{ if(NET.es) NET.es.close(); }catch(e){} NET.es=null; NET.on=true; NET.cl=NET.role==='client'; NET.snaps=[]; NET.seenInit=false; NET.inp=null;
+function netOpen(){ try{ if(NET.es) NET.es.close(); }catch(e){} NET.es=null; NET.on=true; NS.rtt=0; NS.rttWin=[]; NS.snapLost=NS.inLost=0; NS.lastSq=0; NS.t0=performance.now(); NS.probeT=0; NS.conn='connecting'; NET.q=0; NET.sq=0; NET.hist=[]; NET.ptr.forEach(m=>scene.remove(m.m)); NET.ptr=[]; NET.cl=NET.role==='client'; NET.snaps=[]; NET.seenInit=false; NET.inp=null;
   if(NET.role==='host'){ lanStatus('Connected! Pick your map in Play if you like, then start.'); $('#lanStart').hidden=false; } else lanStatus('Connected! Waiting for the host to start the match...'); }
 function netLost(){ if(!NET.on&&!NET.pc) return; const had=NET.on; netClose(); if(had){ toast('LAN connection lost'); if(G.state==='lanc'||G.mode==='lan') toMenu(); else lanStatus('Connection lost.'); } else lanStatus('Could not connect. Check the codes and try again.'); }
 function lanLeave(quiet){ if(NET.on&&NET.role==='host') netR({t:'bye'}); if(NET.on&&NET.role==='client') netR({t:'bye'});
@@ -7040,26 +7100,34 @@ function openLan(){ showOverlay('#lan'); for(const id of ['lanRoomBox','lanJoinR
 const r3=v=>Math.round(v*1000)/1000;
 const lanFS=f=>[r3(f.x),r3(f.y),r3(f.z),r3(f.yaw),r3(f.pitch),f.dead?1:0,r3(f.deadT||0),r3(f.vx||0),r3(f.vz||0),Math.round(f.hp||0),f.shotN||0,f.reloadT>0?r3(1-f.reloadT/Math.max(.01,f.stats.reload)):-1,f.blockT>0?1:0,f.slideT>0?1:0,r3(f.scopeK||0),f.onGround?1:0,r3(f.vy||0),f.wallT>0?1:0,r3(f.wallNX||0),r3(f.wallNZ||0),f.wjT>0?r3(f.wjT):0,f.ladder?1:0,f.ammo|0,f.score|0,r3(Math.max(0,f.blockCd||0)),r3(f.flash||0)];
 function lanMeta(){ if(!NET.on) return; netR({t:'meta',f:FIGHTERS.map(f=>({stats:f.stats,cards:f.cards.map(c=>c.id),combos:f.combos,weapon:f.weapon}))}); }
-function lanHostTick(rdt){ if((NET.sendT-=rdt)>0) return; NET.sendT=1/30;
+const PSF=['frozenT','slowT','slowStack','stimT','momN','adrT','tsT','wcT','bloodN','dashT','rushT'];
+function lanHostTick(rdt){ NET.sendT-=rdt; if(NET.sendT>0) return; const iv=1/Math.max(10,Math.min(120,NETCFG.tickHz)); NET.sendT+=iv; if(NET.sendT<-iv) NET.sendT=0;
   const bl=[]; for(const b of G.bullets){ if(bl.length>=24) break; if(b.m&&!b.saw) bl.push([r3(b.m.position.x),r3(b.m.position.y),r3(b.m.position.z),r3(b.vx),r3(b.vy),r3(b.vz),b.owner===P?0:1,r3(b.size||.14),Math.round(b.spd||58),b.grenade?1:0]); }
-  netU({t:'snap',s:G.state,rd:G.round,pz:G.paused?1:0,f:FIGHTERS.map(lanFS),b:bl}); }
+  const rem=FIGHTERS.find(f=>f.remote); NS.snapTx++;
+  netU({t:'snap',sq:++NET.sq,ht:Math.round(performance.now()*10)/10,s:G.state,rd:G.round,pz:G.paused?1:0,f:FIGHTERS.map(lanFS),b:bl,aq:rem?(rem.ackQ|0):0,ap:rem&&rem.ackPos?rem.ackPos:null,ps:rem?PSF.map(k=>r3(rem[k]||0)):null,il:NS.inLost}); }
 async function lanHostStart(){ if(!NET.on||NET.role!=='host') return; if(G.mode!=='lan'){ NET.prevMode=G.mode; NET.restore={vote:G.vote,rotate:G.rotate,killcam:G.killcam,map:G.map}; }
   G.mode='lan'; let id=G.map==='random'?randMap(MAP&&MAP.id):G.map; if(!LAN_OK(id)) id=Object.keys(MAPDEFS).filter(LAN_OK)[0]; G.map=id;
   netR({t:'init',map:id,target:G.target,rules:G.rules,weapon:G.weapon,night:!!G.night}); NET.seenInit=false; NET.inp=null; requestLock(); await startMatch(); lanMeta(); }
 function lanVoteTry(){ if(VOTE.on&&VOTE.hostDone&&VOTE.rv){ VOTE.votes.push(VOTE.rv); finishVote(); } }
 async function lanSyncMap(id){ if(!NET.on) return; NET.ready=false; netR({t:'map',id}); const t0=performance.now(); while(!NET.ready&&NET.on&&performance.now()-t0<20000) await new Promise(r=>setTimeout(r,100)); }
+function lanHostPost(){ const now=performance.now();
+  for(const f of FIGHTERS){ if(f.remote){ if(f.ackPend){ f.ackPend=false; f.ackQ=f.pendQ; f.ackPos=[r3(f.x),r3(f.y),r3(f.z)]; } }
+    else { const h=f.hist||(f.hist=[]); h.push({t:now,x:f.x,y:f.y,z:f.z}); while(h.length>2&&(h.length>90||now-h[0].t>700)) h.shift(); } }
+  NS.comp=NETCFG.lagComp?Math.min(NETCFG.compMax,(NS.rtt/2+NET.gInterp+6)/1000):0; }
+function rewindPos(t,sec){ const h=t.hist; if(!h||h.length<2) return null; const tt=performance.now()-sec*1000; let i=h.length-1; while(i>0&&h[i].t>tt) i--; const a=h[i], b=h[Math.min(i+1,h.length-1)], k=b.t>a.t?clamp((tt-a.t)/(b.t-a.t),0,1):0; return {x:lerp(a.x,b.x,k),y:lerp(a.y,b.y,k),z:lerp(a.z,b.z,k)}; }
 function controlRemote(f,dt){ const R=NET.inp, S=NET.seen;
   if(!R||performance.now()-NET.inT>1500){ f.mx=f.mz=0; return; }
-  if(!NET.seenInit){ NET.seenInit=true; S.j=R.j; S.b=R.b; S.r=R.r; S.s=R.s; S.a=R.a.slice(); }
+  if(!NET.seenInit){ NET.seenInit=true; S.j=R.j; S.b=R.b; S.r=R.r; S.s=R.s; S.fc=R.fc|0; S.a=R.a.slice(); }
+  if(R.q!==undefined&&R.q!==f.pendQ){ f.pendQ=R.q; f.ackPend=true; }
   f.yaw=R.yaw; f.pitch=clamp(R.pitch,-1.45,1.45);
-  let fi=R.fi||0, si=R.si||0, fire=!!R.fire; const jump=R.j>S.j, block=R.b>S.b, reload=R.r>S.r; let slide=R.s>S.s; const abil=[0,1,2,3].map(i=>R.a[i]>S.a[i]);
+  let fi=R.fi||0, si=R.si||0, fire=!!R.fire; const fedge=(R.fc|0)>(S.fc|0); S.fc=R.fc|0; const jump=R.j>S.j, block=R.b>S.b, reload=R.r>S.r; let slide=R.s>S.s; const abil=[0,1,2,3].map(i=>R.a[i]>S.a[i]);
   S.j=R.j; S.b=R.b; S.r=R.r; S.s=R.s; S.a=R.a.slice();
   let jmp=jump; if(f.frozenT>0){ fi=si=0; fire=false; jmp=false; slide=false; }
   const wantScope=!!R.scope&&f.weapon==='sniper'&&!f.dead&&f.reloadT<=0; f.scopeK=lerp(f.scopeK||0,wantScope?1:0,Math.min(1,dt*12));
   const fx=-Math.sin(f.yaw), fz=-Math.cos(f.yaw), rxv=Math.cos(f.yaw), rzv=-Math.sin(f.yaw);
   let mx=fx*fi+rxv*si, mz=fz*fi+rzv*si; const l=Math.hypot(mx,mz); if(l>1){ mx/=l; mz/=l; } f.mx=mx; f.mz=mz;
   if(jmp) doJump(f); if(block) doBlock(f); if(reload) doReload(f); if(slide) doSlide(f);
-  if(fire&&tryFire(f,eyePos(f),fwd(f.yaw,f.pitch))){ f.pitch=Math.min(1.45,f.pitch+.007); } }
+  if((fire||fedge)&&tryFire(f,eyePos(f),fwd(f.yaw,f.pitch))){ f.pitch=Math.min(1.45,f.pitch+.007); } }
 // ---- guest ----
 async function lanClientInit(m){ NET.cl=true; G.mode='lan'; G.map=m.map; setNight(!!m.night); await ensureMap(m.map); configurePlayers();
   for(const f of FIGHTERS){ f.stats=baseStats(); f.cards=[]; f.combos=[]; f.score=0; f.st={shots:0,hits:0,heads:0}; f.shotN=0; }
@@ -7074,23 +7142,64 @@ function lanPose(f,A,B2,k,rdt,own){
   if(!own){ let dy=B2[3]-A[3]; dy=Math.atan2(Math.sin(dy),Math.cos(dy)); f.yaw=A[3]+dy*k; f.pitch=lerp(A[4],B2[4],k); }
   f.dead=!!B2[5]; f.deadT=B2[6]; f.vx=lerp(A[7],B2[7],k); f.vz=lerp(A[8],B2[8],k); f.hp=B2[9]; const rl=B2[11]; f.reloadT=rl>=0?(1-rl)*f.stats.reload:0; f.blockT=B2[12]?.3:0; f.slideT=B2[13]?.3:0; f.scopeK=lerp(A[14]||0,B2[14]||0,k);
   f.onGround=!!B2[15]; f.vy=lerp(A[16]||0,B2[16]||0,k); f.wallT=B2[17]?.2:0; f.wallNX=B2[18]||0; f.wallNZ=B2[19]||0; f.wjT=B2[20]||0; f.ladder=B2[21]?true:null; f.ammo=B2[22]; f.score=B2[23]; f.blockCd=B2[24]; f.flash=B2[25]||0;
-  const i=f===P?0:1, sh=B2[10]; f.shotN=sh; if(sh<NET.sh[i]) NET.sh[i]=sh; else if(sh>NET.sh[i]){ NET.sh[i]=sh; const Fx=f.fx; Fx.kick=1; Fx.kickRot=1; Fx.kickYaw=RR(-1,1); Fx.flashT=.05; f.fireT=(f.fireT||0)+.01; try{ SFX.shot(f); }catch(e){} } }
+  const i=f===P?0:1, sh=B2[10]; f.shotN=sh; if(sh<NET.sh[i]) NET.sh[i]=sh; else if(sh>NET.sh[i]){ NET.sh[i]=sh; if(f===P&&NETCFG.shotPredict&&NETCFG.predict) return; const Fx=f.fx; Fx.kick=1; Fx.kickRot=1; Fx.kickYaw=RR(-1,1); Fx.flashT=.05; f.fireT=(f.fireT||0)+.01; try{ SFX.shot(f); }catch(e){} } }
 function lanState(from,to){ // the guest keeps its own recording and its own kill cam in step with the host
   if(to==='countdown'){ recClear(); MR.round++; MR.rounds.push({n:MR.round,t0:MR.t,t1:MR.t,w:-1,map:MAP&&MAP.id}); }
   if(to==='roundEnd'){ const r=MR.rounds[MR.rounds.length-1]; if(r){ r.t1=MR.t; r.w=G.winner?FIGHTERS.indexOf(G.winner):-1; } }
   if(to==='replay'&&G.state==='lanc'&&G.killcam&&G.winner){ startReplay(); } }
+function lanInterpDelay(){ if(!NETCFG.interpAuto) return NETCFG.interpFixed; const iv=clamp(NS.hInt||16.7,5,100); return clamp(iv*NETCFG.interpTicks*.55+(NS.latePk||0)*1.25+3,NETCFG.interpMin,NETCFG.interpMax); }
+function lanOwnState(f,d){ // non-positional state for the predicted (own) fighter; position is predicted locally
+  f.dead=!!d[5]; f.deadT=d[6]; f.hp=d[9]; f.blockT=d[12]?.3:0; f.score=d[23]; f.blockCd=d[24]; f.flash=d[25]||0; f.wallNX=f.wallNX||0;
+  const sh=d[10]; f.shotN=sh; NET.sh[0]=sh; const pend=performance.now()-NET.lastShotT<260+NS.rtt, rl=d[11];
+  if(!pend){ f.ammo=d[22]; if(rl>=0) f.reloadT=(1-rl)*f.stats.reload; else if(f.reloadT>0&&performance.now()-NET.lastShotT>600+NS.rtt) f.reloadT=0; } else if(rl>=0&&f.reloadT<=0) f.reloadT=(1-rl)*f.stats.reload; }
+function lanReconcile(s,rdt){ // compare the host's position of our player (at the input it acknowledged) with where we were then
+  if(!s.ap||!s.aq) return; const H=NET.hist; let h=null; for(let i=H.length-1;i>=0;i--) if(H[i].q===s.aq){ h=H[i]; break; } if(!h) return;
+  const ex=s.ap[0]-h.x, ey=s.ap[1]-h.y, ez=s.ap[2]-h.z, m=Math.hypot(ex,ez); NS.err=NS.err*.9+Math.hypot(ex,ey,ez)*.1;
+  const shift=(x,y,z)=>{ for(const e of H){ e.x+=x; e.y+=y; e.z+=z; } };
+  if(m>NETCFG.snapDist||Math.abs(ey)>NETCFG.snapY){ P.x+=ex; P.y+=ey; P.z+=ez; shift(ex,ey,ez); const d=s.f[1]; P.vx=d[7]; P.vz=d[8]; P.vy=d[16]; NS.hard++; return; }
+  const fr=1-Math.exp(-NETCFG.corrRate/Math.max(10,NETCFG.tickHz)); let cx=0,cz=0,cy=0;
+  if(m>NETCFG.deadzone){ const k=(1-NETCFG.deadzone/m)*fr; cx=ex*k; cz=ez*k; }
+  if(Math.abs(ey)>NETCFG.deadY){ cy=(ey-Math.sign(ey)*NETCFG.deadY)*fr; }
+  if(cx||cy||cz){ P.x+=cx; P.y+=cy; P.z+=cz; shift(cx,cy,cz); NS.corr++; }
+  if(s.ps) PSF.forEach((k,i)=>{ P[k]=s.ps[i]; }); }
+function lanPredictShot(){ const f=P; if(!(NETCFG.shotPredict&&NET.hs==='playing'&&NET.wantFire)) return;
+  if(f.dead||f.fireT>0||f.reloadT>0||f.ammo<=0||f.frozenT>0||G.paused||!f.view||!f.view.VM) return;
+  const s=f.stats; f.fireT=s.fireDelay/fireMul(f); if(!(f.stormT>0)) f.ammo--; NET.lastShotT=performance.now(); SFX.shot(f); SFX.shell(f); if(f.weapon==='sniper') SFX.bolt(f);
+  const o=eyePos(f), d=fwd(f.yaw,f.pitch), n=Math.round(s.proj), jit=.01+(s.spread-.08)*.35, muzzleW=new THREE.Vector3(); f.view.VM.muzzle.getWorldPosition(muzzleW); f.st.shots++;
+  for(let i=0;i<n;i++){ const hip=(f.weapon==='sniper')?(1-(f.scopeK||0))*.11:0, a=(n>1?(i/(n-1)-.5)*s.spread*2:0)+(Math.random()-.5)*(jit+hip), ca=Math.cos(a), sa=Math.sin(a);
+    const v=new THREE.Vector3(d.x*ca+d.z*sa,d.y+(Math.random()-.5)*jit,-d.x*sa+d.z*ca).normalize(); const p=o.clone().addScaledVector(v,.9);
+    if(!s.pierce&&COL.some(c=>!c.nb&&p.y<c.h&&p.y>c.y0&&p.x>c.minX&&p.x<c.maxX&&p.z>c.minZ&&p.z<c.maxZ)){ sparks(p.x,p.y,p.z,4,FXC.spark,3); continue; }
+    const m=new THREE.Mesh(tracerGeo,f.tMat); m.renderOrder=6; m.frustumCulled=false; m.position.copy(muzzleW); scene.add(m); const sp=s.bSpeed; NET.ptr.push({m,x:muzzleW.x,y:muzzleW.y,z:muzzleW.z,vx:v.x*sp,vy:v.y*sp,vz:v.z*sp,spd:sp,drop:s.drop||0,size:s.bSize,age:0,life:1.6,vo:p.clone().sub(muzzleW).multiplyScalar(-0) }); }
+  if(NET.ptr.length>48){ const o2=NET.ptr.splice(0,NET.ptr.length-48); o2.forEach(t=>scene.remove(t.m)); }
+  const F=f.fx; F.kick=1; F.kickRot=1; F.kickYaw=RR(-1,1); F.flashT=.05; f.pitch=Math.min(1.45,f.pitch+.007); ejectShell(f.view);
+  const L=muzzleP; if(!(L.intensity>12&&L.userData.rate===9)){ L.position.copy(muzzleW); L.intensity=10; L.distance=10; L.userData.rate=30; }
+  if(f.ammo<=0&&!(f.stormT>0)) f.reloadT=s.reload; }
+function lanPredTracers(dt){ for(let i=NET.ptr.length-1;i>=0;i--){ const t=NET.ptr[i]; t.age+=dt; let dead=t.age>t.life; const steps=Math.max(1,Math.ceil(t.spd*dt/.25)), h=dt/steps;
+    for(let k=0;k<steps&&!dead;k++){ if(t.drop) t.vy-=t.drop*h; t.x+=t.vx*h; t.y+=t.vy*h; t.z+=t.vz*h; if(t.y<t.size||t.y>40||Math.abs(t.x)>AW||Math.abs(t.z)>AD) dead=true;
+      else for(const o of COL){ if(o.nb||t.y>o.h||t.y<o.y0) continue; if(t.x>o.minX&&t.x<o.maxX&&t.z>o.minZ&&t.z<o.maxZ){ dead=true; break; } } }
+    if(dead){ sparks(t.x,Math.max(.05,t.y),t.z,3,FXC.spark,3); scene.remove(t.m); NET.ptr.splice(i,1); continue; }
+    t.m.position.set(t.x,t.y,t.z); _v.set(t.vx,t.vy,t.vz).normalize(); _q.setFromUnitVectors(_z,_v); t.m.quaternion.copy(_q); const w=Math.max(.05,t.size*.6), len=Math.min(2,.3+t.spd*.03)*Math.min(1,t.age*12+.2); t.m.scale.set(w,w,len); } }
 function lanClientTick(rdt){
-  controlHuman(P,rdt); P.input={kbm:true,pad:'any'};
-  if((NET.sendT-=rdt)<=0){ NET.sendT=1/30; const C=NET.cin; netU({t:'in',fi:C.fi,si:C.si,fire:C.fire,scope:C.scope,yaw:r3(C.yaw),pitch:r3(C.pitch),j:C.j,b:C.b,r:C.r,s:C.s,a:C.a.slice()}); }
-  const S=NET.snaps; if(!S.length) return; G.round=S[S.length-1].rd||G.round; const tgt=performance.now()-NET.delay; while(S.length>2&&S[1].rt<=tgt) S.shift();
-  const a=S[0], b=S[1]||S[0], k=b.rt>a.rt?clamp((tgt-a.rt)/(b.rt-a.rt),0,1):0, last=S[S.length-1];
-  lanPose(B,a.f[0],b.f[0],k,rdt,false); lanPose(P,a.f[1],b.f[1],k,rdt,true);
+  const CF=NETCFG; controlHuman(P,rdt); P.input={kbm:true,pad:'any'};
+  const predicting=CF.predict&&NET.hs==='playing'&&!P.dead&&!G.paused;
+  if(predicting){ updateFighter(P,Math.min(rdt,.05)); lanPredictShot(); }
+  lanPredTracers(Math.min(rdt,.05));
+  NET.sendT-=rdt; const iv=1/Math.max(10,Math.min(240,CF.inHz)); if(NET.sendT<=0){ NET.sendT+=iv; if(NET.sendT<-iv) NET.sendT=0; const C=NET.cin; NET.q++; NS.inTx++;
+    NET.hist.push({q:NET.q,x:P.x,y:P.y,z:P.z}); if(NET.hist.length>150) NET.hist.shift();
+    netU({t:'in',q:NET.q,fi:C.fi,si:C.si,fire:C.fire,fc:C.fc,scope:C.scope,yaw:r3(C.yaw),pitch:r3(C.pitch),j:C.j,b:C.b,r:C.r,s:C.s,a:C.a.slice(),id:Math.round(NS.interp),sl:NS.snapLost}); }
+  const S=NET.snaps; if(!S.length) return; const last=S[S.length-1]; G.round=last.rd||G.round;
+  // reconcile against every snapshot that arrived since last frame
+  for(const sn of S){ if(sn.rc) continue; sn.rc=true; if(predicting&&NET.hs===sn.s) lanReconcile(sn,rdt); }
+  NS.interp=NS.interp*.9+lanInterpDelay()*.1; NET.delay=NS.interp; const nowT=performance.now(), tgt=nowT-NET.delay; while(S.length>2&&S[1].rt<=tgt) S.shift();
+  const a=S[0], b=S[1]||S[0]; let k=b.rt>a.rt?(tgt-a.rt)/(b.rt-a.rt):0;
+  if(k>1){ const ex=Math.min(CF.extrapMax,(tgt-b.rt))/1000; k=1; lanPose(B,a.f[0],b.f[0],1,rdt,false); B.x+=B.vx*ex; B.z+=B.vz*ex; } else { k=clamp(k,0,1); lanPose(B,a.f[0],b.f[0],k,rdt,false); }
+  if(predicting) lanOwnState(P,last.f[1]); else lanPose(P,a.f[1],b.f[1],k,rdt,true);
   if(NET.hs==='playing'||NET.hs==='roundEnd') recTick(rdt);
   syncRig(B,Math.min(.05,rdt)); syncRig(P,Math.min(.05,rdt));
   // tracer shots from the newest snapshot, carried forward to now
   const age=Math.min(.12,(performance.now()-last.rt)/1000); const bl=last.b||[];
   while(NET.tr.length<24){ const m=new THREE.Mesh(tracerGeo,P.tMat); m.visible=false; m.frustumCulled=false; m.renderOrder=6; scene.add(m); NET.tr.push(m); }
-  NET.tr.forEach((m,n)=>{ const q=bl[n]; if(!q){ m.visible=false; return; } m.material=q[6]===0?B.tMat:P.tMat; m.visible=true; m.position.set(q[0]+q[3]*age,q[1]+q[4]*age,q[2]+q[5]*age); m.lookAt(m.position.x+q[3],m.position.y+q[4],m.position.z+q[5]); const w=q[9]?.3:Math.max(.05,(q[7]||.14)*.6), len=q[9]?.3:Math.min(2,.3+(q[8]||58)*.03); m.scale.set(w,w,len); });
+  const bl2=NETCFG.shotPredict?bl.filter(q=>!(q[6]===1&&!q[9])):bl; NET.tr.forEach((m,n)=>{ const q=bl2[n]; if(!q){ m.visible=false; return; } m.material=q[6]===0?B.tMat:P.tMat; m.visible=true; m.position.set(q[0]+q[3]*age,q[1]+q[4]*age,q[2]+q[5]*age); m.lookAt(m.position.x+q[3],m.position.y+q[4],m.position.z+q[5]); const w=q[9]?.3:Math.max(.05,(q[7]||.14)*.6), len=q[9]?.3:Math.min(2,.3+(q[8]||58)*.03); m.scale.set(w,w,len); });
   if(NET.hs!==last.s){ lanState(NET.hs,last.s); NET.hs=last.s; if(last.s==='countdown'){ P.yaw=last.f[1][3]; P.pitch=last.f[1][4]; } if(last.s==='countdown'||last.s==='playing'){ if(NET.pickOpen){ NET.pickOpen=false; showOverlay(null); } if(!isLocked()) requestLock(); } renderScore(); }
   if(NET.voteOpen){ NET.voteT-=rdt; $('#voteBar i').style.width=Math.max(0,NET.voteT/14*100)+'%'; }
   if(last.pz&&!NET.hostPaused){ NET.hostPaused=true; toast('Host paused the game'); } else if(!last.pz) NET.hostPaused=false; }
@@ -7107,7 +7216,9 @@ addEventListener('keydown',e=>{ if(G.state==='lanc'&&NET.voteOpen&&['1','2','3']
 wrap.addEventListener('click',()=>{ if(G.state==='lanc'&&!NET.pickOpen&&!isLocked()&&!G.noLock) requestLock(); });
 function netMsg(m){
   switch(m.t){
-    case 'in': NET.inp=m; NET.inT=performance.now(); break;
+    case 'in': { if(NET.inp&&m.q!==undefined&&NET.inp.q!==undefined){ if(m.q<=NET.inp.q) break; if(m.q>NET.inp.q+1) NS.inLost+=m.q-NET.inp.q-1; } NET.inp=m; NET.inT=performance.now(); NS.inRx++; if(m.id) NET.gInterp=m.id; if(m.sl!==undefined) NS.hostSeenSnapLost=m.sl; break; }
+    case 'ping': netU({t:'pong',c:m.c}); break;
+    case 'pong': netPing(m); break;
     case 'castVote': if(G.state==='vote'&&VOTE.remote){ VOTE.rv=VOTE.opts[m.i|0]||VOTE.opts[0]; lanVoteTry(); } break;
     case 'ready': NET.ready=true; break;
     case 'vote': if(G.state==='lanc'||G.state==='replay') lanShowVote(m); break;
@@ -7116,10 +7227,14 @@ function netMsg(m){
     case 'choose': if(G.state==='pick'&&G.picker&&G.picker.remote) choose(m.i|0); break;
     case 'init': lanClientInit(m); break;
     case 'meta': lanApplyMeta(m); break;
-    case 'snap': NET.lastS=m.s; NET.snaps.push({rt:performance.now(),s:m.s,rd:m.rd,f:m.f,b:m.b,pz:m.pz}); if(NET.snaps.length>12) NET.snaps.shift(); break;
+    case 'snap': { const now=performance.now(); NET.lastS=m.s; NS.snapRx++; if(m.sq!==undefined){ if(NS.lastSq&&m.sq<=NS.lastSq) break; if(NS.lastSq&&m.sq>NS.lastSq+1) NS.snapLost+=m.sq-NS.lastSq-1; NS.lastSq=m.sq; }
+      // timeline: stamp every snapshot with the host's own send time, mapped onto our clock by the fastest path seen (so network jitter doesn't warp the motion)
+      let rt=now; if(m.ht!==undefined){ const d=now-m.ht; if(NS.off===undefined||d<NS.off) NS.off=d; else NS.off+=.03; const late=d-NS.off; NS.latePk=Math.max(late,(NS.latePk||0)*.992); rt=m.ht+NS.off; if(NS.lastHt!==undefined&&m.ht>NS.lastHt) NS.hInt=NS.hInt?NS.hInt*.92+(m.ht-NS.lastHt)*.08:(m.ht-NS.lastHt); NS.lastHt=m.ht; }
+      NS.lastSnapAt=now;
+      NET.snaps.push({rt:rt,s:m.s,rd:m.rd,f:m.f,b:m.b,pz:m.pz,aq:m.aq,ap:m.ap,ps:m.ps,rc:false}); if(NET.snaps.length>24) NET.snaps.shift(); break; }
     case 'banner': if(G.state==='lanc') showBanner(m.a,m.b,m.c||undefined); break;
     case 'hideBanner': hideBanner(); break;
-    case 'pick': if(G.state==='lanc') lanShowPick(m); break;
+    case 'pick': if(G.state==='replay'&&NET.cl) endReplay(); if(G.state==='lanc') lanShowPick(m); break;
     case 'pickEnd': NET.pickOpen=false; if(G.state==='lanc') showOverlay(null); break;
     case 'hit': P.fx.hitFx=.16; P.fx.hitHead=!!m.h; try{ SFX.hit(!!m.h); }catch(e){} break;
     case 'hurt': { const F=P.fx; F.hurtT=.45; F.dmgFx=Math.min(1,F.dmgFx+.35+(m.d||20)/120); F.shake=Math.min(1,F.shake+.3+(m.d||20)/120); F.dmgAng=m.a||0; F.dmgDirT=1; try{ SFX.hurt(); }catch(e){} break; }
