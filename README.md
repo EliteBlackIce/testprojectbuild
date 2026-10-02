@@ -68,3 +68,14 @@ The host runs the real simulation; the joining player sends inputs and draws the
 - **Other player:** shown from snapshots stamped with the host's own clock, with an adaptive buffer (about one snapshot + measured jitter, roughly 25 ms on a clean LAN).
 - **Tick rate:** 60 snapshots/s and 60 inputs/s by default (`NETCFG.tickHz`, `NETCFG.inHz`), about 19 KB/s down and 8 KB/s up. All tunables live in `NETCFG` (top of the LAN section in `index.html`, also saved from the F4 overlay).
 - **Overlay (F4):** connection route (LAN direct / NAT / relay), RTT, tick rate, FPS, packet rates, loss, prediction error and corrections.
+
+## Scenery, second pass (everything outside the play area, rebuilt from scratch)
+
+The play areas themselves are unchanged. Outside them every map now has real depth: a near ring of props, mid-range structures and a far horizon, all placed so nothing overlaps.
+
+- **Freight Yard:** a working harbour. Cargo ships alongside a quay with quay cranes, trains on the rails, container blocks, warehouses, tank farm, flare stack, lamp masts, roads with markings, a far shore with a lighthouse, and the city skyline.
+- **Harvest Farm:** a patchwork of crop fields (wheat, corn, sunflowers, pasture, plough) with hedgerows, stone walls and fences, dirt lanes to four farmsteads, cows and sheep, an orchard, a pond with reeds and a jetty, a village with a church and market, windmills, woods and blue hills.
+- **Atomic Acres:** a test site around a crater (fused glass, wrecks), two streets of test houses with mannequin families, an army camp, bunkers, towers, bleachers, radar dishes, roads with a pole line, warning signs and the mushroom clouds.
+- **Rust:** layered mesas and arches, an oil field of pumpjacks and derricks, a tank farm and flare stack, a shanty camp with fire barrels, a junkyard, a tanker train on a rail spur, pipelines and a dry riverbed.
+- **Sunset Town:** the main street continues with a downtown of lettered shops, a church and school to the east, fenced houses to the west, street lamps and a pole line, and levelled lots so nothing floats on the hills.
+- **Cargo Ship:** open ocean, nothing else.
