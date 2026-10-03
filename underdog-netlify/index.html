@@ -5967,6 +5967,9 @@ function updatePadInfo(){
   else { el.classList.remove('warn'); el.innerHTML=n?`<b>Controller connected.</b> You can play with it or with keyboard and mouse.`:'No controller detected. Press any button on one to connect it.'; }
 }
 addEventListener('gamepadconnected',()=>{ pollPads(); updatePadInfo(); toast('Controller connected'); });
+// fallback: some Chrome setups never fire gamepadconnected (or the frame loop is busy loading a map), so also look for controllers on a timer and on any click or key
+setInterval(()=>{ const n0=padList().length; pollPads(); const n1=padList().length; if(n1!==n0){ updatePadInfo(); if(n1>n0) toast('Controller connected'); } },300);
+for(const ev of ['pointerdown','keydown']) addEventListener(ev,()=>{ const n0=padList().length; pollPads(); if(padList().length!==n0) updatePadInfo(); },true);
 addEventListener('gamepaddisconnected',()=>{ pollPads(); updatePadInfo(); if(G.state==='playing'&&G.mode==='split') pauseGame(); });
 
 /* ================= combat ================= */
