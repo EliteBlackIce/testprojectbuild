@@ -156,3 +156,12 @@ character, and ends the shift. It prints `SMOKE TEST PASSED` at the end.
 7. **Steam's AI disclosure:** Steam requires you to disclose live AI-generated content on your store
    page and describe your guardrails (here: the character rules in `characters.gd` plus Claude's
    built-in safety). Add that when you set up the store page.
+
+### Testing the AI pipeline without keys
+
+`tests/mock_ai_server.py` pretends to be the AI services and checks every request the game sends:
+
+```sh
+python3 tests/mock_ai_server.py 8787 any.mp3 /tmp/requests.log &
+godot --headless --path pizza-panic res://tests/ai_pipeline_test.tscn
+```

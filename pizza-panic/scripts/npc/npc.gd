@@ -93,7 +93,7 @@ func _build_human(look: Dictionary, baby: bool) -> void:
 	var leg_h := 0.75 * h * (0.6 if baby else 1.0)
 	var torso_h := 0.95 * h
 	# Legs
-	for side in [-1, 1]:
+	for side: int in [-1, 1]:
 		Toon.capsule(_body, 0.13 * h, leg_h, Vector3(0.16 * side * h, leg_h * 0.5, 0), pants)
 		Toon.sphere(_body, 0.15 * h, Vector3(0.16 * side * h, 0.06, 0.08), Color("#3a2618"), 0.02, 0.6)
 	# Torso (a robe is a cone instead)
@@ -110,7 +110,7 @@ func _build_human(look: Dictionary, baby: bool) -> void:
 	# Arms (pivot at shoulder so they can wave)
 	var arm_r := 0.11 * h * (1.6 if look.get("buff", false) else 1.0)
 	var shoulder_y := leg_h + torso_h * 0.75
-	for side in [-1, 1]:
+	for side: int in [-1, 1]:
 		var pivot := Node3D.new()
 		pivot.position = Vector3((0.33 * belly + 0.08) * h * side, shoulder_y, 0)
 		_body.add_child(pivot)
@@ -134,7 +134,7 @@ func _build_human(look: Dictionary, baby: bool) -> void:
 func _build_face(look: Dictionary, s: float, skin: Color) -> void:
 	var big: bool = look.get("big_eyes", false)
 	var eye_r := (0.15 if big else 0.12) * s
-	for side in [-1, 1]:
+	for side: int in [-1, 1]:
 		var eye_pos := Vector3(0.14 * s * side, 0.06 * s, 0.31 * s)
 		Toon.sphere(_head, eye_r, eye_pos, Color.WHITE, 0.015)
 		var pupil := MeshInstance3D.new()
@@ -160,7 +160,7 @@ func _build_face(look: Dictionary, s: float, skin: Color) -> void:
 			ring.position = eye_pos + Vector3(0, 0, eye_r * 0.6)
 			_head.add_child(ring)
 	# Blush stickers. Very anime.
-	for side in [-1, 1]:
+	for side: int in [-1, 1]:
 		var blush := Toon.sphere(_head, 0.06 * s, Vector3(0.24 * s * side, -0.07 * s, 0.29 * s), Color("#ff8fab"), 0.0, 0.4)
 		blush.rotation.x = PI / 2
 	_mouth = Toon.sphere(_head, 0.08 * s, Vector3(0, -0.15 * s, 0.33 * s), Color("#5c1a1b"), 0.01, 0.35)
@@ -180,7 +180,7 @@ func _build_hair_and_hat(look: Dictionary, s: float) -> void:
 		var cap := Toon.sphere(_head, 0.4 * s, Vector3(0, 0.08 * s, -0.05 * s), hair, 0.03, 0.85)
 		cap.scale = Vector3(1.02, 1.0, 1.02)
 	if look.get("pigtails", false):
-		for side in [-1, 1]:
+		for side: int in [-1, 1]:
 			Toon.sphere(_head, 0.17 * s, Vector3(0.4 * s * side, 0.15 * s, -0.1 * s), hair, 0.025)
 	match hat:
 		"chef":
@@ -207,7 +207,7 @@ func _build_hair_and_hat(look: Dictionary, s: float) -> void:
 			band.position = Vector3(0, 0.18 * s, 0)
 			_head.add_child(band)
 		"bow":
-			for side in [-1, 1]:
+			for side: int in [-1, 1]:
 				Toon.sphere(_head, 0.12 * s, Vector3(0.12 * s * side, 0.4 * s, 0.05 * s), Color("#ff4d8d"), 0.02, 0.8)
 		"crown":
 			Toon.cylinder(_head, 0.24 * s, 0.22 * s, 0.18 * s, Vector3(0, 0.42 * s, 0), Color("#ffd166"))
@@ -225,7 +225,7 @@ func _build_hair_and_hat(look: Dictionary, s: float) -> void:
 			arc.material_override = Toon.mat(Color("#222222"), 0.015)
 			arc.rotation.z = PI / 2
 			_head.add_child(arc)
-			for side in [-1, 1]:
+			for side: int in [-1, 1]:
 				Toon.cylinder(_head, 0.13 * s, 0.13 * s, 0.1 * s, Vector3(0.4 * s * side, 0, 0), Color("#06d6a0")).rotation.z = PI / 2
 
 
@@ -234,8 +234,8 @@ func _build_dog(look: Dictionary) -> void:
 	var dark := Color(look.get("hair", "#b5651d"))
 	var body := Toon.capsule(_body, 0.32, 1.2, Vector3(0, 0.62, -0.1), fur)
 	body.rotation.x = PI / 2
-	for x in [-0.2, 0.2]:
-		for z in [-0.45, 0.3]:
+	for x: float in [-0.2, 0.2]:
+		for z: float in [-0.45, 0.3]:
 			Toon.capsule(_body, 0.09, 0.5, Vector3(x, 0.25, z), fur)
 	# Collar
 	Toon.cylinder(_body, 0.24, 0.26, 0.08, Vector3(0, 0.95, 0.38), Color(look.get("shirt", "#d62828")))
@@ -245,7 +245,7 @@ func _build_dog(look: Dictionary) -> void:
 	Toon.sphere(_head, 0.33, Vector3.ZERO, fur)
 	Toon.sphere(_head, 0.17, Vector3(0, -0.1, 0.3), fur.lightened(0.2), 0.02)
 	Toon.sphere(_head, 0.06, Vector3(0, -0.02, 0.46), Color("#1b1b1b"), 0.01)
-	for side in [-1, 1]:
+	for side: int in [-1, 1]:
 		var ear := Toon.capsule(_head, 0.09, 0.4, Vector3(0.3 * side, 0.02, -0.05), dark)
 		ear.rotation.z = 0.35 * side
 	_build_face({"big_eyes": true}, 0.9, fur)
@@ -268,7 +268,7 @@ func _build_ghost(look: Dictionary) -> void:
 	for i in 7:
 		var a := TAU * i / 7.0
 		Toon.sphere(_body, 0.14, Vector3(cos(a) * 0.55, 0.3, sin(a) * 0.55), sheet, 0.02)
-	for side in [-1, 1]:
+	for side: int in [-1, 1]:
 		var pivot := Node3D.new()
 		pivot.position = Vector3(0.48 * side, 1.15, 0)
 		_body.add_child(pivot)

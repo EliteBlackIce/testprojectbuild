@@ -189,22 +189,22 @@ func _build_body() -> void:
 	Toon.box(_visual, Vector3(1.8, 0.75, 2.0), Vector3(0, 1.45, 0.35), Color("#f1faee"), 0.05)
 	# Windshield + windows
 	Toon.box(_visual, Vector3(1.6, 0.55, 0.08), Vector3(0, 1.45, -0.66), Color("#a8dadc"), 0.0)
-	for side in [-1, 1]:
+	for side: int in [-1, 1]:
 		Toon.box(_visual, Vector3(0.08, 0.5, 1.6), Vector3(0.91 * side, 1.47, 0.35), Color("#a8dadc"), 0.0)
 	# Bumpers, headlights, tail lights
 	Toon.box(_visual, Vector3(2.1, 0.3, 0.3), Vector3(0, 0.45, -1.95), Color("#adb5bd"), 0.03)
 	Toon.box(_visual, Vector3(2.1, 0.3, 0.3), Vector3(0, 0.45, 1.95), Color("#adb5bd"), 0.03)
-	for side in [-1, 1]:
+	for side: int in [-1, 1]:
 		Toon.sphere(_visual, 0.2, Vector3(0.65 * side, 0.8, -1.88), Color("#fff3b0"), 0.02).material_override = Toon.mat(Color("#fff3b0"), 0.02, false, 1.2)
 		Toon.box(_visual, Vector3(0.4, 0.2, 0.08), Vector3(0.7 * side, 0.85, 1.92), Color("#d00000"), 0.0)
 	# Googly eyes on the hood, because of course.
-	for side in [-1, 1]:
+	for side: int in [-1, 1]:
 		Toon.sphere(_visual, 0.24, Vector3(0.45 * side, 1.18, -1.2), Color.WHITE, 0.02)
 		var pupil := Toon.sphere(_visual, 0.12, Vector3(0.45 * side, 1.2, -1.42), Color("#111111"), 0.0)
 		pupil.material_override = Toon.pupil_mat()
 	# Wheels
-	for x in [-1, 1]:
-		for z in [-1, 1]:
+	for x: int in [-1, 1]:
+		for z: int in [-1, 1]:
 			var pivot := Node3D.new()
 			pivot.position = Vector3(1.0 * x, 0.45, 1.25 * z)
 			_visual.add_child(pivot)

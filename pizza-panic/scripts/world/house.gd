@@ -70,7 +70,7 @@ func _build_house(rng: RandomNumberGenerator) -> void:
 	Toon.sphere(self, 0.08, Vector3(0.45, 1.2, front + 0.18), Color("#ffd166"), 0.01)
 	Toon.box(self, Vector3(2.6, 0.25, 1.4), Vector3(0, 0.12, front + 0.7), Color("#d6ccc2"), 0.03)
 	# Windows with little shutters
-	for side in [-1, 1]:
+	for side: int in [-1, 1]:
 		var wx := w * 0.3 * side
 		Toon.box(self, Vector3(1.4, 1.3, 0.12), Vector3(wx, h * 0.55, front + 0.04), Color("#bde0fe"), 0.03)
 		Toon.box(self, Vector3(0.12, 1.3, 0.16), Vector3(wx, h * 0.55, front + 0.08), Color.WHITE, 0.0)
@@ -83,7 +83,7 @@ func _build_house(rng: RandomNumberGenerator) -> void:
 	# Garden path
 	Toon.box(self, Vector3(1.6, 0.04, 4.5), Vector3(0, 0.02, front + 3.4), Color("#e3d5ca"), 0.0)
 	# Bushes
-	for side in [-1, 1]:
+	for side: int in [-1, 1]:
 		if rng.randf() < 0.8:
 			Toon.sphere(self, rng.randf_range(0.6, 0.9), Vector3(w * 0.38 * side, 0.4, front + 0.8), Color("#52b788"), 0.03, 0.8)
 
@@ -101,7 +101,7 @@ func _build_shop() -> void:
 		a.rotation.x = 0.35
 	Toon.box(self, Vector3(w + 0.4, 0.6, d + 0.4), Vector3(0, h + 0.3, 0), Color("#d62828"), 0.05)
 	Toon.box(self, Vector3(3.0, 3.0, 0.2), Vector3(0, 1.5, d * 0.5 + 0.05), Color("#7f5539"), 0.03)
-	for side in [-1, 1]:
+	for side: int in [-1, 1]:
 		Toon.box(self, Vector3(4.0, 2.4, 0.15), Vector3(4.8 * side, 1.9, d * 0.5 + 0.04), Color("#bde0fe"), 0.03)
 	Toon.label(self, "TONY'S PIZZA", Vector3(0, h + 3.8, 0.5), 320, Color("#ffd166"))
 	Toon.label(self, "home of the 12 minute pizza*\n*not legally binding", Vector3(0, h * 0.8, d * 0.5 + 0.2), 70, Color("#d62828"), false)

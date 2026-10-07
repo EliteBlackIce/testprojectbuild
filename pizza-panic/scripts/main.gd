@@ -26,7 +26,7 @@ func _ready() -> void:
 
 	car = PizzaCar.new()
 	add_child(car)
-	car.respawn_at(town.spawn_point, 0.0)
+	car.respawn_at(town.spawn_point, PI)
 	car.crashed.connect(_on_crash)
 
 	camera = ChaseCamera.new()
@@ -90,7 +90,7 @@ func start_shift() -> void:
 	convo.end()
 	menus.hide_menus()
 	hud.visible = true
-	car.respawn_at(town.spawn_point, 0.0)
+	car.respawn_at(town.spawn_point, PI)
 	car.controls_enabled = true
 	camera.follow = true
 	camera.snap()

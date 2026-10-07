@@ -157,7 +157,7 @@ func _build_trees() -> void:
 				var p := o + Vector3(rng.randf_range(3.0, BLOCK - 3.0), 0, rng.randf_range(3.0, 10.0))
 				_tree(p, trunks, crowns, crowns2)
 			# A couple of street trees on the sidewalk corners
-			for corner in [Vector3(1.0, 0, 1.0), Vector3(BLOCK - 1.0, 0, 1.0)]:
+			for corner: Vector3 in [Vector3(1.0, 0, 1.0), Vector3(BLOCK - 1.0, 0, 1.0)]:
 				_tree(o + corner, trunks, crowns, crowns2)
 	var trunk_mesh := CylinderMesh.new()
 	trunk_mesh.top_radius = 0.25
