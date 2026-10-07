@@ -30,8 +30,12 @@ var claude_effort := "low"
 var tts_provider := "auto"
 var master_volume := 0.8
 var voice_volume := 1.0
+var music_volume := 0.6
+var show_hints := true
 var mouse_sensitivity := 1.0
 var show_subtitles := true
+## How NPCs answer: "voice" (spoken + text) or "text" (text only, no AI voice).
+var reply_mode := "voice"
 
 
 func _ready() -> void:
@@ -53,7 +57,10 @@ func load_settings() -> void:
 		tts_provider = cfg.get_value("ai", "tts_provider", tts_provider)
 		master_volume = cfg.get_value("audio", "master_volume", master_volume)
 		voice_volume = cfg.get_value("audio", "voice_volume", voice_volume)
+		music_volume = cfg.get_value("audio", "music_volume", music_volume)
+		show_hints = cfg.get_value("game", "show_hints", show_hints)
 		show_subtitles = cfg.get_value("game", "show_subtitles", show_subtitles)
+		reply_mode = cfg.get_value("ai", "reply_mode", reply_mode)
 	_apply_audio()
 
 
@@ -70,7 +77,10 @@ func save_settings() -> void:
 	cfg.set_value("ai", "tts_provider", tts_provider)
 	cfg.set_value("audio", "master_volume", master_volume)
 	cfg.set_value("audio", "voice_volume", voice_volume)
+	cfg.set_value("audio", "music_volume", music_volume)
+	cfg.set_value("game", "show_hints", show_hints)
 	cfg.set_value("game", "show_subtitles", show_subtitles)
+	cfg.set_value("ai", "reply_mode", reply_mode)
 	cfg.save(PATH)
 	_apply_audio()
 	changed.emit()
@@ -129,8 +139,10 @@ func has_speech_to_text() -> bool:
 	return false
 
 
-## Which voice engine NPCs use.
+## Which voice engine NPCs use ("none" = text-only replies).
 func voice_engine() -> String:
+	if reply_mode == "text":
+		return "none"
 	var mode := effective_mode()
 	if tts_provider in ["system", "babble"]:
 		return tts_provider
@@ -215,6 +227,12 @@ const BINDINGS := {
 	"honk": [KEY_H],
 	"pause": [KEY_ESCAPE],
 	"respawn": [KEY_R],
+	"car": [KEY_F],
+	"boost": [KEY_SHIFT],
+	"answer_phone": [KEY_Q],
+	"cam_left": [KEY_BRACKETLEFT],
+	"cam_right": [KEY_BRACKETRIGHT],
+	"tickets": [KEY_TAB],
 }
 const PAD_BUTTONS := {
 	"accelerate": [JOY_BUTTON_RIGHT_SHOULDER],
@@ -225,6 +243,11 @@ const PAD_BUTTONS := {
 	"honk": [JOY_BUTTON_B],
 	"pause": [JOY_BUTTON_START],
 	"respawn": [JOY_BUTTON_BACK],
+	"car": [JOY_BUTTON_LEFT_STICK],
+	"boost": [JOY_BUTTON_RIGHT_STICK],
+	"answer_phone": [JOY_BUTTON_DPAD_UP],
+	"cam_left": [JOY_BUTTON_DPAD_LEFT],
+	"cam_right": [JOY_BUTTON_DPAD_RIGHT],
 }
 
 

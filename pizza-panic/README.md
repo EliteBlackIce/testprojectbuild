@@ -1,167 +1,168 @@
 # 🍕 Pizza Panic!
 
-A goofy, cel-shaded, anime-flavored 3D pizza delivery game built in **Godot 4.7**. You drive a
-clown car with googly eyes and a giant pizza box on the roof, and you **talk to the customers with
-your real voice**. They're AI characters with their own personalities, and they talk back out loud.
+*You are an egg. You deliver pizza. The customers are worse.*
 
-- Gary thinks he ordered a tuba.
-- Grandma Edna thinks you're her grandson Kevin.
-- Sir Barksalot is a dog. He ordered a pizza. Somehow.
-- Princess Sparkle-chan thinks you are her destined RIVAL.
-- …and 8 more weirdos, plus your boss Tony Pepperoni, who will not give you a raise.
+A goofy, faceted, cel-shaded 3D pizza shop game built in **Godot 4.7**. Everyone in Eggville is an
+egg, including you. You run Tony's Pizza: answer the phone, make pizzas in the kitchen, drive them
+across town, and **talk to customers with your real voice**. They're AI characters, and they
+answer back.
 
-Play along with their weirdness and you get paid. Crash into stuff and the pizza turns into a cube.
-Hit a customer with your car and they fly into the sky.
+![Driving through downtown](docs/screenshots/driving.png)
+
+## The game
+
+Each day runs from 10 AM to 10 PM (about 12 real minutes):
+
+1. **The phone rings.** A customer calls and orders in character. Gary orders "a pizza for his tuba".
+   The dog barks his order. The order appears as a ticket.
+2. **Make the pizza** in Tony's kitchen:
+   - **Dough fridge**: hold E to stretch the dough. Let go on the right size.
+   - **Prep table**: pick a sauce, squeeze it (hold E, let go in the green zone), mash E to grate
+     cheese, then add the toppings on the ticket with the number keys.
+   - **Oven**: take it out when it says PERFECT. Leave it in and it burns.
+   - **Cut & box**: tap E when the knife is in the zone.
+3. **Load the car** and **drive** across town. Follow the yellow arrow. Crashes smush the pizzas,
+   and pizzas cool down on the road.
+4. **Knock on the door** with the box held over your head, and **talk** to the customer. Play
+   along with their weirdness, and they pay and tip based on how good, hot, on-time and un-smushed
+   the pizza is.
+5. **Closing time**: see your day's report, then spend your money on upgrades.
+
+**Upgrades** (Tony's PC in the kitchen, or after each day):
+- **Car**: engine, grippy tires, bouncy suspension, hot bag, roof rack (up to 6 pizzas), pizza
+  rocket boost, silly horns (clown, awooga, air horn, goat), paint jobs.
+- **Kitchen**: turbo oven, second oven, dough press, sauce gun, cordless headset (answer calls
+  anywhere, even while driving), neon sign (more calls), weird toppings (gummy bears!), heat lamp.
+- **You**: fast sneakers, and hats (beanie → propeller cap → cowboy → top hat → CROWN).
+
+Reputation (stars) goes up with great deliveries and down with late, cold or stolen ones, and
+missed calls. More stars means more calls and bigger tips. Your progress saves after every day.
+
+**The town** has downtown shops, Yolk Park (pond, ducks, fountain, playground), the Shell-Out gas
+station, ~58 houses each with its own resident, traffic, egg pedestrians you can (accidentally)
+yeet, streetlights that switch on at sunset, power lines, hills, mountains and a water tower.
+
+**The cast**: 12 handmade characters (Gary the tuba guy, Grandma Edna who thinks you're Kevin,
+Sir Barksalot the dog, Chad Thunderbro, Conspiracy Carl, Dave the Wizard, Big Baby Bob, Boo-ford
+the ghost, Princess Sparkle-chan, Sensei Noodle, Mr. Synergy, Kyle who thinks this is a game),
+your boss Tony Pepperoni, plus dozens of generated weirdos (a pirate, an opera singer, a guy who
+thinks it's 1850, a robot (allegedly)...).
 
 ## Run it on your Mac
 
-1. Download **Godot 4.7** (the standard one, not .NET) from https://godotengine.org/download/macos
-2. Open Godot → **Import** → pick `pizza-panic/project.godot` → **Import & Edit**.
-3. Press **▶ (Play)** in the top right, or hit `Cmd+B`.
+1. Download **Godot 4.7** (standard, not .NET) from https://godotengine.org/download/macos
+2. In Godot's Project Manager, drag `pizza-panic.zip` in (or **Import** → pick `project.godot`),
+   then **Import & Edit**.
+3. Press **▶ Play** (top right) or `Cmd+B`.
 
-It works right away in **offline mode**: you type to the customers, they answer from a script, and
-their voices are Animal Crossing–style gibberish. To get the full thing (real voice chat and AI
-brains), add API keys as described below.
-
-The first time you hold **T**, macOS will ask for microphone permission. Say yes.
+It works right away in **offline mode**: you type to customers and they answer from a script.
+To get voice chat and AI customers, add API keys (below). The first time you hold **T**, macOS
+asks for microphone permission. Say yes.
 
 ## Controls
 
 | Action | Keyboard | Controller |
 |---|---|---|
-| Drive / reverse | W / S (or arrows) | RT / LT |
-| Steer | A / D | Left stick |
-| Hop (why not) | Space | A |
+| Walk / drive | WASD or arrows | Left stick, RT/LT |
+| Use / pick up / knock | **E** | X |
+| Get in / out of the car | **F** | L3 |
+| Hold to talk (voice chat) | **hold T** | hold Y |
+| Hop | Space | A |
+| Answer phone anywhere (headset upgrade) | Q | D-pad up |
 | Honk | H | B |
-| Talk / knock / get order | E | X |
-| **Push-to-talk (voice chat)** | **hold T** | hold Y |
+| Rocket boost (upgrade) | Shift | R3 |
+| Turn camera | [ and ] | D-pad left/right |
 | Unflip car | R | Back |
-| Pause / leave conversation | Esc | Start |
+| Pause / hang up / leave | Esc | Start |
 
-You can also type in the conversation box and press Enter.
+In conversations you can also type and press Enter. In the kitchen, number keys pick sauces and
+toppings, and Enter finishes.
 
-## Turning on AI voices and brains
+## AI setup (voice chat + AI customers)
 
-The game uses up to three services. You need accounts and API keys for them. They're pay-as-you-go,
-and a few dollars of credit lasts a long time while you're testing.
-
-| Service | What it does in the game | Get a key |
+| Service | What it does | Get a key |
 |---|---|---|
-| **Anthropic (Claude)** | Each NPC's brain. Claude plays the character, decides if they take the pizza, and how much they tip | https://console.anthropic.com → API Keys |
-| **OpenAI** | Turns your voice into text, and gives NPCs acted voices ("talk like a dramatic ghost") | https://platform.openai.com/api-keys |
-| **ElevenLabs** *(optional)* | Even more realistic voices | https://elevenlabs.io → Profile → API key |
+| **Anthropic (Claude)** | The customers' brains: what they say, what they order, if they accept the pizza, the tip | console.anthropic.com → Billing (add credit) → API Keys |
+| **OpenAI** | Turns your voice into text, and gives customers acted voices | platform.openai.com → Billing (add credit) → API keys |
+| **ElevenLabs** *(optional)* | More realistic voices | elevenlabs.io → Profile → API key |
 
-**Minimum for the full experience: Anthropic + OpenAI.**
+Paste them in **Settings / AI Voice Setup** and press **Test AI**.
 
-Then in the game: **Settings / AI Voice Setup**, paste the keys, and press **Test AI + Voice**.
-Tony should say something to you out loud.
+**"How customers answer"** setting:
+- **Voice + text**: they talk out loud and the words show on screen.
+- **Text only**: you talk with your voice, they text back. It's cheaper (no voice generation),
+  and needs just Anthropic + OpenAI keys.
 
-| Keys you've added | What you get |
-|---|---|
-| none | Offline: type to talk, scripted replies, gibberish voices |
-| Anthropic only | AI brains, type to talk, gibberish voices |
-| Anthropic + OpenAI | **AI brains + voice chat + acted AI voices** |
-| + ElevenLabs | Same, with ElevenLabs voices (set "NPC voices" to ElevenLabs) |
+**Cost:** pay-as-you-go. One back-and-forth (your voice in, their reply, their voice out) costs
+roughly 1–2 cents; text-only is a bit cheaper. $5 of credit on each service lasts hundreds of
+conversations. Set a monthly spending limit in each dashboard.
 
-> Keys are saved in plain text at `~/Library/Application Support/Godot/app_userdata/Pizza Panic!/settings.cfg`.
-> You can also set them as environment variables (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`,
-> `ELEVENLABS_API_KEY`). **Never ship a build with your keys in it.** See "Putting it on Steam".
-
-### How one exchange works
+How one exchange works:
 
 ```
-hold T ─► mic records ─► OpenAI speech-to-text ─► "here's your tuba, Gary"
-     ─► Claude, playing Gary, gets the text plus the game state (late? pizza smushed? right house?)
-     ─► returns JSON: {say, emotion, mood_change, action: accept_pizza, tip: 9}
-     ─► text appears instantly ─► OpenAI/ElevenLabs voice plays ─► mouth flaps ─► you get paid
+hold T → mic records → speech-to-text → "here's your tuba, Gary"
+  → Claude (playing Gary) gets that + the scene: on the phone or at the door, what pizza
+    you're holding, is it hot/burnt/smushed/late, how much Gary likes you
+  → JSON back: {say, emotion, mood_change, action, tip, order}
+  → text appears → voice plays → mouth flaps → game applies the action
 ```
 
-Claude decides **what happens** (`accept_pizza`, `refuse_pizza`, `slam_door`, `steal_pizza`), not
-just what's said. The game still enforces the rules: an NPC can't accept a pizza that isn't theirs.
-If an AI service fails mid-game, that NPC quietly falls back to the offline script so the game never
-gets stuck.
+Claude decides what happens (`place_order`, `accept_pizza`, `refuse_pizza`, `slam_door`,
+`steal_pizza`, `hang_up`), and the game enforces the rules: nobody can accept a pizza that isn't
+theirs, and orders only use real menu items. If an AI service fails, that customer quietly falls
+back to the offline script so the game never gets stuck.
 
-Claude also has `fallbacks: "default"` turned on. If Claude's safety filter declines a line (say a
-player tries to make an NPC say something nasty), the API retries on Anthropic's recommended
-fallback model instead of the NPC going silent.
+> Keys are saved in plain text in Godot's user data folder (`settings.cfg`). Don't put your keys
+> into a build you give to other people.
 
 ## Project layout
 
-Everything is built from code and primitive shapes. There are **no model, texture or audio files**,
-so the whole style is easy to tweak.
+Everything is built from code and procedural low-poly shapes: **no model, texture or audio
+files**. Even the music and sound effects are synthesized at startup.
 
 ```
-scenes/main.tscn            entry point (just runs scripts/main.gd)
-scripts/
-  main.gd                   game flow: title → shift → results, input, collisions
-  autoload/settings.gd      settings, API keys, input bindings
-  autoload/game.gd          money, orders, timer, pizza health, ranks
-  autoload/sfx.gd           every sound effect, synthesized at startup (+ babble voices)
-  ai/claude_brain.gd        Claude Messages API (structured JSON replies)
-  ai/speech_to_text.gd      OpenAI / ElevenLabs transcription
-  ai/text_to_speech.gd      OpenAI / ElevenLabs / system voice / babble
-  ai/mic_recorder.gd        push-to-talk recording
-  ai/offline_brain.gd       keyword fallback when there's no AI
-  ai/conversation.gd        glues it all together for one conversation
-  npc/characters.gd         ★ THE CAST: personalities, voices, looks. Add characters here!
-  npc/npc.gd                googly-eyed NPC builder + animation + getting yeeted
-  world/town.gd             procedural neighborhood
-  world/house.gd            houses and Tony's Pizza
-  world/toon.gd             cel-shaded mesh/material helpers
-  player/car.gd             arcade car physics, engine sound
-  player/chase_camera.gd    chase cam + anime two-shot during conversations
-  ui/                       HUD, dialogue box, menus, theme
-shaders/toon.gdshader       anime cel shading (purple-tinted shadows, rim light)
-shaders/outline.gdshader    ink outlines
-server/                     relay server for the Steam release (keeps your keys safe)
-tests/smoke_test.gd         automated play-through
+scenes/main.tscn              entry point
+scripts/main.gd               game flow: title → day → report → next day; input; car enter/exit; GPS arrow; hints
+scripts/autoload/             settings (keys, controls), game (money, clock, tickets, reputation, upgrades, save), sfx (synth sounds + music)
+scripts/data/                 characters.gd (★ THE CAST), menu.gd (sizes/sauces/toppings/prices), upgrades.gd
+scripts/art/                  shapes.gd (faceted meshes: egg, lathe, chamfered blocks, blobs), toon.gd (materials/builders)
+scripts/characters/           egg_body.gd (the egg character + animation), player.gd, pedestrians.gd
+scripts/kitchen/              kitchen.gd (all stations), pizza.gd (the pizza + quality scoring), phone_line.gd, station.gd
+scripts/vehicles/             car.gd (delivery car + upgrades + cargo), traffic.gd
+scripts/world/                town.gd (Eggville generator), house.gd, pizzeria.gd, landmarks.gd, day_cycle.gd
+scripts/ai/                   conversation.gd, claude_brain.gd, speech_to_text.gd, text_to_speech.gd, mic_recorder.gd, offline_brain.gd
+scripts/ui/                   hud, dialogue box, minigames, make-line, menus + upgrade shop, theme
+shaders/                      toon.gdshader (3-band faceted cel shading), outline.gdshader (ink lines)
+tests/                        automated play-throughs
+tools/                        screenshot + character lineup renderers
 ```
 
-### Adding a new character
+### Adding a character
 
-Open `scripts/npc/characters.gd`, copy any entry in `ROSTER`, and change:
-- `prompt`: who they are and what the player must do to get them to accept the pizza
-- `voice.openai` / `voice.style`: an OpenAI voice name (alloy, ash, ballad, coral, echo, fable,
-  nova, onyx, sage, shimmer, verse) plus acting directions
-- `voice.eleven`: an ElevenLabs voice ID (copy one from your ElevenLabs Voice Library)
-- `look`: colors, hat (`chef`, `wizard`, `tinfoil`, `cap`, `headband`, `bow`, `crown`, `bun`,
-  `headset`), body (`human`, `baby`, `dog`, `ghost`), plus extras like `beard`, `glasses`, `tie`
+Open `scripts/data/characters.gd`, copy an entry in `ROSTER`, and change:
+- `prompt`: who they are and what you must do at the door to get paid
+- `phone` / `favorites`: how they open a phone call and what they like to order
+- `voice`: an OpenAI voice name (alloy, ash, ballad, coral, echo, fable, nova, onyx, sage, shimmer,
+  verse) plus acting notes; an ElevenLabs voice ID; a babble pitch
+- `look`: egg color, size, `stretch` (tall/round), hat (`cap`, `chef`, `wizard`, `tinfoil`,
+  `crown`, `beanie`, `propeller`, `tophat`, `headband`, `headset`, `bun`, `bow`, `cowboy`), and
+  extras (`mustache`, `beard`, `glasses`, `tie`, `apron`, `cape`, `ears`, `snout`, `tail`,
+  `ghost`, `baby`, `blush`, `grumpy`...)
 
-Houses pick their residents from the roster at random.
-
-## Running the automated test
+### Tests
 
 ```sh
+# A whole day: phone → kitchen → car → delivery → upgrade → closing → save
 godot --headless --path pizza-panic res://tests/smoke_test.tscn
-```
 
-It drives the car, gets an order from Tony, delivers it, crashes into a house, builds every
-character, and ends the shift. It prints `SMOKE TEST PASSED` at the end.
-
-## Putting it on Steam (roadmap)
-
-1. **Deploy the relay server** (`server/README.md`) so the game build contains no keys. Set the
-   game's defaults to `ai_mode = "proxy"` with your server URL.
-2. **Steamworks:** pay the $100 Steam Direct fee at https://partner.steamgames.com, create the app,
-   and add the [GodotSteam](https://godotsteam.com) addon for achievements and login tickets.
-3. **Protect your AI budget:** have the relay verify Steam login tickets and rate-limit each
-   player (details in `server/README.md`).
-4. **Mac export:** `export_presets.cfg` already has the microphone permission text and the
-   `audio_input` entitlement turned on. Install export templates (Editor → Manage Export
-   Templates). To ship to other people's Macs you need an Apple Developer account ($99/yr) for code
-   signing + notarization, otherwise macOS says the game "is damaged".
-5. **Windows export:** a preset is included. Most Steam players are on Windows, so test it there.
-6. **Content and polish ideas:** music, more neighborhoods, night shifts, upgrades for the car,
-   a "most cursed conversation" replay, achievements ("Delivered a pizza to a ghost").
-7. **Steam's AI disclosure:** Steam requires you to disclose live AI-generated content on your store
-   page and describe your guardrails (here: the character rules in `characters.gd` plus Claude's
-   built-in safety). Add that when you set up the store page.
-
-### Testing the AI pipeline without keys
-
-`tests/mock_ai_server.py` pretends to be the AI services and checks every request the game sends:
-
-```sh
-python3 tests/mock_ai_server.py 8787 any.mp3 /tmp/requests.log &
+# The AI pipeline against a fake AI server (no keys needed)
+python3 pizza-panic/tests/mock_ai_server.py 8787 any.mp3 /tmp/requests.log &
 godot --headless --path pizza-panic res://tests/ai_pipeline_test.tscn
 ```
+
+## Ideas for later
+
+Events (rush hour, a food critic, a pizza-hating mayor), more neighborhoods unlocked by
+reputation, hiring helpers, achievements, a photo mode, controller rumble, real music tracks, and
+exporting for Windows/Steam when you're ready (`export_presets.cfg` already has the macOS
+microphone permission set up).

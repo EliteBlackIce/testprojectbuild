@@ -1,18 +1,17 @@
-// Inverted-hull outline. Used as next_pass on toon materials.
+// Inverted-hull ink outline, used as next_pass on toon materials.
+// Faceted meshes have split normals, so the hull is pushed outward from the
+// mesh's center instead of along normals (works well for convex parts).
 shader_type spatial;
-render_mode unshaded, cull_front, shadows_disabled;
+render_mode unshaded, cull_front, shadows_disabled, fog_disabled;
 
-uniform vec4 outline_color : source_color = vec4(0.12, 0.07, 0.16, 1.0);
-uniform float outline_width = 0.035;
-// Boxes have split normals, which tear the outline at corners. For those we
-// push vertices away from the mesh center instead.
-uniform bool expand_from_center = false;
+uniform vec4 outline_color : source_color = vec4(0.17, 0.11, 0.1, 1.0);
+uniform float outline_width = 0.02;
 
 void vertex() {
-	if (expand_from_center) {
-		VERTEX += normalize(VERTEX + vec3(0.0001)) * outline_width * 1.4;
-	} else {
-		VERTEX += NORMAL * outline_width;
+	vec3 dir = VERTEX;
+	float len = length(dir);
+	if (len > 0.0001) {
+		VERTEX += dir / len * outline_width;
 	}
 }
 

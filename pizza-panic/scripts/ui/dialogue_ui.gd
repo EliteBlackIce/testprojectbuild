@@ -109,8 +109,9 @@ func _ready() -> void:
 	visible = false
 
 
-func open(npc_name: String, npc_title: String, voice_ok: bool) -> void:
+func open(npc_name: String, npc_title: String, voice_ok: bool, phone := false) -> void:
 	visible = true
+	_box.add_theme_stylebox_override("panel", UiTheme.box(Color("#e6fff6") if phone else UiTheme.CREAM, 6, 26, 22))
 	_name.text = npc_name
 	_title.text = "  " + npc_title
 	_text.text = ""
@@ -120,8 +121,12 @@ func open(npc_name: String, npc_title: String, voice_ok: bool) -> void:
 	_mic_btn.disabled = not voice_ok
 	_mic_btn.text = "Hold T to talk" if voice_ok else "No mic (offline)"
 	_meter.visible = voice_ok
-	_hint.text = "Talk to them like a real person. Play along with their weirdness to get paid." if voice_ok \
-		else "Offline mode: type to talk. Add API keys in Settings to use your voice + AI brains."
+	if phone:
+		_hint.text = "They're ordering! Write it down in your head... (it's also added to your tickets). Esc = hang up."
+	elif voice_ok:
+		_hint.text = "Talk to them like a real person. Play along with their weirdness to get paid."
+	else:
+		_hint.text = "Type to talk (add API keys in Settings to use your voice + AI brains)."
 	_box.scale = Vector2(1, 0.2)
 	_box.pivot_offset = Vector2(620, 300)
 	var tw := create_tween()

@@ -23,9 +23,17 @@ class H(http.server.BaseHTTPRequestHandler):
             for a,b in zip(msgs, msgs[1:]):
                 if a['role']==b['role']: errs.append('roles not alternating')
             last = msgs[-1]['content']
-            accept = 'tuba' in last.lower() and 'YOUR pizza' in last
-            out = {"say": "TOOT TOOT! My tuba!" if accept else "Is that my tuba?", "emotion": "excited" if accept else "confused",
-                   "mood_change": 2, "action": "accept_pizza" if accept else "none", "tip": 9 if accept else 0}
+            props = j.get('output_config', {}).get('format', {}).get('schema', {}).get('properties', {})
+            if 'order' not in props: errs.append('schema has no order')
+            order = {"size": "medium", "sauce": "tomato", "toppings": ["pepperoni", "onion"]}
+            if 'PHONE CALL' in last:
+                out = {"say": "Medium pepperoni and onions. For my tuba.", "emotion": "happy", "mood_change": 1,
+                       "action": "place_order", "tip": 0, "order": order}
+                accept = False
+            else:
+                accept = 'tuba' in last.lower() and 'YOUR pizza' in last
+                out = {"say": "TOOT TOOT! My tuba!" if accept else "Is that my tuba?", "emotion": "excited" if accept else "confused",
+                       "mood_change": 2, "action": "accept_pizza" if accept else "none", "tip": 9 if accept else 0, "order": order}
             resp = {"id":"msg_1","type":"message","role":"assistant","model":j['model'],"stop_reason":"end_turn",
                     "content":[{"type":"thinking","thinking":"","signature":"sig"},{"type":"text","text":json.dumps(out)}]}
             log('CLAUDE', len(msgs), 'msgs', 'errs=', errs, 'accept=', accept)

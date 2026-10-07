@@ -1,156 +1,298 @@
 extends Node
-## Global game state for one shift: money, the current order, the pizza's
-## physical well-being, and a few signals the UI listens to.
+## The business: money, days, the clock, order tickets, reputation, upgrades
+## and saving. Scenes listen to the signals here.
 
 signal money_changed(total: int, delta: int)
-signal order_changed(order: Dictionary)
-signal pizza_damaged(hp: float)
+signal tickets_changed
 signal toast(text: String, color: Color)
-signal shift_ended(summary: Dictionary)
+signal day_started(day: int)
+signal day_ended(summary: Dictionary)
+signal upgrades_changed
 
-const SHIFT_SECONDS := 420.0
+const SAVE_PATH := "user://save.json"
+const OPEN_MINUTE := 10 * 60      ## 10:00
+const LAST_CALL_MINUTE := 20 * 60 + 30
+const CLOSE_MINUTE := 22 * 60     ## 22:00
+## Real seconds per in-game minute.
+const SECONDS_PER_MINUTE := 1.0
+## How long a customer is promised their pizza (game minutes).
+const PROMISE_MINUTES := 75.0
 
-const WEIRD_PIZZAS := [
-	"a large pepperoni",
-	"a pizza with gummy bears on it",
-	"a pizza that is just cheese and regret",
-	"a pineapple-anchovy supreme",
-	"a cold pizza (they specifically asked for cold)",
-	"a pizza shaped like a cat",
-	"a calzone that has been told it is a pizza",
-	"a double hot-dog-crust meat explosion",
-	"a pizza with a smaller pizza on top",
-	"a pizza with exactly one olive",
-	"the 'Spicy Grandma' (do not ask)",
-	"a gluten-free, cheese-free, pizza-free pizza",
-	"a pizza with a birthday candle in it for some reason",
-]
+var money := 40
+var day := 1
+var reputation := 2.5             ## 0..5 stars
+var upgrades: Dictionary = {}     ## id -> level
+var lifetime := {"delivered": 0, "earned": 0, "best_tip": 0, "days": 0}
 
-var money := 0
-var deliveries := 0
-var failed := 0
-var tips_total := 0
-var best_tip := 0
-var pizza_hp := 100.0
-## Empty when the player isn't carrying anything. Keys:
-##   house (Node), pizza (String), deadline (float, seconds of shift_time),
-##   time_limit (float)
-var order: Dictionary = {}
-var shift_time := 0.0
-var running := false
+var clock := float(OPEN_MINUTE)   ## minutes since midnight
+var day_running := false
 var in_dialogue := false
+var today: Dictionary = {}
+var tickets: Array[Dictionary] = []
+var _next_ticket_id := 1
 
 
-func start_shift() -> void:
-	money = 0
-	deliveries = 0
-	failed = 0
-	tips_total = 0
-	best_tip = 0
-	pizza_hp = 100.0
-	order = {}
-	shift_time = 0.0
-	running = true
-	in_dialogue = false
-	money_changed.emit(money, 0)
-	order_changed.emit(order)
+func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_PAUSABLE
+	load_game()
 
 
 func _process(delta: float) -> void:
-	if not running or get_tree().paused:
+	if not day_running or in_dialogue:
 		return
-	# The clock doesn't run while you're mid-conversation. We're not monsters.
-	if not in_dialogue:
-		shift_time += delta
-	if shift_time >= SHIFT_SECONDS:
-		end_shift()
+	clock += delta / SECONDS_PER_MINUTE
+	if clock >= CLOSE_MINUTE:
+		end_day()
 
 
-func time_left_in_shift() -> float:
-	return maxf(0.0, SHIFT_SECONDS - shift_time)
+# --- days ------------------------------------------------------------------------
+
+func start_day() -> void:
+	clock = float(OPEN_MINUTE)
+	day_running = true
+	in_dialogue = false
+	tickets.clear()
+	today = {"earned": 0, "tips": 0, "costs": 0, "delivered": 0, "failed": 0, "missed_calls": 0,
+		"rep_start": reputation, "perfect": 0}
+	tickets_changed.emit()
+	day_started.emit(day)
 
 
-func has_order() -> bool:
-	return not order.is_empty()
+func end_day() -> void:
+	if not day_running:
+		return
+	day_running = false
+	for t in tickets:
+		if t.status not in ["delivered", "failed"]:
+			t.status = "failed"
+			today.failed += 1
+			reputation = maxf(0.0, reputation - 0.2)
+	var summary := today.duplicate()
+	summary["day"] = day
+	summary["rep_end"] = reputation
+	summary["money"] = money
+	summary["rank"] = rank_for_day(summary)
+	lifetime.days += 1
+	day += 1
+	save_game()
+	tickets_changed.emit()
+	day_ended.emit(summary)
 
 
-func order_seconds_left() -> float:
-	if order.is_empty():
-		return 0.0
-	return order.deadline - shift_time
+func is_last_call() -> bool:
+	return clock >= LAST_CALL_MINUTE
 
 
-func new_order(house: Node, distance: float) -> Dictionary:
-	var limit: float = clampf(distance / 9.0 + 18.0, 25.0, 75.0)
-	order = {
+func clock_text() -> String:
+	var m := int(clock)
+	var h := (m / 60) % 24
+	var ampm := "AM" if h < 12 else "PM"
+	var h12 := h % 12
+	if h12 == 0:
+		h12 = 12
+	return "%d:%02d %s" % [h12, m % 60, ampm]
+
+
+## 0 = morning, 1 = midnight-ish. Used for lighting.
+func day_fraction() -> float:
+	return clampf((clock - OPEN_MINUTE) / float(CLOSE_MINUTE - OPEN_MINUTE), 0.0, 1.0)
+
+
+# --- tickets ------------------------------------------------------------------------
+
+func add_ticket(house: Node, customer_name: String, order: Dictionary) -> Dictionary:
+	var t := {
+		"id": _next_ticket_id,
 		"house": house,
-		"pizza": WEIRD_PIZZAS.pick_random(),
-		"deadline": shift_time + limit,
-		"time_limit": limit,
+		"customer": customer_name,
+		"order": order,
+		"price": Menu.price_of(order),
+		"status": "new",          # new -> making -> baking -> ready -> in_car -> delivered / failed
+		"created": clock,
+		"due": clock + PROMISE_MINUTES,
 	}
-	pizza_hp = 100.0
-	order_changed.emit(order)
-	return order
+	_next_ticket_id += 1
+	tickets.append(t)
+	tickets_changed.emit()
+	return t
 
 
-func damage_pizza(amount: float) -> void:
-	if order.is_empty():
-		return
-	pizza_hp = maxf(0.0, pizza_hp - amount)
-	pizza_damaged.emit(pizza_hp)
+func ticket(id: int) -> Dictionary:
+	for t in tickets:
+		if t.id == id:
+			return t
+	return {}
 
 
-## Called when an NPC accepts the pizza. Returns the money earned.
-func complete_delivery(tip_from_npc: int) -> int:
-	var late := order_seconds_left() < 0.0
-	var base := 0 if late else 12
-	var condition_bonus := int(roundf((pizza_hp - 50.0) / 10.0))
-	var speed_bonus := int(maxf(0.0, order_seconds_left()) / 6.0)
-	var tip := clampi(tip_from_npc + condition_bonus + speed_bonus, 0, 40)
-	var earned := base + tip
+func open_tickets() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for t in tickets:
+		if t.status not in ["delivered", "failed"]:
+			out.append(t)
+	return out
+
+
+func set_ticket_status(id: int, status: String) -> void:
+	var t := ticket(id)
+	if not t.is_empty():
+		t.status = status
+		tickets_changed.emit()
+
+
+func minutes_left(t: Dictionary) -> float:
+	return float(t.due) - clock
+
+
+## Pizza handed over and accepted. `pizza` is a PizzaItem's data dictionary.
+## Returns the breakdown so the UI can show it.
+func complete_delivery(id: int, pizza: Dictionary, npc_tip: int) -> Dictionary:
+	var t := ticket(id)
+	if t.is_empty():
+		return {}
+	var q := Pizza.quality(pizza, t.order)
+	var late := minutes_left(t) < 0.0
+	var price: int = t.price
+	if late:
+		price = int(price * 0.5)
+	var tip_mult: float = 0.4 + q.total * 1.2 + (reputation - 2.5) * 0.08
+	var tip := clampi(int(round(npc_tip * tip_mult + (3.0 if q.total > 0.85 and not late else 0.0))), 0, 40)
+	var earned := price + tip
+	t.status = "delivered"
 	money += earned
-	deliveries += 1
-	tips_total += tip
-	best_tip = maxi(best_tip, tip)
-	order = {}
+	today.earned += earned
+	today.tips += tip
+	today.delivered += 1
+	lifetime.delivered += 1
+	lifetime.earned += earned
+	lifetime.best_tip = maxi(lifetime.best_tip, tip)
+	var rep_delta := -0.25 if late else (0.25 if q.total > 0.85 else (0.1 if q.total > 0.6 else -0.1))
+	if q.total > 0.85 and not late:
+		today.perfect += 1
+	reputation = clampf(reputation + rep_delta, 0.0, 5.0)
 	money_changed.emit(money, earned)
-	order_changed.emit(order)
-	return earned
+	tickets_changed.emit()
+	return {"price": price, "tip": tip, "earned": earned, "late": late, "quality": q, "rep": rep_delta}
 
 
-func fail_delivery(reason: String) -> void:
-	failed += 1
-	order = {}
-	order_changed.emit(order)
+func fail_ticket(id: int, reason: String) -> void:
+	var t := ticket(id)
+	if t.is_empty() or t.status in ["delivered", "failed"]:
+		return
+	t.status = "failed"
+	today.failed += 1
+	reputation = maxf(0.0, reputation - 0.3)
+	tickets_changed.emit()
 	toast.emit(reason, Color("#ff5d73"))
 
 
-func end_shift() -> void:
-	if not running:
-		return
-	running = false
-	shift_ended.emit({
-		"money": money,
-		"deliveries": deliveries,
-		"failed": failed,
-		"best_tip": best_tip,
-		"rank": rank_for(money),
-	})
+func missed_call() -> void:
+	today.missed_calls += 1
+	reputation = maxf(0.0, reputation - 0.1)
+	toast.emit("Missed call! (-reputation)", Color("#ff9f1c"))
 
 
-static func rank_for(cash: int) -> String:
-	if cash >= 260:
+# --- money + upgrades ----------------------------------------------------------------
+
+func spend(amount: int, what := "") -> bool:
+	if amount > money:
+		return false
+	money -= amount
+	if what == "ingredients":
+		today.costs += amount
+	money_changed.emit(money, -amount)
+	return true
+
+
+func level(id: String) -> int:
+	return int(upgrades.get(id, 0))
+
+
+func has_upgrade(id: String) -> bool:
+	return level(id) > 0
+
+
+func buy_upgrade(id: String) -> bool:
+	var lv := level(id)
+	if Upgrades.maxed(id, lv):
+		return false
+	if not spend(Upgrades.cost(id, lv)):
+		return false
+	upgrades[id] = lv + 1
+	upgrades_changed.emit()
+	save_game()
+	return true
+
+
+func cargo_capacity() -> int:
+	return Upgrades.CARGO[level("cargo")]
+
+
+func current_hat() -> String:
+	return Upgrades.HATS[level("hat")]
+
+
+## Calls per in-game hour; more with reputation and the neon sign.
+func call_rate() -> float:
+	return 1.4 + reputation * 0.35 + level("neon_sign") * 0.5 + minf(day - 1, 6) * 0.1
+
+
+func rank_for_day(s: Dictionary) -> String:
+	var score: int = s.delivered * 2 + s.perfect * 2 - s.failed * 2 - s.missed_calls
+	if score >= 26:
 		return "PIZZA GOD (Tony is crying)"
-	if cash >= 180:
+	if score >= 18:
 		return "Cheese Wizard"
-	if cash >= 110:
+	if score >= 11:
 		return "Certified Slice Slinger"
-	if cash >= 50:
+	if score >= 5:
 		return "Mediocre Pizza Person"
-	if cash > 0:
+	if score > 0:
 		return "Pizza Peasant"
 	return "Professional Pizza Loser"
 
 
 func say_toast(text: String, color := Color("#ffd166")) -> void:
 	toast.emit(text, color)
+
+
+# --- saving --------------------------------------------------------------------------
+
+func save_game() -> void:
+	var data := {"money": money, "day": day, "reputation": reputation, "upgrades": upgrades, "lifetime": lifetime}
+	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	if f:
+		f.store_string(JSON.stringify(data, "  "))
+
+
+func load_game() -> void:
+	if not FileAccess.file_exists(SAVE_PATH):
+		return
+	var data = JSON.parse_string(FileAccess.get_file_as_string(SAVE_PATH))
+	if typeof(data) != TYPE_DICTIONARY:
+		return
+	money = int(data.get("money", money))
+	day = int(data.get("day", day))
+	reputation = float(data.get("reputation", reputation))
+	var ups: Dictionary = data.get("upgrades", {})
+	upgrades = {}
+	for k in ups:
+		upgrades[k] = int(ups[k])
+	var life: Dictionary = data.get("lifetime", {})
+	for k in life:
+		lifetime[k] = life[k]
+
+
+func has_save() -> bool:
+	return FileAccess.file_exists(SAVE_PATH) and day > 1
+
+
+func reset_save() -> void:
+	money = 40
+	day = 1
+	reputation = 2.5
+	upgrades = {}
+	lifetime = {"delivered": 0, "earned": 0, "best_tip": 0, "days": 0}
+	if FileAccess.file_exists(SAVE_PATH):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_PATH))
+	money_changed.emit(money, 0)
+	upgrades_changed.emit()

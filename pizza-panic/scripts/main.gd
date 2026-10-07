@@ -1,105 +1,181 @@
 extends Node
-## Builds the game and runs the main loop: title -> shift -> results.
+## Builds Eggville and runs the game loop:
+##   title -> day (phone rings -> make pizza -> load car -> drive -> deliver) -> closing time
+##   -> report + upgrades -> next day
 
-const TALK_DISTANCE := 6.5
+const ENTER_CAR_DISTANCE := 4.5
 
 var town: Town
+var day_cycle: DayCycle
+var kitchen: Kitchen
+var phone: PhoneLine
+var player: PlayerEgg
 var car: PizzaCar
-var camera: ChaseCamera
+var camera: GameCamera
+var traffic: Traffic
+var pedestrians: Pedestrians
 var hud: Hud
 var dialogue: DialogueUi
+var minigame: MinigameUi
+var makeline: MakelineUi
 var convo: Conversation
 var menus: Menus
 var arrow: Node3D
-var _title_orbit := 0.0
-var _nearby: House
-var _target_house: House
+var in_car := false
+var _car_station: Station
 
 
 func _ready() -> void:
-	# Main keeps running while paused so Esc can unpause; the game world doesn't.
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	randomize()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261007
+
+	day_cycle = DayCycle.new()
+	add_child(day_cycle)
 	town = Town.new()
 	add_child(town)
 	town.generate(20261007)
+	day_cycle.town = town
 
+	kitchen = Kitchen.new()
+	add_child(kitchen)
+
+	player = PlayerEgg.new()
+	add_child(player)
 	car = PizzaCar.new()
 	add_child(car)
-	car.respawn_at(town.spawn_point, PI)
 	car.crashed.connect(_on_crash)
 
-	camera = ChaseCamera.new()
-	camera.target = car
+	camera = GameCamera.new()
 	add_child(camera)
 	camera.current = true
-	camera.snap()
 
-	arrow = _make_arrow()
-	add_child(arrow)
+	traffic = Traffic.new()
+	traffic.town = town
+	traffic.player_car = car
+	traffic.player = player
+	add_child(traffic)
+	traffic.spawn(10, rng)
+	pedestrians = Pedestrians.new()
+	pedestrians.town = town
+	pedestrians.car = car
+	add_child(pedestrians)
+	pedestrians.spawn(22, rng)
+	pedestrians.yeeted.connect(_on_yeet)
 
+	phone = PhoneLine.new()
+	phone.town = town
+	add_child(phone)
+
+	# UI
 	hud = Hud.new()
+	hud.phone = phone
+	hud.car = car
+	hud.player = player
 	add_child(hud)
 	dialogue = DialogueUi.new()
 	add_child(dialogue)
+	minigame = MinigameUi.new()
+	add_child(minigame)
+	makeline = MakelineUi.new()
+	add_child(makeline)
+
+	kitchen.minigame = minigame
+	kitchen.makeline = makeline
+	kitchen.camera = camera
+	kitchen.setup(town.pizzeria)
+	kitchen.on_phone = _answer_phone
+	kitchen.phone_prompt = _phone_prompt
+	kitchen.on_pc = _open_pc
+	kitchen.on_tony = _talk_to_tony
 
 	convo = Conversation.new()
 	convo.ui = dialogue
+	convo.player = player
 	convo.car = car
 	convo.camera = camera
-	convo.town = town
+	convo.kitchen = kitchen
 	add_child(convo)
 	dialogue.mic_level_source = convo.mic.level
 	dialogue.player_typed.connect(convo.player_says)
 	dialogue.talk_pressed.connect(convo.push_to_talk_pressed)
 	dialogue.talk_released.connect(convo.push_to_talk_released)
 	dialogue.leave_pressed.connect(convo.leave)
+	House.on_knock = _on_knock
+
+	_car_station = Station.make(car, Vector3(0, 1.0, 2.6), _car_prompt, _car_use, 2.6)
 
 	menus = Menus.new()
 	add_child(menus)
-	menus.start_requested.connect(start_shift)
+	menus.start_requested.connect(_start_game)
+	menus.next_day_requested.connect(start_day)
 	menus.resume_requested.connect(resume)
 	menus.title_requested.connect(go_to_title)
 
-	Game.order_changed.connect(_on_order_changed)
-	Game.shift_ended.connect(_on_shift_ended)
-	for h in town.all_stops():
-		h.resident.launched.connect(_on_npc_launched)
+	arrow = _make_arrow()
+	add_child(arrow)
 
-	for n in [town, car, camera, arrow, hud, dialogue, convo]:
+	Game.day_ended.connect(_on_day_ended)
+	Game.tickets_changed.connect(_refresh_targets)
+
+	for n in [day_cycle, town, kitchen, player, car, camera, traffic, pedestrians, phone, hud, dialogue, minigame, makeline, convo, arrow]:
 		n.process_mode = Node.PROCESS_MODE_PAUSABLE
-
 	go_to_title()
 
 
-# --- flow ---------------------------------------------------------------------------
+# --- flow ---------------------------------------------------------------------------------
 
 func go_to_title() -> void:
 	get_tree().paused = false
 	convo.end()
-	Game.running = false
-	car.controls_enabled = false
+	if Game.day_running:
+		Game.save_game()
+	Game.day_running = false
+	player.controls_enabled = false
 	hud.visible = false
 	arrow.visible = false
-	camera.follow = false
+	camera.orbiting = true
+	camera.orbit_center = town.pizzeria.global_position
+	day_cycle.apply(0.62)
 	menus.show_title()
 
 
-func start_shift() -> void:
+func _start_game(new_game: bool) -> void:
+	if new_game:
+		Game.reset_save()
+	start_day()
+
+
+func start_day() -> void:
 	get_tree().paused = false
 	convo.end()
 	menus.hide_menus()
 	hud.visible = true
-	car.respawn_at(town.spawn_point, PI)
-	car.controls_enabled = true
-	camera.follow = true
+	camera.orbiting = false
+	_exit_car(false)
+	player.global_position = town.pizzeria.anchor("spawn")
+	player.velocity = Vector3.ZERO
+	player.controls_enabled = true
+	_park_car()
+	for p in car.cargo.duplicate():
+		car.unload_pizza(p)
+		p.queue_free()
+	camera.target = player
 	camera.snap()
-	Game.start_shift()
-	Game.say_toast("Go see Tony! (the spinning pizza)")
+	phone.reset()
+	Game.start_day()
+	Sfx.start_music()
+	Game.say_toast("DAY %d! Tony's is OPEN. Wait for the phone..." % Game.day)
+
+
+func _park_car() -> void:
+	var spot := town.pizzeria.anchor("parking")
+	car.respawn_at(spot + Vector3(0, 0.3, 0), town.pizzeria.global_rotation.y)
 
 
 func pause() -> void:
-	if not Game.running:
+	if not Game.day_running:
 		return
 	get_tree().paused = true
 	menus.show_pause()
@@ -110,16 +186,41 @@ func resume() -> void:
 	get_tree().paused = false
 
 
-func _on_shift_ended(summary: Dictionary) -> void:
+func _open_pc(_p: Node) -> void:
+	get_tree().paused = true
+	menus.open_shop(false)
+
+
+func _talk_to_tony(_p: Node) -> void:
+	if not convo.active:
+		convo.start_tony()
+
+
+func _on_day_ended(summary: Dictionary) -> void:
 	convo.end()
-	car.controls_enabled = false
+	player.controls_enabled = false
 	hud.visible = false
 	arrow.visible = false
 	Sfx.play("cash")
 	menus.show_results(summary)
 
 
-# --- input --------------------------------------------------------------------------
+# --- phone ------------------------------------------------------------------------------------
+
+func _phone_prompt(_p: Node) -> String:
+	if phone.is_ringing():
+		return "[E] ANSWER THE PHONE! (%s)" % phone.caller.display_name()
+	return "Phone (quiet... for now)"
+
+
+func _answer_phone(_p: Node = null) -> void:
+	if not phone.is_ringing() or convo.active or kitchen.busy:
+		return
+	var caller := phone.answer()
+	convo.start_phone(caller)
+
+
+# --- input ---------------------------------------------------------------------------------------
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("pause"):
@@ -127,11 +228,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			convo.leave()
 		elif get_tree().paused:
 			resume()
-		elif Game.running:
+		elif Game.day_running and not kitchen.busy:
 			pause()
 		get_viewport().set_input_as_handled()
 		return
-	if not Game.running or get_tree().paused:
+	if not Game.day_running or get_tree().paused:
 		return
 	if convo.active:
 		if dialogue.is_typing():
@@ -141,105 +242,258 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif event.is_action_released("push_to_talk"):
 			convo.push_to_talk_released()
 		return
-	if event.is_action_pressed("interact") and _nearby:
-		convo.start(_nearby)
-	elif event.is_action_pressed("respawn"):
-		# Unflip: pop the car back upright where it is.
+	if kitchen.busy:
+		return
+	if event.is_action_pressed("interact") and not in_car:
+		player.interact()
+	elif event.is_action_pressed("car"):
+		if in_car:
+			_exit_car(true)
+		else:
+			_try_enter_car()
+	elif event.is_action_pressed("answer_phone") and Game.has_upgrade("headset"):
+		_answer_phone()
+	elif event.is_action_pressed("respawn") and in_car:
 		car.respawn_at(car.global_position + Vector3(0, 1.5, 0), car.rotation.y)
 
 
-# --- per frame ----------------------------------------------------------------------
+# --- car ------------------------------------------------------------------------------------------
+
+func _try_enter_car() -> void:
+	if player.global_position.distance_to(car.global_position) > ENTER_CAR_DISTANCE:
+		return
+	if player.is_holding():
+		var held := player.held as Pizza
+		if held and held.is_boxed() and car.cargo.size() < car.capacity():
+			_load_into_car(held)
+		else:
+			Game.say_toast("Put that down first!", Color("#ff9f1c"))
+			return
+	in_car = true
+	player.controls_enabled = false
+	player.visible = false
+	player.process_mode = Node.PROCESS_MODE_DISABLED
+	player.global_position = car.global_position + Vector3(0, -50, 0)
+	car.set_driver(true)
+	camera.target = car
+	Sfx.play("slam", 1.4, -8.0)
+
+
+func _exit_car(sound: bool) -> void:
+	if not in_car:
+		player.visible = true
+		player.process_mode = Node.PROCESS_MODE_PAUSABLE
+		return
+	in_car = false
+	car.set_driver(false)
+	var side := car.global_basis.x * -1.9
+	player.process_mode = Node.PROCESS_MODE_PAUSABLE
+	player.global_position = car.global_position + side + Vector3(0, 0.3, 0)
+	player.velocity = Vector3.ZERO
+	player.visible = true
+	player.controls_enabled = true
+	camera.target = player
+	if sound:
+		Sfx.play("slam", 1.4, -8.0)
+
+
+func _load_into_car(p: Pizza) -> void:
+	player.take_held()
+	car.load_pizza(p)
+	Game.set_ticket_status(p.data.ticket, "in_car")
+	Sfx.play("pickup", 0.9)
+
+
+func _car_prompt(p: Node) -> String:
+	var pl := p as PlayerEgg
+	if in_car or convo.active:
+		return ""
+	var held := pl.held as Pizza
+	if held and held.is_boxed():
+		if car.cargo.size() >= car.capacity():
+			return "Car is full! (%d/%d) · [F] Drive" % [car.cargo.size(), car.capacity()]
+		return "[E] Load pizza #%d (%d/%d) · [F] Load & drive" % [held.data.ticket, car.cargo.size(), car.capacity()]
+	if not pl.is_holding() and not car.cargo.is_empty():
+		var best := _cargo_for_nearby_house()
+		if best:
+			return "[E] Grab pizza #%d for #%d · [F] Drive" % [best.data.ticket, Game.ticket(best.data.ticket).house.number]
+		return "[E] Grab pizza #%d · [F] Drive" % car.cargo[0].data.ticket
+	if not pl.is_holding():
+		return "[F] Drive"
+	return ""
+
+
+func _car_use(p: Node) -> void:
+	var pl := p as PlayerEgg
+	var held := pl.held as Pizza
+	if held and held.is_boxed():
+		if car.cargo.size() < car.capacity():
+			_load_into_car(held)
+		return
+	if not pl.is_holding() and not car.cargo.is_empty():
+		var pick := _cargo_for_nearby_house()
+		if pick == null:
+			pick = car.cargo[0]
+		car.unload_pizza(pick)
+		pl.hold(pick)
+
+
+func _cargo_for_nearby_house() -> Pizza:
+	var best: Pizza = null
+	var best_d := 40.0
+	for p in car.cargo:
+		var t := Game.ticket(p.data.ticket)
+		if t.is_empty():
+			continue
+		var d := (t.house as House).global_position.distance_to(car.global_position)
+		if d < best_d:
+			best_d = d
+			best = p
+	return best
+
+
+func _on_knock(h: House, _p: Node) -> void:
+	if convo.active or in_car:
+		return
+	convo.start_door(h)
+
+
+# --- per frame -----------------------------------------------------------------------------------
 
 func _process(delta: float) -> void:
-	if get_tree().paused:
+	if get_tree().paused or not Game.day_running:
 		return
-	if not Game.running:
-		# Slow cinematic orbit behind the title screen.
-		_title_orbit += delta * 0.08
-		var center := town.shop.global_position
-		camera.global_position = center + Vector3(sin(_title_orbit) * 45.0, 22.0, cos(_title_orbit) * 45.0)
-		camera.look_at(center + Vector3(0, 4, 0))
-		return
-
-	_nearby = null
-	if not convo.active:
-		var best := TALK_DISTANCE
-		for h in town.all_stops():
-			var d := Vector2(car.global_position.x - h.stop_point.x, car.global_position.z - h.stop_point.z).length()
-			if d < best:
-				best = d
-				_nearby = h
-	if convo.active:
-		hud.set_prompt("")
-	elif _nearby:
-		if _nearby.is_shop:
-			hud.set_prompt("[E] Talk to Tony" + ("" if Game.has_order() else " (get an order)"))
-		else:
-			hud.set_prompt("[E] Knock on #%d (%s)" % [_nearby.number, _nearby.resident.display_name()])
-	else:
-		hud.set_prompt("")
-
-	_check_npc_hits()
+	var inside := not in_car and town.pizzeria.is_inside(player.global_position)
+	var cam_over := town.pizzeria.covers(camera.global_position, 1.0)
+	town.pizzeria.set_cutaway(inside or (cam_over and not in_car), camera.global_position)
+	player.view_yaw = camera.foot_yaw
+	var prompt := ""
+	if not convo.active and not kitchen.busy and not in_car and player.focus:
+		prompt = player.focus.prompt(player)
+	if in_car and not convo.active:
+		prompt = "[F] Get out" + ("   ·   [SHIFT] Rocket boost" if Game.has_upgrade("boost") else "")
+	hud.set_prompt(prompt)
+	hud.set_hint(_next_step())
+	Sfx.set_music_mood(day_cycle.night)
 	_update_arrow(delta)
 
 
-func _check_npc_hits() -> void:
-	var speed := car.velocity.length()
-	if speed < 7.0:
-		return
-	for h in town.all_stops():
-		var npc := h.resident
-		if npc.is_flying() or npc.hidden_inside:
-			continue
-		var p := npc.global_position
-		var c := car.global_position
-		if Vector2(p.x - c.x, p.z - c.z).length() < 1.8 and absf(p.y - c.y) < 2.0:
-			npc.launch(car.velocity)
-
-
-func _on_npc_launched() -> void:
-	Sfx.play("bonk", 0.7)
-	camera.shake(0.6)
-	Game.damage_pizza(8.0)
-	Game.say_toast(["YEET", "SORRY!!", "THAT'S A CUSTOMER", "Insurance won't cover that"].pick_random(), UiTheme.PINK)
+## Plain-English "what should I do now" for the HUD.
+func _next_step() -> String:
+	if phone.is_ringing():
+		return "Answer the phone! (%s)" % ("press Q" if Game.has_upgrade("headset") else "it's on the right wall")
+	var held := player.held as Pizza
+	if held:
+		if held.is_boxed():
+			return "Load pizza #%d into the car out front, then drive it over." % held.data.ticket if not convo.active else ""
+		if held.data.baked:
+			return "Cut & box it at the counter in the back right."
+		if held.data.get("assembled", false):
+			return "Put it in the oven (back wall)."
+		return "Put it back on the prep table."
+	if kitchen.prep_pizza:
+		if not kitchen.prep_pizza.data.get("assembled", false):
+			return "Make pizza #%d at the prep table." % kitchen.prep_pizza.data.ticket
+		return "Pick up pizza #%d and put it in the oven." % kitchen.prep_pizza.data.ticket
+	for o in kitchen.ovens:
+		if o.pizza:
+			return "Watch the oven! Take it out when it says PERFECT."
+	if not kitchen.shelf.is_empty():
+		return "Grab the pizza on the shelf and load the car."
+	if not car.cargo.is_empty():
+		var t := Game.ticket(car.cargo[0].data.ticket)
+		var where := "house #%d" % t.house.number if not t.is_empty() else "the customer"
+		if in_car:
+			return "Follow the arrow to %s. Park, get out (F), grab the pizza (E) and knock." % where
+		return "Drive the pizza to %s (F near the car)." % where
+	for t in Game.open_tickets():
+		if t.status == "new":
+			return "Grab dough from the fridge (back left) for #%d." % t.id
+	if not Game.day_running:
+		return ""
+	return "Wait for the phone. Meanwhile: talk to Tony, or buy upgrades on the PC."
 
 
 func _on_crash(impact: float) -> void:
 	camera.shake(clampf(impact / 20.0, 0.2, 1.0))
-	if Game.has_order():
-		Game.damage_pizza(impact * 1.6)
-		if impact > 9.0:
-			Game.say_toast(["BONK", "The pizza felt that.", "CHEESE DISPLACEMENT", "OOF", "crunch"].pick_random(), UiTheme.RED)
+	if impact > 9.0 and not car.cargo.is_empty():
+		Game.say_toast(["BONK", "The pizzas felt that.", "CHEESE DISPLACEMENT", "OOF", "crunch"].pick_random(), UiTheme.RED)
 
 
-func _on_order_changed(order: Dictionary) -> void:
-	if _target_house:
-		_target_house.set_target(false)
-	_target_house = order.get("house") if not order.is_empty() else town.shop
-	if _target_house:
-		_target_house.set_target(not order.is_empty())
+func _on_yeet() -> void:
+	camera.shake(0.6)
+	Game.say_toast(["YEET", "SORRY!!", "Insurance won't cover that", "They're fine. Probably."].pick_random(), UiTheme.PINK)
 
 
-# --- the bouncing arrow over the car --------------------------------------------------
+func _refresh_targets() -> void:
+	var waiting := {}
+	for t in Game.open_tickets():
+		if t.status == "in_car":
+			waiting[t.house] = true
+	for h in town.houses:
+		h.set_target(waiting.has(h))
 
+
+# --- the bouncing GPS arrow ------------------------------------------------------------------------
+
+## A flat chevron that hovers just above the ground ahead of you.
 func _make_arrow() -> Node3D:
 	var root := Node3D.new()
-	var tip := Toon.cylinder(root, 0.0, 0.6, 1.0, Vector3(0, 0, -0.6), Color("#ffd166"), 0.05)
-	tip.rotation.x = -PI / 2
-	var shaft := Toon.box(root, Vector3(0.4, 0.25, 1.0), Vector3(0, 0, 0.3), Color("#ffd166"), 0.05)
-	shaft.position.z = 0.4
+	var head := MeshInstance3D.new()
+	head.mesh = Shapes.prism(Vector3(1.0, 0.8, 0.14))
+	head.material_override = Toon.glow(Color("#ffd166"), 1.2)
+	head.rotation.x = -PI / 2
+	head.position = Vector3(0, 0, -0.4)
+	root.add_child(head)
+	var shaft := MeshInstance3D.new()
+	shaft.mesh = Shapes.box(Vector3(0.36, 0.14, 0.7))
+	shaft.material_override = Toon.glow(Color("#ffd166"), 1.2)
+	shaft.position = Vector3(0, 0, 0.3)
+	root.add_child(shaft)
 	return root
 
 
+func _arrow_target() -> Variant:
+	var me: Node3D = car if in_car else player
+	# Delivering: closest house we have a pizza for (in hand or in the car).
+	var pizzas: Array[Pizza] = []
+	if player.held is Pizza and (player.held as Pizza).is_boxed():
+		pizzas.append(player.held as Pizza)
+	pizzas.append_array(car.cargo)
+	var best: Variant = null
+	var best_d := INF
+	for p in pizzas:
+		var t := Game.ticket(p.data.ticket)
+		if t.is_empty():
+			continue
+		var h := t.house as House
+		var target := h.curb_spot.global_position if in_car else h.knock_spot.global_position
+		var d := me.global_position.distance_to(target)
+		if d < best_d:
+			best_d = d
+			best = target
+	if best != null:
+		return best
+	# Otherwise head back to Tony's if there's work there.
+	if phone.is_ringing() or not Game.open_tickets().is_empty():
+		if in_car or not town.pizzeria.is_inside(player.global_position):
+			return town.pizzeria.anchor("parking") if in_car else town.pizzeria.anchor("door")
+	return null
+
+
 func _update_arrow(_delta: float) -> void:
-	var target := town.shop.stop_point
-	if Game.has_order():
-		target = (Game.order.house as House).stop_point
-	var to := target - car.global_position
+	var target = _arrow_target()
+	var me: Node3D = car if in_car else player
+	if target == null or convo.active:
+		arrow.visible = false
+		return
+	var to: Vector3 = (target as Vector3) - me.global_position
 	to.y = 0.0
-	arrow.visible = not convo.active and to.length() > 9.0
+	arrow.visible = to.length() > 4.0
 	if not arrow.visible:
 		return
 	var t := Time.get_ticks_msec() / 1000.0
-	arrow.global_position = car.global_position + Vector3(0, 3.8 + sin(t * 4.0) * 0.25, 0)
+	var ahead := to.normalized() * ((4.5 if in_car else 1.8) + sin(t * 5.0) * 0.25)
+	arrow.global_position = me.global_position + ahead + Vector3(0, 0.35, 0)
 	arrow.look_at(arrow.global_position + to.normalized(), Vector3.UP)
+	arrow.scale = Vector3.ONE * (1.6 if in_car else 1.0)

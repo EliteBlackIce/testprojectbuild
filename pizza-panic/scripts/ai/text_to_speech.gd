@@ -23,6 +23,8 @@ func synthesize(text: String, character: Dictionary) -> Dictionary:
 	if spoken == "":
 		return {"stream": null, "system": false}
 	match Settings.voice_engine():
+		"none":
+			return {"stream": null, "system": false}
 		"openai":
 			var s := await _openai(spoken, voice)
 			if s:

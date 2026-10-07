@@ -12,10 +12,21 @@ const SCHEMA := {
 		"say": {"type": "string", "description": "What you say out loud. One or two short sentences."},
 		"emotion": {"type": "string", "enum": ["happy", "angry", "confused", "excited", "sad", "scared", "suspicious", "in_love", "smug"]},
 		"mood_change": {"type": "integer", "description": "-3 to 3"},
-		"action": {"type": "string", "enum": ["none", "accept_pizza", "refuse_pizza", "slam_door", "steal_pizza"]},
+		"action": {"type": "string", "enum": ["none", "place_order", "hang_up", "accept_pizza", "refuse_pizza", "slam_door", "steal_pizza"]},
 		"tip": {"type": "integer", "description": "0 to 15 dollars, only used with accept_pizza"},
+		"order": {
+			"type": "object",
+			"description": "Your pizza order. Used with place_order; otherwise your usual favorite.",
+			"properties": {
+				"size": {"type": "string", "enum": ["small", "medium", "large"]},
+				"sauce": {"type": "string", "enum": ["tomato", "bbq", "white"]},
+				"toppings": {"type": "array", "items": {"type": "string", "enum": ["pepperoni", "mushroom", "olive", "pepper", "onion", "sausage", "ham", "pineapple", "anchovy", "jalapeno", "gummy", "hotdog"]}},
+			},
+			"required": ["size", "sauce", "toppings"],
+			"additionalProperties": false,
+		},
 	},
-	"required": ["say", "emotion", "mood_change", "action", "tip"],
+	"required": ["say", "emotion", "mood_change", "action", "tip", "order"],
 	"additionalProperties": false,
 }
 
@@ -29,10 +40,10 @@ var last_error := ""
 ## Ask the character what they say next.
 ## `history` is that NPC's message list; it is updated in place on success.
 ## Returns {ok, say, emotion, mood_change, action, tip}.
-func think(character: Dictionary, history: Array, player_text: String, game_context: String) -> Dictionary:
+func think(character: Dictionary, history: Array, player_text: String, scene: String) -> Dictionary:
 	var user_msg := {
 		"role": "user",
-		"content": "[GAME STATE] %s\n[PLAYER SAYS] %s" % [game_context, player_text],
+		"content": "[SCENE] %s\n[PLAYER SAYS] %s" % [scene, player_text],
 	}
 	var messages := history.duplicate()
 	messages.append(user_msg)
@@ -77,7 +88,7 @@ func think(character: Dictionary, history: Array, player_text: String, game_cont
 	if data.get("stop_reason") == "refusal":
 		# Don't add the refused turn to history; just deflect in character.
 		return {"ok": true, "say": "...Uh. I don't wanna talk about that. Pizza?", "emotion": "confused",
-			"mood_change": 0, "action": "none", "tip": 0}
+			"mood_change": 0, "action": "none", "tip": 0, "order": {}}
 
 	var text := ""
 	for block in data.get("content", []):
@@ -100,7 +111,26 @@ func think(character: Dictionary, history: Array, player_text: String, game_cont
 	parsed["ok"] = true
 	parsed["mood_change"] = clampi(int(parsed.get("mood_change", 0)), -3, 3)
 	parsed["tip"] = clampi(int(parsed.get("tip", 0)), 0, 15)
+	parsed["order"] = _clean_order(parsed.get("order", {}))
 	return parsed
+
+
+## Keep orders sane: known toppings only (and only unlocked ones), max 3.
+static func _clean_order(o) -> Dictionary:
+	if typeof(o) != TYPE_DICTIONARY:
+		return {}
+	var size := str(o.get("size", "medium"))
+	if size not in Menu.SIZES:
+		size = "medium"
+	var sauce := str(o.get("sauce", "tomato"))
+	if sauce not in Menu.SAUCES:
+		sauce = "tomato"
+	var avail := Menu.available_toppings()
+	var tops: Array[String] = []
+	for t in o.get("toppings", []):
+		if str(t) in avail and str(t) not in tops and tops.size() < 3:
+			tops.append(str(t))
+	return {"size": size, "sauce": sauce, "toppings": tops}
 
 
 func _fail(msg: String) -> Dictionary:

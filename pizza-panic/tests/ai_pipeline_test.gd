@@ -1,6 +1,6 @@
 extends Node
-## Tests the whole AI pipeline (Claude brain, speech-to-text, voices) against
-## tests/mock_ai_server.py, so it runs without real API keys:
+## Tests the AI pipeline (Claude phone orders + doorstep, speech-to-text,
+## voices, text-only mode) against tests/mock_ai_server.py, without real keys:
 ##   python3 tests/mock_ai_server.py 8787 some.mp3 /tmp/requests.log &
 ##   godot --headless --path . res://tests/ai_pipeline_test.tscn
 
@@ -9,64 +9,81 @@ var failures: PackedStringArray = []
 
 
 func _ready() -> void:
-	Settings.ai_mode = "proxy"   # in memory only; never saved by this test
+	Settings.ai_mode = "proxy"   # in memory only; points at the mock server
 	Settings.proxy_url = "http://127.0.0.1:8787"
 	Settings.proxy_token = "test-token"
 	Settings.tts_provider = "auto"
+	Settings.reply_mode = "voice"
+	MakelineUi.autoplay = true
+	Game.reset_save()
 	main = load("res://scenes/main.tscn").instantiate()
 	add_child(main)
 	await get_tree().process_frame
-	main.start_shift()
-	check(Settings.has_brain() and Settings.has_speech_to_text(), "proxy mode enables brain + voice input")
-	check(Settings.voice_engine() == "openai", "proxy mode uses OpenAI voices (got %s)" % Settings.voice_engine())
+	main._start_game(true)
+	check(Settings.has_brain() and Settings.has_speech_to_text(), "AI brain + voice input enabled")
 
-	var gary: Dictionary = Characters.ROSTER[0]
-
-	# 1. Claude brain
-	var history: Array = []
-	var r: Dictionary = await main.convo.brain.think(gary, history, "hello", "test context")
-	check(r.get("ok", false) and str(r.get("say", "")) != "", "Claude reply parsed: %s" % str(r.get("say", r.get("error", ""))))
-	check(history.size() == 2, "history grew by one exchange")
-	check(history.size() == 2 and history[1].content.size() == 1 and history[1].content[0].type == "text", "only text (no thinking blocks) kept in history")
-	r = await main.convo.brain.think(gary, history, "still hello", "test context")
-	check(r.get("ok", false) and history.size() == 4, "second turn works with history")
-
-	# 2. Speech to text
+	# 1. Speech to text
 	var clip := Sfx.babble("here is your tuba gary", 200.0)
 	clip.save_to_wav("user://test_clip.wav")
 	var wav := FileAccess.get_file_as_bytes("user://test_clip.wav")
 	var heard: String = await main.convo.stt.transcribe(wav)
-	check(heard == "Here's your tuba, Gary!", "transcription: '%s' %s" % [heard, main.convo.stt.last_error])
+	check(heard == "Here's your tuba, Gary!", "transcription works ('%s')" % heard)
 
-	# 3. Voice
+	# 2. Voices: OpenAI MP3, and text-only mode makes no audio
+	var gary: Dictionary = Characters.ROSTER[0]
 	var voice: Dictionary = await main.convo.tts.synthesize("*waves* Hello there!", gary)
-	check(voice.stream is AudioStreamMP3, "OpenAI voice decoded as MP3 (%s)" % main.convo.tts.last_error)
+	check(voice.stream is AudioStreamMP3, "AI voice decoded as MP3")
+	Settings.reply_mode = "text"
+	voice = await main.convo.tts.synthesize("Hello there!", gary)
+	check(voice.stream == null, "text-only replies make no audio")
+	Settings.reply_mode = "voice"
 
-	# 4. Full delivery: Tony gives an order, we steer it to a Gary house,
-	# then "say" the transcribed line and Claude accepts the pizza.
-	var gary_house: House = null
-	for h in main.town.houses:
-		if h.resident.character.id == "gary":
-			gary_house = h
+	# 3. Phone order placed by Claude
+	var house: House = main.town.houses[4]
+	main.phone.ring(house)
+	main._answer_phone()
+	for i in 40:
+		if not Game.open_tickets().is_empty():
 			break
-	if gary_house == null:
-		gary_house = main.town.houses[0]
-		gary_house.resident.character = gary
-	main.convo.start(main.town.shop)
-	await _seconds(0.3)
-	main.convo.end()
-	check(Game.has_order(), "got an order")
-	Game.order.house = gary_house
-	Game.order_changed.emit(Game.order)
-	main.convo.start(gary_house)
+		await _seconds(0.1)
+	check(Game.open_tickets().size() == 1, "Claude placed an order over the phone")
+	var t: Dictionary = Game.open_tickets()[0] if not Game.open_tickets().is_empty() else {}
+	check(not t.is_empty() and t.order.toppings == ["pepperoni", "onion"] and t.order.size == "medium", "ticket matches Claude's order")
+	await _seconds(5.0)
+	check(not main.convo.active, "call wrapped up")
+
+	# 4. Make it (fast-forward), deliver it, Claude accepts + tips
+	var p := Pizza.new()
+	add_child(p)
+	p.setup(t.id, "medium", 1.0)
+	p.add_sauce("tomato", 1.0)
+	p.add_cheese(1.0)
+	p.add_topping("pepperoni")
+	p.add_topping("onion")
+	p.set_bake(1.0)
+	p.data.baked = true
+	p.data.heat = 100.0
+	p.put_in_box(1.0)
+	main.player.hold(p)
+	main.player.global_position = house.knock_spot.global_position + Vector3(0, -0.85, 0)
+	await get_tree().physics_frame
+	main._on_knock(house, main.player)
 	await _seconds(0.7)
 	main.convo.player_says(heard)
 	for i in 50:
-		if Game.deliveries > 0:
+		if Game.today.delivered > 0:
 			break
 		await _seconds(0.1)
-	check(Game.deliveries == 1, "Claude accepted the pizza through the real conversation flow")
-	check(Game.money >= 12 + 9, "paid base + Claude's tip ($%d)" % Game.money)
+	check(Game.today.delivered == 1, "Claude accepted the pizza at the door")
+	check(Game.today.tips >= 9, "Claude's tip was paid (tips $%d)" % Game.today.tips)
+
+	# 5. Tony chats through Claude too
+	await _seconds(4.0)
+	main.convo.start_tony()
+	main.convo.player_says("hey tony")
+	await _seconds(1.0)
+	check(main.convo._tony_history.size() == 2, "Tony conversation used Claude")
+	main.convo.leave()
 
 	if failures.is_empty():
 		print("AI PIPELINE TEST PASSED")

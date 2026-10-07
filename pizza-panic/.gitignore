@@ -3,6 +3,4 @@ export/
 builds/
 settings.cfg
 .DS_Store
-server/cloudflare-worker/.wrangler/
-server/cloudflare-worker/node_modules/
 *.whl

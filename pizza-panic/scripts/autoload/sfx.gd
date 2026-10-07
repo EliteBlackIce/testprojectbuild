@@ -28,6 +28,80 @@ func _ready() -> void:
 	_sounds.knock = _make_knock()
 	_sounds.mic_on = _make_arpeggio([660.0, 990.0], 0.05, 0.25)
 	_sounds.mic_off = _make_arpeggio([990.0, 660.0], 0.05, 0.25)
+	_sounds.ring = _make_ring()
+	_sounds.ding = _make_arpeggio([1568.0, 2093.0], 0.12, 0.35)
+	_sounds.register = _make_arpeggio([1319.0, 1760.0, 2637.0], 0.05, 0.3)
+	_sounds.awooga = _make_awooga()
+	_sounds.airhorn = _make_airhorn()
+	_sounds.goat = _make_goat()
+	_sounds.hangup = _make_arpeggio([480.0, 480.0, 480.0], 0.12, 0.2, true)
+	_sounds.scream = babble("WAAAAAAAAAAAGH!!", 330.0, 1.8)
+
+
+var _music: AudioStreamPlayer
+
+
+## Bouncy little background loop (made of math, like everything else).
+func start_music() -> void:
+	if _music == null:
+		_music = AudioStreamPlayer.new()
+		_music.stream = _make_music()
+		add_child(_music)
+	_music.volume_db = linear_to_db(maxf(Settings.music_volume * 0.35, 0.0001))
+	if not _music.playing:
+		_music.play()
+
+
+func set_music_mood(night: float) -> void:
+	if _music:
+		_music.pitch_scale = lerpf(1.0, 0.92, night)
+		_music.volume_db = linear_to_db(maxf(Settings.music_volume * 0.35, 0.0001))
+
+
+func _make_music() -> AudioStreamWAV:
+	# C - Am - F - G, two times through, with a walking bass and a goofy lead.
+	var bpm := 132.0
+	var beat := 60.0 / bpm
+	var chords := [[261.6, 329.6, 392.0], [220.0, 261.6, 329.6], [174.6, 220.0, 261.6], [196.0, 246.9, 293.7]]
+	var lead := [0, 2, 4, 2, 5, 4, 2, 0, 1, 2, 0, -1, 4, 5, 4, 2]
+	var scale := [261.6, 293.7, 329.6, 349.2, 392.0, 440.0, 493.9, 523.3]
+	var total_beats := 32
+	var n := int(total_beats * beat * RATE)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	for i in n:
+		var t := float(i) / RATE
+		var b := t / beat
+		var bar := int(b / 4.0) % 4
+		var chord: Array = chords[bar]
+		var in_beat := fmod(b, 1.0)
+		# Bass: root on the beat, fifth on the off-beat
+		var bass_f: float = chord[0] * 0.5 * (1.5 if int(b) % 2 == 1 else 1.0)
+		var bass := _osc("tri", t * bass_f) * 0.22 * (1.0 - in_beat * 0.6)
+		# Chord stabs on the off-beats
+		var stab := 0.0
+		if fmod(b, 1.0) > 0.5:
+			var env := 1.0 - (fmod(b, 1.0) - 0.5) * 2.0
+			for f in chord:
+				stab += _osc("square", t * f) * 0.025 * env
+		# Lead every half beat (silent on some notes so it breathes)
+		var step := int(b * 2.0) % lead.size()
+		var note: int = lead[step]
+		var lead_v := 0.0
+		if note >= 0 and int(b * 2.0) % 8 != 7:
+			var lf: float = scale[note % scale.size()]
+			var le := 1.0 - fmod(b * 2.0, 1.0)
+			lead_v = (_osc("square", t * lf) * 0.5 + _osc("sine", t * lf * 2.0) * 0.5) * 0.07 * le
+		# Hi-hat tick
+		var hat := 0.0
+		if fmod(b * 2.0, 1.0) < 0.06:
+			hat = (randf() * 2.0 - 1.0) * 0.04
+		s[i] = bass + stab + lead_v + hat
+	var wav := _to_wav(s)
+	wav.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	wav.loop_begin = 0
+	wav.loop_end = s.size()
+	return wav
 
 
 func play(sound: String, pitch := 1.0, volume_db := 0.0) -> void:
@@ -40,6 +114,19 @@ func play(sound: String, pitch := 1.0, volume_db := 0.0) -> void:
 			p.volume_db = volume_db
 			p.play()
 			return
+
+
+## Car horn, by Silly Horn upgrade level.
+func honk(horn_level: int) -> void:
+	match horn_level:
+		1:
+			play("awooga")
+		2:
+			play("airhorn")
+		3:
+			play("goat", randf_range(0.95, 1.1))
+		_:
+			play("honk", randf_range(0.95, 1.05))
 
 
 ## Gibberish speech for a line of text. `pitch` is the base frequency in Hz.
@@ -193,6 +280,63 @@ func _make_knock() -> AudioStreamWAV:
 			phase += lerpf(260.0, 140.0, t) / RATE
 			s.append(sin(phase * TAU) * pow(1.0 - t, 4.0) * 0.8)
 		_append_silence(s, 0.1)
+	return _to_wav(s)
+
+
+func _make_ring() -> AudioStreamWAV:
+	# Old-school telephone: two bursts of a fast warble.
+	var s := PackedFloat32Array()
+	for burst in 2:
+		var n := int(0.45 * RATE)
+		var phase := 0.0
+		for k in n:
+			var t := float(k) / RATE
+			var f := 880.0 if int(t * 40.0) % 2 == 0 else 1100.0
+			phase += f / RATE
+			s.append(_osc("square", phase) * 0.18)
+		_append_silence(s, 0.15)
+	return _to_wav(s)
+
+
+func _make_awooga() -> AudioStreamWAV:
+	var s := PackedFloat32Array()
+	var n := int(0.7 * RATE)
+	var phase := 0.0
+	for k in n:
+		var t := float(k) / n
+		var f := lerpf(180.0, 420.0, minf(t * 2.0, 1.0)) if t < 0.5 else lerpf(420.0, 300.0, (t - 0.5) * 2.0)
+		phase += f / RATE
+		s.append(_osc("saw", phase) * 0.35 * minf((1.0 - t) * 6.0, 1.0))
+	return _to_wav(s)
+
+
+func _make_airhorn() -> AudioStreamWAV:
+	var s := PackedFloat32Array()
+	var n := int(0.8 * RATE)
+	var p1 := 0.0
+	var p2 := 0.0
+	var p3 := 0.0
+	for k in n:
+		var t := float(k) / n
+		p1 += 415.0 / RATE
+		p2 += 523.0 / RATE
+		p3 += 622.0 / RATE
+		var env := minf(t * 30.0, 1.0) * minf((1.0 - t) * 8.0, 1.0)
+		s.append((_osc("saw", p1) + _osc("saw", p2) + _osc("saw", p3)) * 0.15 * env)
+	return _to_wav(s)
+
+
+func _make_goat() -> AudioStreamWAV:
+	# "MEHEHEHEH"
+	var s := PackedFloat32Array()
+	var n := int(0.9 * RATE)
+	var phase := 0.0
+	for k in n:
+		var t := float(k) / n
+		var f := 520.0 * (1.0 + 0.12 * sin(t * TAU * 11.0)) * lerpf(1.1, 0.85, t)
+		phase += f / RATE
+		var v := _osc("saw", phase) * 0.6 + _osc("square", phase * 2.0) * 0.2
+		s.append(v * 0.3 * minf(t * 20.0, 1.0) * minf((1.0 - t) * 5.0, 1.0))
 	return _to_wav(s)
 
 
