@@ -46,7 +46,7 @@ void light() {
 	} else {
 		// Lamps: two bands of light so pools look painted, not smooth.
 		float l = clamp(ndl, 0.0, 1.0) * ATTENUATION;
-		float banded = step(0.04, l) * 0.55 + step(0.25, l) * 0.45;
+		float banded = step(0.04, l) * 0.45 + step(0.3, l) * 0.3;
 		DIFFUSE_LIGHT += banded * LIGHT_COLOR / PI;
 	}
 }
