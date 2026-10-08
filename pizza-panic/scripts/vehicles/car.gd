@@ -30,7 +30,8 @@ var _squash := 0.0
 var _boosting := false
 ## First-person cockpit (V switches to the chase camera)
 var cockpit_cam: Camera3D
-var _wheel: Node3D
+var _wheel: Node3D          ## fixed, tilted column
+var _wheel_spin: Node3D     ## the wheel itself, turning about the column axis
 var _needle: Node3D
 var _bobble: Node3D
 var _bobble_v := Vector2.ZERO
@@ -502,6 +503,10 @@ func _build_cockpit() -> void:
 	_wheel.position = Vector3(-0.35, 1.38, -0.08)
 	_wheel.rotation.x = 1.0
 	c.add_child(_wheel)
+	_wheel_spin = Node3D.new()
+	_wheel.add_child(_wheel_spin)
+	# Column and hub cover so it reads as mounted on the dash
+	Toon.cyl(_wheel, 0.035, 0.05, 0.22, Vector3(0, -0.13, 0), Color("#2b2630"), 0.004, 12)
 	var rim := MeshInstance3D.new()
 	var torus := TorusMesh.new()
 	torus.inner_radius = 0.13
@@ -510,9 +515,11 @@ func _build_cockpit() -> void:
 	torus.ring_segments = 8
 	rim.mesh = torus
 	rim.material_override = Toon.mat(Color("#3a3340"), 0.006)
-	_wheel.add_child(rim)
-	Toon.box(_wheel, Vector3(0.28, 0.03, 0.04), Vector3.ZERO, Color("#3a3340"), 0.0)
-	var horn := Toon.cyl(_wheel, 0.055, 0.055, 0.04, Vector3.ZERO, trim, 0.004, 14)
+	_wheel_spin.add_child(rim)
+	Toon.box(_wheel_spin, Vector3(0.28, 0.03, 0.04), Vector3.ZERO, Color("#3a3340"), 0.0)
+	var spoke := Toon.box(_wheel_spin, Vector3(0.04, 0.03, 0.14), Vector3(0, 0, 0.07), Color("#3a3340"), 0.0)
+	spoke.name = "Spoke"
+	var horn := Toon.cyl(_wheel_spin, 0.055, 0.055, 0.04, Vector3.ZERO, trim, 0.004, 14)
 	var tl := Toon.label(horn, "T", Vector3(0, 0.022, 0), 30, Color("#ffd166"), false)
 	tl.rotation.x = -PI / 2
 	tl.pixel_size = 0.0018
@@ -521,7 +528,7 @@ func _build_cockpit() -> void:
 		var grip := Node3D.new()
 		grip.position = Vector3(0.15 * side, 0.02, 0.0)
 		grip.rotation = Vector3(-PI / 2, 0.0, -0.5 * side)
-		_wheel.add_child(grip)
+		_wheel_spin.add_child(grip)
 		var built := EggBody.build_hand(grip, FpHands.SKIN, -float(side), 0.55, 0.005)
 		EggBody.curl_hand(built[1], 1.0)
 		_grips.append(grip)
@@ -622,7 +629,8 @@ var _speed_t := 0.0
 func _update_cockpit(delta: float, fwd: float) -> void:
 	if not driving or cockpit_cam == null or not cockpit_cam.current:
 		return
-	_wheel.rotation.z = lerp_angle(_wheel.rotation.z, _steer * 1.8, 1.0 - exp(-12.0 * delta))
+	# Turn the wheel about its own axis (the column), like a real one; it self-centres with a little overshoot.
+	_wheel_spin.rotation.y = lerpf(_wheel_spin.rotation.y, _steer * 2.3, 1.0 - exp(-11.0 * delta))
 	_update_arms()
 	var speed01 := clampf(absf(fwd) / (max_speed() * 1.4), 0.0, 1.0)
 	_needle.rotation.z = lerpf(1.9, -1.9, speed01) + sin(Time.get_ticks_msec() * 0.05) * 0.02 * clampf(absf(fwd), 0.0, 1.0)
