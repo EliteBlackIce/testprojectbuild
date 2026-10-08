@@ -30,14 +30,16 @@ var _anthropic: LineEdit
 var _openai: LineEdit
 var _eleven: LineEdit
 var _model: LineEdit
+var _local_url: LineEdit
+var _local_model: LineEdit
 var _master: HSlider
 var _voice_vol: HSlider
 var _music_vol: HSlider
 var _hints: CheckBox
 var _mouse: HSlider
 
-const MODES := ["auto", "offline", "direct"]
-const MODE_NAMES := ["Auto (AI if keys are set)", "Offline (no AI, free)", "AI with my own API keys"]
+const MODES := ["auto", "offline", "direct", "local"]
+const MODE_NAMES := ["Auto (AI if keys are set)", "Offline (no AI, free)", "AI with my own API keys", "Local llama (Ollama)"]
 const VOICES := ["auto", "openai", "elevenlabs", "system", "babble"]
 const VOICE_NAMES := ["Auto", "OpenAI voices (acting!)", "ElevenLabs (most realistic)", "Computer robot voice", "Gibberish babble"]
 const REPLIES := ["voice", "text"]
@@ -403,6 +405,8 @@ func _build_settings() -> void:
 	_reply = _option(v, "How customers answer", REPLY_NAMES)
 	_voice = _option(v, "Customer voices", VOICE_NAMES)
 	_model = _field(v, "Claude model", "claude-opus-5-5", false)
+	_local_url = _field(v, "Local llama server (Ollama)", "http://localhost:11434", false)
+	_local_model = _field(v, "Local llama model name", "llama3.2", false)
 	_master = _slider(v, "Master volume")
 	_voice_vol = _slider(v, "Voice volume")
 	_music_vol = _slider(v, "Music volume")
@@ -471,6 +475,8 @@ func _open_settings(from: Control) -> void:
 	_openai.text = Settings.openai_key
 	_eleven.text = Settings.elevenlabs_key
 	_model.text = Settings.claude_model
+	_local_url.text = Settings.local_url
+	_local_model.text = Settings.local_model
 	_master.value = Settings.master_volume
 	_voice_vol.value = Settings.voice_volume
 	_music_vol.value = Settings.music_volume
@@ -495,6 +501,8 @@ func _save_settings() -> void:
 	Settings.openai_key = _openai.text.strip_edges()
 	Settings.elevenlabs_key = _eleven.text.strip_edges()
 	Settings.claude_model = _model.text.strip_edges() if _model.text.strip_edges() != "" else "claude-opus-5-5"
+	Settings.local_url = _local_url.text.strip_edges() if _local_url.text.strip_edges() != "" else "http://localhost:11434"
+	Settings.local_model = _local_model.text.strip_edges() if _local_model.text.strip_edges() != "" else "llama3.2"
 	Settings.master_volume = _master.value
 	Settings.voice_volume = _voice_vol.value
 	Settings.music_volume = _music_vol.value

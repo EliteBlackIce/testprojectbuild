@@ -304,3 +304,8 @@ staff, the delivery van, traffic cars, all the pizza stages, Tony's pizzeria, ho
 the terrain and the whole town. A ready-made copy is in `pizza-panic-assets.zip` next to this
 project. Colors are flat; the cel shading and ink outlines are shader effects, so you recreate them
 in your own tool.
+
+## Local llama (Ollama) brains
+Settings -> AI mode -> "Local llama (Ollama)". Run `ollama serve` and `ollama pull llama3.2`
+(any model that follows JSON schemas works; bigger = smarter NPCs). Server URL defaults to
+`http://localhost:11434`. Voice-to-text and NPC voices still use their own providers (or babble/text-only).

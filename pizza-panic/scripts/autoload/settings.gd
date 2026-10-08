@@ -25,6 +25,9 @@ var proxy_url := ""
 var proxy_token := ""
 var claude_model := "claude-opus-5-5"
 var claude_effort := "low"
+## Local brain (Ollama, e.g. llama3.2): NPCs think on your own machine, no key needed.
+var local_url := "http://localhost:11434"
+var local_model := "llama3.2"
 ## "auto" picks ElevenLabs if that key exists, else OpenAI, else babble.
 ## Other values: "elevenlabs", "openai", "system" (OS robot voice), "babble".
 var tts_provider := "auto"
@@ -54,6 +57,8 @@ func load_settings() -> void:
 		proxy_token = cfg.get_value("ai", "proxy_token", "")
 		claude_model = cfg.get_value("ai", "claude_model", claude_model)
 		claude_effort = cfg.get_value("ai", "claude_effort", claude_effort)
+		local_url = cfg.get_value("ai", "local_url", local_url)
+		local_model = cfg.get_value("ai", "local_model", local_model)
 		tts_provider = cfg.get_value("ai", "tts_provider", tts_provider)
 		master_volume = cfg.get_value("audio", "master_volume", master_volume)
 		voice_volume = cfg.get_value("audio", "voice_volume", voice_volume)
@@ -75,6 +80,8 @@ func save_settings() -> void:
 	cfg.set_value("ai", "proxy_token", proxy_token)
 	cfg.set_value("ai", "claude_model", claude_model)
 	cfg.set_value("ai", "claude_effort", claude_effort)
+	cfg.set_value("ai", "local_url", local_url)
+	cfg.set_value("ai", "local_model", local_model)
 	cfg.set_value("ai", "tts_provider", tts_provider)
 	cfg.set_value("audio", "master_volume", master_volume)
 	cfg.set_value("audio", "voice_volume", voice_volume)
@@ -128,6 +135,8 @@ func has_brain() -> bool:
 			return proxy_url != ""
 		"direct":
 			return get_anthropic_key() != ""
+		"local":
+			return true
 	return false
 
 

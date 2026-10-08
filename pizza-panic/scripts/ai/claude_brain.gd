@@ -41,6 +41,8 @@ var last_error := ""
 ## `history` is that NPC's message list; it is updated in place on success.
 ## Returns {ok, say, emotion, mood_change, action, tip}.
 func think(character: Dictionary, history: Array, player_text: String, scene: String) -> Dictionary:
+	if Settings.effective_mode() == "local":
+		return await _think_local(character, history, player_text, scene)
 	var user_msg := {
 		"role": "user",
 		"content": "[SCENE] %s\n[PLAYER SAYS] %s" % [scene, player_text],
@@ -113,6 +115,67 @@ func think(character: Dictionary, history: Array, player_text: String, scene: St
 	parsed["tip"] = clampi(int(parsed.get("tip", 0)), 0, 15)
 	parsed["order"] = _clean_order(parsed.get("order", {}))
 	return parsed
+
+
+## Local llama through Ollama's /api/chat. Its `format` field takes our JSON
+## schema, so the reply has the same shape as Claude's.
+func _think_local(character: Dictionary, history: Array, player_text: String, scene: String) -> Dictionary:
+	var user_msg := {"role": "user", "content": "[SCENE] %s\n[PLAYER SAYS] %s" % [scene, player_text]}
+	var messages: Array = [{
+		"role": "system",
+		"content": Characters.SHARED_RULES + "\n\n## Your character\n" + character.prompt
+			+ "\n\nReply ONLY with JSON matching the schema. Keep 'say' to one or two short sentences.",
+	}]
+	for m in history:
+		messages.append({"role": m.role, "content": _plain(m.content)})
+	messages.append(user_msg)
+	var body := {
+		"model": Settings.local_model, "stream": false, "format": SCHEMA,
+		"options": {"temperature": 0.8}, "messages": messages,
+	}
+	var http := HTTPRequest.new()
+	http.timeout = 60.0
+	add_child(http)
+	var err := http.request(Settings.local_url.trim_suffix("/") + "/api/chat",
+		PackedStringArray(["content-type: application/json"]), HTTPClient.METHOD_POST, JSON.stringify(body))
+	if err != OK:
+		http.queue_free()
+		return _fail("Couldn't start request (error %d)" % err)
+	var res: Array = await http.request_completed
+	http.queue_free()
+	if int(res[0]) != HTTPRequest.RESULT_SUCCESS:
+		return _fail("Can't reach Ollama at %s. Is it running?" % Settings.local_url)
+	var raw: PackedByteArray = res[3]
+	var data = JSON.parse_string(raw.get_string_from_utf8())
+	if int(res[1]) != 200 or typeof(data) != TYPE_DICTIONARY:
+		return _fail("Ollama HTTP %d: %s" % [int(res[1]), raw.get_string_from_utf8().left(300)])
+	var text: String = str(data.get("message", {}).get("content", ""))
+	var parsed = JSON.parse_string(text)
+	if typeof(parsed) != TYPE_DICTIONARY or not parsed.has("say"):
+		return _fail("Llama didn't send the JSON we asked for: " + text.left(200))
+	history.append(user_msg)
+	history.append({"role": "assistant", "content": [{"type": "text", "text": text}]})
+	while history.size() > MAX_HISTORY_MESSAGES:
+		history.pop_front()
+		history.pop_front()
+	parsed["ok"] = true
+	parsed["mood_change"] = clampi(int(parsed.get("mood_change", 0)), -3, 3)
+	parsed["tip"] = clampi(int(parsed.get("tip", 0)), 0, 15)
+	parsed["emotion"] = parsed.get("emotion", "happy")
+	parsed["action"] = parsed.get("action", "none")
+	parsed["order"] = _clean_order(parsed.get("order", {}))
+	return parsed
+
+
+## History stores Claude-style content blocks; Ollama wants plain strings.
+static func _plain(content) -> String:
+	if typeof(content) == TYPE_STRING:
+		return content
+	var t := ""
+	for b in content:
+		if typeof(b) == TYPE_DICTIONARY and b.get("type") == "text":
+			t += str(b.get("text", ""))
+	return t
 
 
 ## Keep orders sane: known toppings only (and only unlocked ones), max 3.
