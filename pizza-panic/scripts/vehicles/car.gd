@@ -11,6 +11,14 @@ var driving := false            ## true while the player is in the driver's seat
 var cargo: Array[Pizza] = []
 var boost_fuel := 1.0
 var drifting := false
+var slip := 0.0                 ## sideways speed (tyre squeal / smoke)
+var _throttle_now := 0.0
+var _vis_prev := Vector3.ZERO
+var _pitch := 0.0
+var _roll := 0.0
+var _smoke: Array[CPUParticles3D] = []
+var _squeal_phase := 0.0
+var _gear := 0
 
 var _visual: Node3D
 var _wheels: Array[Node3D] = []
@@ -57,6 +65,7 @@ func _ready() -> void:
 	_build_cockpit()
 	_build_bumper()
 	_build_engine()
+	_build_smoke()
 	Game.upgrades_changed.connect(_apply_upgrades)
 	_apply_upgrades()
 
@@ -105,21 +114,26 @@ func _physics_process(delta: float) -> void:
 	var fwd := velocity.dot(forward)
 	var on_floor := is_on_floor()
 	var top := max_speed() * (1.45 if _boosting else 1.0)
-	var accel := 15.0 + Game.level("engine") * 2.0 + (30.0 if _boosting else 0.0)
+	var speed01 := clampf(absf(fwd) / top, 0.0, 1.0)
+	# Engine: strong off the line, fading toward top speed (a real power curve), plus engine drag.
+	var accel := (15.0 + Game.level("engine") * 2.0) * lerpf(1.1, 0.3, pow(speed01, 1.3)) + (30.0 if _boosting else 0.0)
 	if _boosting:
 		throttle = 1.0
+	_throttle_now = throttle
 	if throttle > 0.0:
-		fwd = move_toward(fwd, top, accel * throttle * delta) if fwd >= 0.0 else move_toward(fwd, 0.0, 32.0 * delta)
+		fwd = move_toward(fwd, top, accel * throttle * delta) if fwd >= 0.0 else move_toward(fwd, 0.0, 36.0 * delta)
 	elif throttle < 0.0:
-		fwd = move_toward(fwd, -9.0, 32.0 * -throttle * delta) if fwd <= 0.5 else move_toward(fwd, 0.0, 32.0 * delta)
+		fwd = move_toward(fwd, -9.0, 34.0 * -throttle * delta) if fwd <= 0.5 else move_toward(fwd, 0.0, 38.0 * delta)
 	else:
-		fwd = move_toward(fwd, 0.0, (4.0 if driving else 12.0) * delta)
+		# coasting: engine braking + air drag
+		fwd = move_toward(fwd, 0.0, ((3.0 + absf(fwd) * 0.22) if driving else 12.0) * delta)
 	if fwd > top:
 		fwd = move_toward(fwd, top, 20.0 * delta)
 
-	_steer = lerpf(_steer, steer_input, 1.0 - exp(-10.0 * delta))
-	var steer_power := clampf(absf(fwd) / 6.0, 0.0, 1.0) * signf(fwd)
-	var steer_rate := (2.3 + Game.level("tires") * 0.25) * (1.6 if handbrake else 1.0)
+	# Steering weight: quick to turn in, slower to self-centre, less sharp the faster you go.
+	_steer = lerpf(_steer, steer_input, 1.0 - exp(-(11.0 if absf(steer_input) > 0.01 else 7.0) * delta))
+	var steer_power := clampf(absf(fwd) / 5.0, 0.0, 1.0) * signf(fwd)
+	var steer_rate := (2.3 + Game.level("tires") * 0.25) * (1.6 if handbrake else 1.0) * lerpf(1.0, 0.55, speed01)
 	if handbrake:
 		fwd = move_toward(fwd, 0.0, 9.0 * delta)
 	drifting = handbrake and absf(fwd) > 5.0
@@ -128,7 +142,10 @@ func _physics_process(delta: float) -> void:
 
 	var lateral := velocity - forward * velocity.dot(forward)
 	lateral.y = 0.0
-	lateral = lateral.lerp(Vector3.ZERO, 1.0 - exp(-((1.1 if handbrake else grip()) if on_floor else 1.5) * delta))
+	slip = lateral.length()
+	# Tyres: full grip until you really throw it, then a brief slide that recovers.
+	var g := grip() * lerpf(1.0, 0.6, clampf((slip - 3.0) / 8.0, 0.0, 1.0))
+	lateral = lateral.lerp(Vector3.ZERO, 1.0 - exp(-((1.1 if handbrake else g) if on_floor else 1.5) * delta))
 
 	var vy := velocity.y
 	if on_floor:
@@ -181,9 +198,20 @@ func _process(delta: float) -> void:
 	for w in _front_wheels:
 		w.rotation.y = _steer * 0.5
 	_squash = lerpf(_squash, 0.0, 1.0 - exp(-8.0 * delta))
-	var lean := -_steer * clampf(absf(fwd) / max_speed(), 0.0, 1.0) * 0.16
-	_visual.rotation.z = lerpf(_visual.rotation.z, lean, 0.15)
-	_visual.rotation.x = lerpf(_visual.rotation.x, clampf(velocity.y * 0.03, -0.3, 0.3), 0.15)
+	# Weight transfer: nose dips under braking, squats when accelerating, body rolls out of corners.
+	var lacc := global_basis.inverse() * ((velocity - _vis_prev) / maxf(delta, 0.001))
+	_vis_prev = velocity
+	if not lacc.is_finite() or lacc.length() > 400.0:
+		lacc = Vector3.ZERO
+	var pitch_t := clampf(-lacc.z * 0.006, -0.1, 0.1) + clampf(velocity.y * 0.03, -0.3, 0.3)
+	var roll_t := clampf(lacc.x * 0.0085, -0.13, 0.13) - _steer * clampf(absf(fwd) / max_speed(), 0.0, 1.0) * 0.06
+	_pitch = lerpf(_pitch, pitch_t, 1.0 - exp(-9.0 * delta))
+	_roll = lerpf(_roll, roll_t, 1.0 - exp(-9.0 * delta))
+	var lean := _roll
+	_visual.rotation.z = lean
+	_visual.rotation.x = _pitch
+	for sm in _smoke:
+		sm.emitting = (drifting or slip > 6.0) and is_on_floor()
 	_visual.scale = Vector3(1.0 + _squash * 0.5, 1.0 - _squash, 1.0 + _squash * 0.5)
 	var t := Time.get_ticks_msec() / 1000.0
 	_rack.rotation.z = sin(t * 9.0) * 0.03 * clampf(absf(fwd) / 8.0, 0.0, 1.0) - lean
@@ -193,7 +221,7 @@ func _process(delta: float) -> void:
 		_flame.scale = Vector3(1, 1, randf_range(0.8, 1.4))
 	_driver.speed = 0.0
 	_update_cockpit(delta, fwd)
-	_update_engine(fwd)
+	_update_engine(fwd, delta)
 
 
 # --- cargo -----------------------------------------------------------------------------------
@@ -731,6 +759,46 @@ func set_gps(town: Town, target: Variant, label: String) -> void:
 		_gps.label = label
 
 
+# --- tyre smoke -----------------------------------------------------------------------------------
+
+func _build_smoke() -> void:
+	for side: int in [-1, 1]:
+		var pt := CPUParticles3D.new()
+		pt.position = Vector3(0.85 * side, 0.25, 1.35)
+		pt.amount = 24
+		pt.lifetime = 0.8
+		pt.emitting = false
+		pt.local_coords = false
+		pt.direction = Vector3(0, 1, 0.4)
+		pt.spread = 40.0
+		pt.initial_velocity_min = 0.6
+		pt.initial_velocity_max = 1.6
+		pt.gravity = Vector3(0, 0.6, 0)
+		pt.scale_amount_min = 0.5
+		pt.scale_amount_max = 1.1
+		var sm := SphereMesh.new()
+		sm.radius = 0.28
+		sm.height = 0.56
+		sm.radial_segments = 8
+		sm.rings = 4
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.albedo_color = Color(1, 1, 1, 0.55)
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		sm.material = mat
+		pt.mesh = sm
+		var curve := Curve.new()
+		curve.add_point(Vector2(0, 0.4))
+		curve.add_point(Vector2(1, 1.6))
+		pt.scale_amount_curve = curve
+		var grad := Gradient.new()
+		grad.set_color(0, Color(1, 1, 1, 0.6))
+		grad.set_color(1, Color(1, 1, 1, 0.0))
+		pt.color_ramp = grad
+		add_child(pt)
+		_smoke.append(pt)
+
+
 # --- engine noise ----------------------------------------------------------------------------------
 
 func _build_engine() -> void:
@@ -745,14 +813,27 @@ func _build_engine() -> void:
 	_engine_pb = _engine.get_stream_playback() as AudioStreamGeneratorPlayback
 
 
-func _update_engine(fwd: float) -> void:
+func _update_engine(fwd: float, delta := 0.016) -> void:
 	if _engine_pb == null:
 		return
-	var target := (40.0 + absf(fwd) * 4.5 + (25.0 if _boosting else 0.0)) if driving else 32.0
-	_engine.volume_db = -18.0 if driving else -30.0
+	# A little gearbox: four gears, revs climb through each and drop on the shift.
+	var sp := clampf(absf(fwd) / (max_speed() * 1.15), 0.0, 1.0)
+	var g := mini(int(sp * 4.2), 3)
+	if g != _gear:
+		_gear = g
+		_engine_freq *= 0.78
+	var rev := fposmod(sp * 4.2, 1.0) if g < 3 else clampf((sp * 4.2 - 3.0), 0.0, 1.0)
+	var engine_load := 0.4 + 0.6 * clampf(_throttle_now, 0.0, 1.0)
+	var target := (36.0 + rev * 52.0 + g * 6.0 + (22.0 if _boosting else 0.0) + _throttle_now * 6.0) if driving else 32.0
+	_engine.volume_db = (-20.0 + engine_load * 5.0) if driving else -30.0
+	var squeal := clampf((slip - 4.0) / 6.0, 0.0, 1.0) * (1.0 if is_on_floor() and driving else 0.0)
 	var frames := _engine_pb.get_frames_available()
 	for i in frames:
-		_engine_freq = lerpf(_engine_freq, target, 0.0005)
+		_engine_freq = lerpf(_engine_freq, target, 0.0012)
 		_engine_phase = fmod(_engine_phase + _engine_freq / 22050.0, 1.0)
-		var s := (_engine_phase * 2.0 - 1.0) * 0.5 + (0.3 if _engine_phase < 0.25 else -0.1)
+		var saw := _engine_phase * 2.0 - 1.0
+		var s := saw * 0.45 + (0.3 if _engine_phase < 0.25 else -0.1) + sin(_engine_phase * TAU * 2.0) * 0.2 * engine_load
+		if squeal > 0.0:
+			_squeal_phase = fmod(_squeal_phase + (900.0 + slip * 40.0) / 22050.0, 1.0)
+			s += (sin(_squeal_phase * TAU) * 0.35 + (randf() * 2.0 - 1.0) * 0.25) * squeal
 		_engine_pb.push_frame(Vector2(s, s) * 0.5)
