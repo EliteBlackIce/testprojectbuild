@@ -59,6 +59,7 @@ func setup(worker_id: String, k: Kitchen, ph: PhoneLine, slot: int) -> void:
 	body.build(info.look)
 	body.set_meta("on_poked", _poked)
 	body.set_meta("on_bonk", _bonked)
+	body.relocator = _relocate
 	_zzz = Toon.label(self, "", Vector3(0, 2.0, 0), 40, Color("#a29bfe"))
 	var name_tag := Toon.label(self, info.name, Vector3(0, 1.85, 0), 22, Color("#ffeaa7"))
 	name_tag.pixel_size = 0.006
@@ -94,23 +95,24 @@ func _poked() -> void:
 # --- moving -----------------------------------------------------------------------------------
 
 var _stun := 0.0
-var _slide := Vector3.ZERO
 
 
-## Hit by something thrown: sprawl, skid a little, and lie there confused.
+## Hit by something thrown: the body goes full ragdoll, we wait it out, then stand up where it landed.
 func _bonked(dir: Vector3, strength: float) -> void:
-	body.tumble(dir, strength)
-	_stun = 1.8 + strength
-	var local := get_parent_node_3d().global_basis.inverse() * dir
-	_slide = Vector3(local.x, 0, local.z).normalized() * 3.5 * strength
+	_stun = body.tumble(dir, strength) + 0.2
 	Game.say_toast("%s: \"%s\"" % [info.name.split(" ")[0], ["ow.", "WHY.", "I felt that in my yolk.", "that's coming out of your tip jar"].pick_random()], Color("#ff9f1c"))
+
+
+func _relocate(land: Vector3, yaw: float) -> void:
+	var par := get_parent_node_3d()
+	position = par.to_local(land)
+	position.y = 0.0
+	rotation.y = yaw - par.global_rotation.y
 
 
 func _process(delta: float) -> void:
 	if _stun > 0.0:
 		_stun -= delta
-		position += _slide * delta
-		_slide = _slide.move_toward(Vector3.ZERO, 6.0 * delta)
 		body.velocity_hint = Vector3.ZERO
 		return
 	if Game.in_dialogue:
@@ -143,9 +145,9 @@ func _walk_to_node(target_node: int) -> void:
 	await arrived
 	# Speedy sometimes eats a wall.
 	if info.quirk == "fast" and _rng.randf() < 0.12 and _alive:
-		body.tumble(Vector3(sin(rotation.y), 0, cos(rotation.y)), 0.8)
+		_stun = body.tumble(Vector3(sin(rotation.y), 0, cos(rotation.y)), 0.8) + 0.2
 		Sfx.play("bonk", 1.3, -8.0)
-		await _wait(2.2)
+		await _wait(_stun)
 
 
 func _face(local_point: Vector3) -> void:

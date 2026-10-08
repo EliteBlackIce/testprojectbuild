@@ -88,13 +88,18 @@ static func label(parent: Node3D, text: String, pos: Vector3, size := 96, color 
 	return l
 
 
-## Rounded, chunky font: Chalkboard SE / Marker Felt on Mac, Comic Sans on
-## Windows, Godot's default elsewhere.
+## The game's display font (signs, logo, name tags): Erica One, a chunky cartoon face
+## shipped in res://fonts. Falls back to a system font if it hasn't been imported yet.
 static func goofy_font() -> Font:
 	if not _cache.has("font"):
-		var f := SystemFont.new()
-		f.font_names = PackedStringArray(["Chalkboard SE", "Comic Sans MS", "Marker Felt", "Comic Neue", "Arial Rounded MT Bold"])
-		f.font_weight = 700
+		var f: Font = null
+		if ResourceLoader.exists("res://fonts/EricaOne-Regular.ttf"):
+			f = load("res://fonts/EricaOne-Regular.ttf") as Font
+		if f == null:
+			var sf := SystemFont.new()
+			sf.font_names = PackedStringArray(["Chalkboard SE", "Comic Sans MS", "Marker Felt", "Arial Rounded MT Bold"])
+			sf.font_weight = 700
+			f = sf
 		_cache.font = f
 	return _cache.font
 

@@ -839,6 +839,7 @@ func _refresh_ticket_rail() -> void:
 		var txt := Toon.label(slip, "\n".join(lines), Vector3(0, 0.0, 0.01), 12, Color("#2b1c18"), false)
 		txt.outline_size = 0
 		txt.pixel_size = 0.0034
+		txt.font = UiTheme.ui_font()
 		txt.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 
 

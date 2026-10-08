@@ -8,29 +8,52 @@ const FRAME := Color("#3b2a22")
 const CREAM := Color("#fff4dc")
 
 
-## Fits `text` into `size` (meters) and returns the Label3D. Text is set on the surface, no floating.
+## Puts `text` on a sign. The label is first laid out at a guess, then re-fitted next frame
+## from its real measured bounds, so the lettering always fills the board and never spills
+## over, whatever the font or the text length.
 static func paint(parent: Node3D, text: String, pos: Vector3, size: Vector2, fg: Color, outline_col := Color(0, 0, 0, 0.55), rot_y := 0.0) -> Label3D:
 	var l := Label3D.new()
-	var font := Toon.goofy_font()
-	var fs := 64
-	var lines := text.split("\n")
-	var widest := 1.0
-	for ln in lines:
-		widest = maxf(widest, font.get_string_size(ln, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x)
-	var line_h := font.get_height(fs) * 1.0
-	var px := minf(size.x * 0.92 / widest, size.y * 0.8 / (line_h * lines.size()))
 	l.text = text
-	l.font = font
-	l.font_size = fs
-	l.pixel_size = px
-	l.outline_size = 5
+	l.font = Toon.goofy_font()
+	l.font_size = 64
+	l.pixel_size = 0.004
+	l.outline_size = 4
 	l.modulate = fg
 	l.outline_modulate = outline_col
 	l.double_sided = false
 	l.position = pos
 	l.rotation.y = rot_y
+	l.set_meta("fit_size", size)
 	parent.add_child(l)
+	_when_laid_out(l, func() -> void: _fit(l, size, pos))
 	return l
+
+
+static func _when_laid_out(l: Node, fn: Callable) -> void:
+	if l.is_inside_tree():
+		_wait_then(l, fn)
+	else:
+		l.tree_entered.connect(func() -> void: _wait_then(l, fn), CONNECT_ONE_SHOT)
+
+
+static func _wait_then(l: Node, fn: Callable) -> void:
+	var tree := l.get_tree()
+	await tree.process_frame
+	await tree.process_frame
+	if is_instance_valid(l):
+		fn.call()
+
+
+static func _fit(l: Label3D, size: Vector2, base_pos: Vector3) -> void:
+	var box := l.get_aabb()
+	if box.size.x < 0.001 or box.size.y < 0.001:
+		return
+	var k := minf(size.x * 0.9 / box.size.x, size.y * 0.76 / box.size.y)
+	k = clampf(k, 0.05, 6.0)
+	l.pixel_size *= k
+	# re-center: the text block's middle goes to the middle of the board
+	var c := box.get_center() * k
+	l.position = base_pos - Vector3(c.x, c.y, 0.0)
 
 
 ## A framed signboard centered on `pos` (facing +Z, rotated by rot_y).
@@ -73,18 +96,24 @@ static func board(parent: Node3D, text: String, pos: Vector3, size: Vector2, bg:
 
 
 ## Plaque behind an existing wall-mounted Label3D (used for the interior's many little signs).
+## Sized from the label's real bounds once it has been laid out.
 static func backing(label: Label3D, bg := CREAM) -> void:
-	var font := label.font if label.font else Toon.goofy_font()
-	var sz := font.get_multiline_string_size(label.text, HORIZONTAL_ALIGNMENT_CENTER, -1, label.font_size)
-	var w := sz.x * label.pixel_size + 0.14
-	var h := sz.y * label.pixel_size + 0.1
 	var parent := label.get_parent()
 	var p := Node3D.new()
 	p.position = label.position
 	p.rotation = label.rotation
 	parent.add_child(p)
-	Toon.box(p, Vector3(w + 0.05, h + 0.05, 0.025), Vector3(0, 0, -0.034), FRAME, 0.0)
-	Toon.box(p, Vector3(w, h, 0.03), Vector3(0, 0, -0.03), bg, 0.0)
+	var frame := Toon.box(p, Vector3.ONE, Vector3(0, 0, -0.034), FRAME, 0.0)
+	var face := Toon.box(p, Vector3.ONE, Vector3(0, 0, -0.03), bg, 0.0)
 	label.outline_size = maxi(0, int(label.font_size * 0.04))
 	label.outline_modulate = bg.darkened(0.5)
-	label.position += Vector3(0, 0, 0)    # text stays where it was; the plaque sits just behind it
+	_when_laid_out(label, func() -> void:
+		var box := label.get_aabb()
+		if box.size.x < 0.001:
+			return
+		var w := box.size.x + 0.16
+		var h := box.size.y + 0.12
+		var c := box.get_center()
+		p.position = label.position + Basis.from_euler(label.rotation) * Vector3(c.x, c.y, 0)
+		frame.scale = Vector3(w + 0.05, h + 0.05, 0.025)
+		face.scale = Vector3(w, h, 0.03))

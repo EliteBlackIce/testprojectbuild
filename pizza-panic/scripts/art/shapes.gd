@@ -467,3 +467,133 @@ static func _commit(verts: PackedVector3Array, norms: PackedVector3Array) -> Arr
 	if verts.size() > 0:
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	return mesh
+
+
+# --- smooth head gear -------------------------------------------------------------------------------
+
+## A patch of shell hugging a sphere (the head): thickest in the middle and fading to ZERO at its
+## edges, so hair, beards, caps and bands melt into the skull with no rim, no seam and no clipping.
+## Polar angles are radians from +Y (0 = the very top); azimuth runs around Y from +Z (the face).
+## `bulge` stretches the whole shell (e.g. a little extra height for a puffy hat).
+static func head_shell(radius: float, polar0: float, polar1: float, az_half: float, thick: float, taper := 0.25, bulge := Vector3.ONE, seg_a := 56, seg_p := 28, az_center := 0.0) -> ArrayMesh:
+	var key := "hshell|%s|%s|%s|%s|%s|%s|%s|%d|%d|%s" % [radius, polar0, polar1, az_half, thick, taper, bulge, seg_a, seg_p, az_center]
+	if _cache.has(key):
+		return _cache[key]
+	var wrap := az_half >= PI - 0.001
+	var fade_top := polar0 > 0.02
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var cols := seg_a if wrap else seg_a + 1
+	for i in seg_p + 1:
+		var u := float(i) / seg_p
+		var th := lerpf(polar0, polar1, u)
+		var wu := 1.0
+		if fade_top:
+			wu = minf(wu, smoothstep(0.0, taper, u))
+		wu = minf(wu, smoothstep(0.0, taper, 1.0 - u))
+		for j in cols:
+			var v := float(j) / seg_a
+			var ph := az_center + lerpf(-az_half, az_half, v)
+			var wv := 1.0
+			if not wrap:
+				wv = smoothstep(0.0, taper, minf(v, 1.0 - v) * 2.0)
+			var r := radius + thick * wu * wv
+			var d := Vector3(sin(th) * sin(ph), cos(th), sin(th) * cos(ph))
+			st.add_vertex(d * r * bulge)
+	for i in seg_p:
+		for j in seg_a:
+			var j2 := (j + 1) % cols if wrap else j + 1
+			var a := i * cols + j
+			var b := i * cols + j2
+			var c := (i + 1) * cols + j
+			var d2 := (i + 1) * cols + j2
+			# clockwise seen from outside
+			st.add_index(a)
+			st.add_index(b)
+			st.add_index(c)
+			st.add_index(b)
+			st.add_index(d2)
+			st.add_index(c)
+	st.generate_normals()
+	var m := st.commit()
+	_cache[key] = m
+	return m
+
+
+## A lathe through a smooth (Catmull-Rom) curve of (radius, height) control points: hat crowns,
+## cones, brims, toques. Much rounder than a hand-placed handful of cylinders.
+static func spline_lathe(ctrl: Array, segments := 40, samples := 8) -> ArrayMesh:
+	var key := "slathe|%s|%d|%d" % [ctrl, segments, samples]
+	if _cache.has(key):
+		return _cache[key]
+	var prof := PackedVector2Array()
+	var n := ctrl.size()
+	for i in n - 1:
+		var p0: Vector2 = ctrl[maxi(i - 1, 0)]
+		var p1: Vector2 = ctrl[i]
+		var p2: Vector2 = ctrl[i + 1]
+		var p3: Vector2 = ctrl[mini(i + 2, n - 1)]
+		for s in samples:
+			var t := float(s) / samples
+			prof.append(Vector2(maxf(0.0, cubic_interpolate(p1.x, p2.x, p0.x, p3.x, t)), cubic_interpolate(p1.y, p2.y, p0.y, p3.y, t)))
+	prof.append(ctrl[n - 1])
+	var m := lathe(prof, segments, 0.0)
+	_cache[key] = m
+	return m
+
+
+## A smooth tube (round cross-section) along a path, with rounded ends. Headset bands, hair strands, hoops.
+static func tube(path: PackedVector3Array, radius: float, sides := 12, round_ends := true) -> ArrayMesh:
+	var key := "tube|%s|%s|%d|%s" % [path, radius, sides, round_ends]
+	if _cache.has(key):
+		return _cache[key]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var n := path.size()
+	var prev_normal := Vector3.UP
+	var rings: Array = []
+	for i in n:
+		var tangent: Vector3
+		if i == 0:
+			tangent = path[1] - path[0]
+		elif i == n - 1:
+			tangent = path[n - 1] - path[n - 2]
+		else:
+			tangent = path[i + 1] - path[i - 1]
+		tangent = tangent.normalized()
+		var nrm := prev_normal - tangent * prev_normal.dot(tangent)
+		if nrm.length() < 0.001:
+			nrm = tangent.cross(Vector3.RIGHT)
+		nrm = nrm.normalized()
+		prev_normal = nrm
+		var bin := tangent.cross(nrm)
+		var f := 1.0
+		if round_ends:
+			var u := float(i) / (n - 1)
+			var e := minf(u, 1.0 - u)
+			f = clampf(sqrt(clampf(e / 0.08, 0.0, 1.0)), 0.05, 1.0) if e < 0.08 else 1.0
+		var ring: Array = []
+		for k in sides:
+			var a := TAU * k / sides
+			ring.append(path[i] + (nrm * cos(a) + bin * sin(a)) * radius * f)
+		rings.append(ring)
+	for i in n:
+		for k in sides:
+			st.add_vertex(rings[i][k])
+	for i in n - 1:
+		for k in sides:
+			var k2 := (k + 1) % sides
+			var a := i * sides + k
+			var b := i * sides + k2
+			var c := (i + 1) * sides + k
+			var d := (i + 1) * sides + k2
+			st.add_index(a)
+			st.add_index(c)
+			st.add_index(b)
+			st.add_index(b)
+			st.add_index(c)
+			st.add_index(d)
+	st.generate_normals()
+	var m := st.commit()
+	_cache[key] = m
+	return m

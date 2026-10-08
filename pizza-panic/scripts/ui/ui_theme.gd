@@ -30,13 +30,16 @@ static var _theme: Theme
 static var _font: Font
 
 
-## Clean rounded UI font (system fonts, so nothing to ship). Falls back to the goofy one.
+## Clean UI font: Outfit Bold, shipped in res://fonts (system fallback if not imported).
 static func ui_font() -> Font:
 	if _font == null:
-		var f := SystemFont.new()
-		f.font_names = PackedStringArray(["SF Pro Rounded", "Avenir Next Rounded", "Arial Rounded MT Bold", "Avenir Next", "Nunito", "Segoe UI", "Helvetica Neue", "Noto Sans"])
-		f.font_weight = 600
-		_font = f
+		if ResourceLoader.exists("res://fonts/Outfit-Bold.ttf"):
+			_font = load("res://fonts/Outfit-Bold.ttf") as Font
+		if _font == null:
+			var f := SystemFont.new()
+			f.font_names = PackedStringArray(["SF Pro Rounded", "Avenir Next Rounded", "Arial Rounded MT Bold", "Avenir Next", "Segoe UI", "Helvetica Neue", "Noto Sans"])
+			f.font_weight = 600
+			_font = f
 	return _font
 
 

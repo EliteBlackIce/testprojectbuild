@@ -91,6 +91,7 @@ func rebuild_look() -> void:
 	add_child(body)
 	body.build(look)
 	body.idle_fidgets = false
+	body.ragdoll_relocate = false
 	body.rotation.y = PI   # eggs face +Z, cameras look down -Z
 	for n in body.find_children("*", "VisualInstance3D", true, false):
 		(n as VisualInstance3D).layers = BODY_LAYER

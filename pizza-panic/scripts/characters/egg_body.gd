@@ -63,9 +63,11 @@ var _torso: Node3D
 var _hat: Node3D
 var _legs: Array[Node3D] = []
 var _boots: Array[Node3D] = []
+var _knees: Array[Node3D] = []
 var _leg_splay: Array[float] = []
 var _shoulders: Array[Node3D] = []   ## [left, right]
 var _elbows: Array[Node3D] = []
+var _last_plant := 0.0
 var _acc_local := Vector3.ZERO           ## smoothed body acceleration, arms trail behind it
 var _hands: Array[Node3D] = []
 var _wrists: Array[Node3D] = []           ## twists the hand (palm in / palm forward)
@@ -99,9 +101,17 @@ var _vel := Vector3.ZERO
 var _prev_vel := Vector3.ZERO
 var _land_squash := 0.0
 var _hop := 0.0
-var _tumble := 0.0            ## >0 while rolling around
-var _tumble_dir := Vector3.FORWARD
-var _getup := 0.0             ## >0 while wobbling back up
+signal ragdoll_finished(root_position: Vector3)
+var ragdoll_relocate := true  ## after a fall, stand up where the body landed (false for the first-person player)
+var relocator := Callable()   ## optional: controller that moves itself to (position, yaw) instead of us
+var _rd: Ragdoll
+var _rd_state := 0            ## 0 normal, 1 flying/rolling, 2 lying there, 3 getting back up
+var _rd_t := 0.0
+var _rd_still := 0.0
+var _rd_lie := 0.6
+var _rd_start: Dictionary = {}
+var _rd_last: Array = []
+var _rest: Dictionary = {}     ## local transforms of the animated parts, as built
 var _dizzy_t := 0.0
 ## Springs: name -> [value, velocity]
 var _spr: Dictionary = {}
@@ -160,6 +170,8 @@ func build(l: Dictionary) -> void:
 		Toon.ball(_dizzy, 0.06, Vector3(cos(a) * 0.35, 0, sin(a) * 0.35), Color("#ffd166"), 0.0, 10)
 	_dizzy.visible = false
 	_last_pos = global_position if is_inside_tree() else Vector3.ZERO
+	for n in _tracked():
+		_rest[n] = n.transform
 	# Soft, smooth shading over the whole character (no facets anywhere).
 	for n in find_children("*", "MeshInstance3D", true, false):
 		var mi := n as MeshInstance3D
@@ -285,36 +297,45 @@ func _skirt(color: Color, length: float, waist_y: float, hem := 0.0) -> void:
 
 ## A curved cloth patch on the front (or back) of the torso: apron, vest panels, cape.
 func _front_patch(y0: float, half_w: float, y1: float, lift: float, color: Color, back := false, outline := 0.006) -> MeshInstance3D:
-	var cols := 14
-	var rows := 12
-	var out_v := PackedVector3Array()
-	var out_n := PackedVector3Array()
-	var grid: Array = []
+	# Cloth that bulges out in the middle and melts into the body at its edges (no hard rim).
+	var cols := 20
+	var rows := 16
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for i in rows + 1:
-		var y := lerpf(y0, y1, float(i) / rows)
+		var ui := float(i) / rows
+		var y := lerpf(y0, y1, ui)
 		var r := _tr(y) * _tw
 		var hw := minf(half_w, r * 0.97)
-		var row: Array = []
+		var wy := smoothstep(0.0, 0.18, minf(ui, 1.0 - ui) * 2.0)
 		for j in cols + 1:
-			var x := lerpf(-hw, hw, float(j) / cols)
-			var z := sqrt(maxf(r * r - x * x, 0.0)) + lift
-			row.append(Vector3(x, y, -z if back else z))
-		grid.append(row)
+			var uj := float(j) / cols
+			var x := lerpf(-hw, hw, uj)
+			var wx := smoothstep(0.0, 0.2, minf(uj, 1.0 - uj) * 2.0)
+			var z := sqrt(maxf(r * r - x * x, 0.0)) + 0.003 + lift * minf(wy, wx)
+			st.add_vertex(Vector3(x, y, -z if back else z))
 	for i in rows:
 		for j in cols:
-			var q := [grid[i][j], grid[i + 1][j], grid[i + 1][j + 1], grid[i][j + 1]]
-			for tri in [[0, 1, 2], [0, 2, 3]]:
-				for k in tri:
-					var v: Vector3 = q[k]
-					out_v.append(v)
-					out_n.append(Vector3(v.x, 0.0, v.z / 0.85).normalized())
-	var arrays := []
-	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = out_v
-	arrays[Mesh.ARRAY_NORMAL] = out_n
-	var m := ArrayMesh.new()
-	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	return Toon.mesh(_body_root, Shapes.faceted(m), Vector3.ZERO, color, outline)
+			var a0 := i * (cols + 1) + j
+			var a1 := a0 + 1
+			var b0 := a0 + cols + 1
+			var b1 := b0 + 1
+			if back:
+				st.add_index(a0)
+				st.add_index(a1)
+				st.add_index(b0)
+				st.add_index(a1)
+				st.add_index(b1)
+				st.add_index(b0)
+			else:
+				st.add_index(a0)
+				st.add_index(b0)
+				st.add_index(a1)
+				st.add_index(a1)
+				st.add_index(b0)
+				st.add_index(b1)
+	st.generate_normals()
+	return Toon.mesh(_body_root, st.commit(), Vector3.ZERO, color, outline)
 
 
 # --- head placement ----------------------------------------------------------------------------------
@@ -334,37 +355,44 @@ func _anchor(x: float, y: float, inset := 0.0) -> Node3D:
 # --- construction --------------------------------------------------------------------------------------
 
 func _build_legs(skin: Color) -> void:
-	# Two long, thin, slightly splayed legs and big smooth oval shoes.
+	# Two long, thin, slightly splayed legs with real knees and big smooth oval shoes.
 	var pants := Color(look.get("pants", look.get("legs", skin)))
 	var shorts: bool = look.get("shorts", false)
 	var dressed := look.has("dress") or look.has("skirt") or look.has("robe")
 	var shoe_c := Color(look.get("shoes", look.get("boots", "#6b4a35")))
 	var lg := _leg_len / HIPS_Y
 	var length := 0.47 * lg
+	var knee_y := 0.30 * lg
+	var leg_col := skin if (shorts or dressed) else pants
 	for side: int in [-1, 1]:
 		var pivot := Node3D.new()
 		pivot.position = Vector3(0.124 * side * minf(_tw, 1.2), 0.0, 0.0)
 		pivot.name = "Leg_L" if side == -1 else "Leg_R"
 		_hips.add_child(pivot)
 		_leg_splay.append(0.1 * side)
-		var leg_skin := Color(look.get("socks", skin)) if (shorts or dressed) else pants
-		Toon.mesh(pivot, Shapes.limb(length, 0.052, 0.062, 20), Vector3.ZERO, leg_skin if not (shorts or dressed) else skin, 0.01)
+		Toon.mesh(pivot, Shapes.limb(knee_y + 0.02, 0.052, 0.057, 20), Vector3.ZERO, leg_col, 0.01)
 		if shorts:
 			Toon.mesh(pivot, Shapes.limb(length * 0.4, 0.058, 0.066, 20), Vector3.ZERO, pants, 0.0)
+		var knee := Node3D.new()
+		knee.position = Vector3(0, -knee_y, 0)
+		knee.name = "Knee_L" if side == -1 else "Knee_R"
+		pivot.add_child(knee)
+		Toon.mesh(knee, Shapes.limb(length - knee_y + 0.12, 0.057, 0.062, 20), Vector3.ZERO, leg_col, 0.01)
 		if look.has("socks"):
-			var sk := Toon.mesh(pivot, Shapes.limb(length * 0.3, 0.063, 0.063, 20), Vector3(0, -length * 0.7, 0), Color(look.socks), 0.0)
+			var sk := Toon.mesh(knee, Shapes.limb(length * 0.3, 0.063, 0.063, 20), Vector3(0, -0.03, 0), Color(look.socks), 0.0)
 			sk.name = "Sock"
 		var boot := Node3D.new()
-		boot.position = Vector3(0, -_leg_len, 0)
+		boot.position = Vector3(0, -(_leg_len - knee_y), 0)
 		boot.name = "Foot_L" if side == -1 else "Foot_R"
 		boot.rotation.y = 0.42 * side
-		pivot.add_child(boot)
+		knee.add_child(boot)
 		var sf := clampf(lg + 0.25, 0.65, 1.1)
 		var shoe := Toon.mesh(boot, Shapes.shoe(0.31 * sf, 0.22 * sf, 0.42 * sf), Vector3(0, 0, 0), shoe_c, 0.012)
 		shoe.name = "Shoe"
 		if look.has("shoe_trim"):
 			Toon.mesh(boot, Shapes.shoe(0.315 * sf, 0.05, 0.425 * sf), Vector3(0, 0, 0), Color(look.shoe_trim), 0.0)
 		_legs.append(pivot)
+		_knees.append(knee)
 		_boots.append(boot)
 
 
@@ -513,13 +541,14 @@ func _build_face(skin: Color) -> void:
 	if look.get("mustache", false):
 		var mc := Color(look.get("hair_color", "#2b1c18"))
 		for side: int in [-1, 1]:
-			var m := _anchor(0.05 * side, -0.082, -0.004)
-			var slab := Toon.mesh(m, Shapes.rounded_box(Vector3(0.1, 0.045, 0.04), 0.02, 20, 10), Vector3.ZERO, mc, 0.006)
-			slab.rotation.z = -0.35 * side
+			var m := _anchor(0.055 * side, -0.082, -0.004)
+			var slab := Toon.ball(m, 0.5, Vector3.ZERO, mc, 0.006, 24)
+			slab.scale = Vector3(0.115, 0.05, 0.05)
+			slab.rotation.z = -0.3 * side
 	if look.get("beard", false):
-		var bd := _anchor(0.0, -0.17, -0.02)
-		var beard := Toon.ball(bd, 0.5, Vector3(0, -0.02, 0), Color(look.get("hair_color", "#d9d4cc")), 0.01, 28)
-		beard.scale = Vector3(0.3, 0.26, 0.2)
+		# a smooth bib of beard hugging the jaw, tapering to nothing at its edges (mouth stays visible)
+		var bc := Color(look.get("hair_color", "#d9d4cc"))
+		_shell(_head, Vector3(0, HEAD_R, 0), 118, 172, 0.065, bc, 0.4, Vector3(1.0, 1.0, 1.1), 0.01, deg_to_rad(125.0)).name = "Beard"
 	if look.get("glasses", false):
 		for side: int in [-1, 1]:
 			var g := _anchor(0.1 * side, eye_y)
@@ -538,25 +567,28 @@ func _build_face(skin: Color) -> void:
 		Toon.mesh(bridge, Shapes.rounded_box(Vector3(0.07, 0.014, 0.014), 0.006), Vector3(0, 0, 0.045), Color(look.get("glasses_color", "#2b1c18")), 0.0)
 
 
-## Hair: a smooth cap on the back/top of the head, plus twin tails / puffs / a bun.
+## Hair: a smooth shell over the skull (thickest on top, fading out at the hairline), plus
+## twin tails / puffs / a long back.
 func _build_hair(skin: Color) -> void:
 	var style: String = str(look.get("hair_style", "cap" if look.has("hair") else "none"))
 	if style == "none":
 		return
 	var col := Color(look.get("hair", look.get("hair_color", "#4a3328")))
-	var cap := Toon.mesh(_head, Shapes.dome(HEAD_R * 1.045, 80), Vector3(0, HEAD_R, 0), col, 0.01)
-	cap.rotation.x = -0.5
+	var hc := Vector3(0, HEAD_R, 0)
+	var cap := _shell(_head, hc, 0, 84, 0.05, col, 0.1, Vector3(1.02, 1.03, 1.02), 0.01)
+	cap.rotation.x = -0.6
+	cap.name = "Hair"
 	match style:
 		"twintails":
 			for side: int in [-1, 1]:
-				Toon.ball(_head, 0.085, Vector3(0.25 * side, HEAD_R + 0.12, -0.04), col, 0.008, 24)
-				var tail := Toon.mesh(_head, Shapes.limb(0.55, 0.07, 0.025, 20), Vector3(0.3 * side, HEAD_R + 0.08, -0.05), col, 0.008)
+				Toon.ball(_head, 0.09, Vector3(0.25 * side, HEAD_R + 0.12, -0.04), col, 0.008, 28)
+				var tail := Toon.mesh(_head, Shapes.limb(0.55, 0.075, 0.022, 24), Vector3(0.3 * side, HEAD_R + 0.08, -0.05), col, 0.008)
 				tail.rotation.z = 0.2 * side
 		"puffs":
 			for side: int in [-1, 1]:
-				Toon.ball(_head, 0.11, Vector3(0.24 * side, HEAD_R + 0.16, -0.02), col, 0.008, 28)
+				Toon.ball(_head, 0.115, Vector3(0.24 * side, HEAD_R + 0.16, -0.02), col, 0.008, 32)
 		"long":
-			var back := Toon.mesh(_head, Shapes.limb(0.5, 0.2, 0.12, 24), Vector3(0, HEAD_R + 0.1, -0.15), col, 0.008)
+			var back := Toon.mesh(_head, Shapes.limb(0.5, 0.2, 0.12, 28), Vector3(0, HEAD_R + 0.1, -0.15), col, 0.008)
 			back.scale = Vector3(1.0, 1.0, 0.45)
 
 
@@ -600,14 +632,16 @@ func _build_extras(skin: Color) -> void:
 	if look.get("ears", false):
 		var ec := Color(look.get("hair_color", skin.darkened(0.25)))
 		for side: int in [-1, 1]:
-			var ear := Toon.mesh(_head, Shapes.rounded_box(Vector3(0.1, 0.2, 0.05), 0.024, 24, 12), Vector3(0.2 * side, HEAD_R + 0.2, -0.02), ec, 0.008)
+			var ear := Toon.ball(_head, 0.5, Vector3(0.2 * side, HEAD_R + 0.2, -0.02), ec, 0.008, 28)
+			ear.scale = Vector3(0.11, 0.21, 0.055)
 			ear.rotation.z = -0.55 * side
 			ear.name = "Ear"
 	if look.get("tail", false):
 		_tail = Node3D.new()
 		_tail.position = Vector3(0, 0.12, -0.26)
 		_torso.add_child(_tail)
-		var tl := Toon.mesh(_tail, Shapes.limb(0.34, 0.035, 0.055, 16), Vector3.ZERO, skin, 0.008)
+		Toon.ball(_tail, 0.06, Vector3.ZERO, skin, 0.0, 20)
+		var tl := Toon.mesh(_tail, Shapes.limb(0.34, 0.035, 0.055, 20), Vector3.ZERO, skin, 0.008)
 		tl.rotation.x = PI - 0.7
 	var cape = look.get("cape", null)
 	if cape != null:
@@ -621,77 +655,108 @@ func _build_extras(skin: Color) -> void:
 			Toon.ball(_body_root, 0.022, Vector3(pp.x, pp.y, r if pp.y > 0.0 else 0.38), Color("#ffd166"), 0.0, 8)
 
 
+## A shell of hair/cloth hugging the skull (see Shapes.head_shell): fades to nothing at its edges.
+func _shell(parent: Node3D, center: Vector3, polar0_deg: float, polar1_deg: float, thick: float, color: Color, taper := 0.25, bulge := Vector3.ONE, outline := 0.01, az_half := PI, az_center := 0.0) -> MeshInstance3D:
+	var m := Shapes.head_shell(HEAD_R + 0.004, deg_to_rad(polar0_deg), deg_to_rad(polar1_deg), az_half, thick, taper, bulge, 56, 28, az_center)
+	return Toon.mesh(parent, m, center, color, outline)
+
+
+func _curve(parent: Node3D, ctrl: Array, pos: Vector3, color: Color, outline := 0.012, segs := 48) -> MeshInstance3D:
+	return Toon.mesh(parent, Shapes.spline_lathe(ctrl, segs, 6), pos, color, outline)
+
+
+func _v2(list: Array) -> Array:
+	var out: Array = []
+	for i in range(0, list.size(), 2):
+		out.append(Vector2(list[i], list[i + 1]))
+	return out
+
+
 func _build_hat() -> void:
 	var hat: String = look.get("hat", "none")
 	var col := Color(look.get("hat_color", "#c0392b"))
 	var top := _hat
-	var hr := HEAD_R * 0.98 + 0.012   # hat radius that fits the head
+	var R := HEAD_R + 0.004
+	var hc := Vector3(0, 0.1 - HEAD_R, 0)      # the head's center, in hat space
+	var hair_lift := 0.05 if look.has("hair") else 0.0
 	match hat:
 		"cap":
-			var crown := Toon.mesh(top, Shapes.lathe(PackedVector2Array([Vector2(hr, 0), Vector2(hr * 0.99, 0.09), Vector2(hr * 0.93, 0.17), Vector2(hr * 0.78, 0.24), Vector2(hr * 0.5, 0.285), Vector2(0, 0.3)]), 40, 0.5), Vector3(0, -0.12, 0), Color(look.get("hat_front", "#e8dccb")), 0.012)
-			crown.rotation.x = -0.1
-			Toon.mesh(top, Shapes.lathe(PackedVector2Array([Vector2(hr + 0.01, 0), Vector2(hr + 0.01, 0.07), Vector2(0, 0.07)]), 40, 0.5), Vector3(0, -0.13, 0), col, 0.012)
-			var brim := Toon.mesh(top, Shapes.chamfer_box(Vector3(hr * 1.2, 0.04, 0.32), 0.4), Vector3(0, -0.11, hr * 0.85), col, 0.01)
-			brim.rotation.x = 0.14
+			_shell(top, hc, 0, 66, 0.036, Color(look.get("hat_front", "#e8dccb")), 0.15, Vector3(1, 1.06, 1))
+			_shell(top, hc, 52, 70, 0.044, col, 0.4)
+			var visor := Toon.mesh(top, Shapes.ball(0.5, 32, 14), hc + Vector3(0, 0.15, 0.38), col, 0.01)
+			visor.scale = Vector3(0.5, 0.045, 0.36)
+			visor.rotation.x = 0.16
 		"chef":
-			Toon.cyl(top, hr * 0.85, hr * 0.8, 0.3, Vector3(0, 0.05, 0), Color.WHITE, 0.012, 32)
-			Toon.mesh(top, Shapes.blob(hr * 0.95, 11, 0.12), Vector3(0, 0.32, 0), Color.WHITE, 0.012).scale = Vector3(1.1, 0.75, 1.1)
+			_shell(top, hc, 44, 62, 0.045, Color.WHITE, 0.35)
+			_curve(top, _v2([0.17, 0.0, 0.2, 0.08, 0.22, 0.2, 0.26, 0.29, 0.3, 0.36, 0.3, 0.43, 0.25, 0.49, 0.15, 0.525, 0.0, 0.535]), hc + Vector3(0, 0.15, 0), Color.WHITE)
 		"wizard":
-			Toon.cyl(top, hr * 1.5, hr * 1.5, 0.04, Vector3(0, -0.04, 0), col, 0.012, 32)
-			var cone := Toon.cyl(top, 0.0, hr * 0.9, 0.85, Vector3(0.05, 0.38, 0), col, 0.012, 28)
-			cone.rotation.z = -0.22
-			Toon.ball(top, 0.06, Vector3(0.0, 0.25, hr * 0.75), Color("#ffd166"), 0.0, 6)
-			Toon.ball(top, 0.04, Vector3(0.1, 0.45, hr * 0.5), Color("#ffd166"), 0.0, 6)
+			_curve(top, _v2([0.0, 0.0, 0.25, 0.0, 0.42, -0.015, 0.52, 0.0, 0.545, 0.03, 0.52, 0.048, 0.4, 0.035, 0.25, 0.035, 0.0, 0.035]), hc + Vector3(0, 0.17, 0), col)
+			var wp := Node3D.new()
+			wp.position = hc + Vector3(0, 0.18, 0)
+			wp.rotation.z = -0.2
+			top.add_child(wp)
+			_curve(wp, _v2([0.262, 0.0, 0.235, 0.14, 0.17, 0.32, 0.095, 0.5, 0.035, 0.64, 0.0, 0.7]), Vector3.ZERO, col)
+			_shell(top, hc, 46, 62, 0.04, col.darkened(0.25), 0.4)
+			Toon.ball(wp, 0.05, Vector3(0.0, 0.2, 0.21), Color("#ffd166"), 0.0, 14)
+			Toon.ball(wp, 0.035, Vector3(0.09, 0.42, 0.1), Color("#ffd166"), 0.0, 12)
+			Toon.ball(wp, 0.03, Vector3(-0.08, 0.33, 0.14), Color("#ffd166"), 0.0, 12)
 		"tinfoil":
-			var foil := Toon.cyl(top, 0.0, hr * 1.05, 0.5, Vector3(0, 0.17, 0), Color("#d7dbe2"), 0.012, 5)
+			_shell(top, hc, 46, 64, 0.03, Color("#cfd4dc"), 0.4)
+			var foil := _curve(top, _v2([0.235, 0.0, 0.21, 0.12, 0.16, 0.26, 0.1, 0.4, 0.045, 0.52, 0.0, 0.6]), hc + Vector3(0, 0.17, 0), Color("#dfe3ea"))
 			foil.material_override = Toon.mat(Color("#dfe3ea"), 0.012, 0.25)
 		"crown":
-			Toon.cyl(top, hr * 0.7, hr * 0.66, 0.16, Vector3(0, 0.03, 0), Color("#ffd166"), 0.01, 10)
+			var gold := Color("#ffd166")
+			_curve(top, _v2([0.215, 0.0, 0.23, 0.02, 0.232, 0.1, 0.218, 0.15, 0.2, 0.15, 0.2, 0.0]), hc + Vector3(0, 0.2 + hair_lift, 0), gold, 0.01)
 			for i in 5:
-				var a := TAU * i / 5.0
-				Toon.cyl(top, 0.0, 0.05, 0.12, Vector3(cos(a) * hr * 0.66, 0.17, sin(a) * hr * 0.66), Color("#ffd166"), 0.0, 4)
-				Toon.ball(top, 0.03, Vector3(cos(a) * hr * 0.69, 0.06, sin(a) * hr * 0.69), Color("#e84393"), 0.0, 6)
+				var an := TAU * i / 5.0
+				var px := cos(an) * 0.218
+				var pz := sin(an) * 0.218
+				_curve(top, _v2([0.05, 0.0, 0.034, 0.07, 0.0, 0.14]), hc + Vector3(px, 0.34 + hair_lift, pz), gold, 0.006, 20)
+				Toon.ball(top, 0.028, hc + Vector3(cos(an) * 0.234, 0.27 + hair_lift, sin(an) * 0.234), Color("#e84393"), 0.0, 12)
 		"beanie":
-			Toon.mesh(top, Shapes.lathe(PackedVector2Array([Vector2(hr, 0), Vector2(hr * 0.95, 0.16), Vector2(hr * 0.6, 0.31), Vector2(0, 0.34)]), 12, 0.5), Vector3(0, -0.12, 0), col, 0.012)
-			Toon.ball(top, 0.08, Vector3(0, 0.25, 0), col.lightened(0.3), 0.008, 8)
+			_shell(top, hc, 0, 66, 0.062, col, 0.12, Vector3(1, 1.07, 1))
+			_shell(top, hc, 50, 72, 0.09, col.darkened(0.12), 0.4)
+			Toon.ball(top, 0.085, hc + Vector3(0, R * 1.07 + 0.075, 0), col.lightened(0.3), 0.008, 24)
 		"propeller":
-			Toon.mesh(top, Shapes.lathe(PackedVector2Array([Vector2(hr, 0), Vector2(hr * 0.8, 0.16), Vector2(0, 0.2)]), 12, 0.5), Vector3(0, -0.1, 0), col, 0.012)
+			_shell(top, hc, 0, 64, 0.036, col, 0.15, Vector3(1, 1.05, 1))
+			_shell(top, hc, 50, 68, 0.045, col.lightened(0.2), 0.4)
 			var prop := Node3D.new()
 			prop.name = "Propeller"
 			prop.position = Vector3(0, 0.14, 0)
 			top.add_child(prop)
-			Toon.cyl(prop, 0.015, 0.015, 0.1, Vector3(0, -0.02, 0), Color("#555555"), 0.0, 4)
-			Toon.box(prop, Vector3(0.5, 0.02, 0.08), Vector3(0, 0.04, 0), Color("#ffd166"), 0.006)
+			Toon.cyl(prop, 0.015, 0.015, 0.1, Vector3(0, -0.02, 0), Color("#555555"), 0.0, 10)
+			var blade := Toon.mesh(prop, Shapes.ball(0.5, 24, 10), Vector3(0, 0.04, 0), Color("#ffd166"), 0.006)
+			blade.scale = Vector3(0.5, 0.025, 0.09)
 		"tophat":
-			Toon.cyl(top, hr * 1.15, hr * 1.15, 0.04, Vector3(0, -0.04, 0), Color("#1d1517"), 0.012, 12)
-			Toon.cyl(top, hr * 0.72, hr * 0.72, 0.42, Vector3(0, 0.18, 0), Color("#1d1517"), 0.012, 12)
-			Toon.cyl(top, hr * 0.73, hr * 0.73, 0.06, Vector3(0, 0.02, 0), col, 0.0, 12)
+			var black := Color("#1d1517")
+			_curve(top, _v2([0.0, 0.0, 0.3, 0.0, 0.4, -0.005, 0.455, 0.0, 0.468, 0.022, 0.455, 0.042, 0.3, 0.046, 0.0, 0.046]), hc + Vector3(0, 0.17, 0), black)
+			_curve(top, _v2([0.2, 0.0, 0.205, 0.1, 0.205, 0.3, 0.2, 0.42, 0.185, 0.46, 0.1, 0.476, 0.0, 0.476]), hc + Vector3(0, 0.19, 0), black)
+			_curve(top, _v2([0.21, 0.0, 0.212, 0.03, 0.21, 0.065, 0.18, 0.065, 0.18, 0.0]), hc + Vector3(0, 0.22, 0), col, 0.0)
 		"headband":
-			Toon.cyl(top, HEAD_R * 0.93, HEAD_R * 0.95, 0.07, Vector3(0, -0.07, 0), col, 0.008, 40)
+			_shell(top, hc, 54, 68, 0.038, col, 0.4, Vector3.ONE, 0.008)
 		"headset":
-			var arc := MeshInstance3D.new()
-			var tm := TorusMesh.new()
-			tm.inner_radius = hr * 0.95
-			tm.outer_radius = hr * 1.06
-			tm.ring_segments = 4
-			tm.rings = 14
-			arc.mesh = Shapes.faceted(tm)
-			arc.material_override = Toon.mat(Color("#2d3436"), 0.0)
-			arc.rotation.z = PI / 2
-			arc.position = Vector3(0, -0.183, 0)
-			top.add_child(arc)
+			var dark := Color("#2d3436")
+			var path := PackedVector3Array()
+			for k in 25:
+				var an := lerpf(-PI * 0.5, PI * 0.5, float(k) / 24.0)
+				path.append(hc + Vector3(sin(an) * (R + 0.03), cos(an) * (R + 0.03), 0.0))
+			Toon.mesh(top, Shapes.tube(path, 0.02, 12, false), Vector3.ZERO, dark, 0.006)
 			for side: int in [-1, 1]:
-				var cup := Toon.cyl(top, 0.1, 0.1, 0.07, Vector3((HEAD_R + 0.025) * side, -0.183, 0), col, 0.008, 20)
-				cup.rotation.z = PI / 2
+				var cup := Toon.ball(top, 0.1, hc + Vector3((R + 0.035) * side, 0, 0), col, 0.008, 24)
+				cup.scale = Vector3(0.55, 1.05, 0.95)
+			var boom := PackedVector3Array([hc + Vector3(R + 0.06, 0.0, 0.02), hc + Vector3(R + 0.07, -0.08, 0.12), hc + Vector3(0.24, -0.14, 0.27), hc + Vector3(0.09, -0.135, 0.31)])
+			Toon.mesh(top, Shapes.tube(boom, 0.011, 8, true), Vector3.ZERO, dark, 0.0)
+			Toon.ball(top, 0.03, hc + Vector3(0.085, -0.135, 0.315), dark, 0.0, 12)
 		"bun":
-			Toon.mesh(top, Shapes.blob(0.17, 5, 0.1), Vector3(0, 0.07, -0.1), Color(look.get("hair_color", "#d9d4cc")), 0.01)
+			Toon.ball(top, 0.17, Vector3(0, 0.07, -0.1), Color(look.get("hair_color", "#d9d4cc")), 0.01, 32)
 		"bow":
 			for side: int in [-1, 1]:
-				Toon.ball(top, 0.1, Vector3(0.12 * side, 0.03, 0.05), col, 0.008, 8).scale = Vector3(1.3, 0.9, 0.6)
-			Toon.ball(top, 0.05, Vector3(0, 0.03, 0.06), col.darkened(0.2), 0.0, 6)
+				var lobe := Toon.ball(top, 0.1, Vector3(0.12 * side, 0.03, 0.05), col, 0.008, 24)
+				lobe.scale = Vector3(1.3, 0.9, 0.6)
+			Toon.ball(top, 0.05, Vector3(0, 0.03, 0.06), col.darkened(0.2), 0.0, 16)
 		"cowboy":
-			Toon.cyl(top, hr * 1.7, hr * 1.7, 0.04, Vector3(0, -0.03, 0), col, 0.012, 14).scale = Vector3(1, 1, 0.8)
-			Toon.cyl(top, hr * 0.68, hr * 0.82, 0.28, Vector3(0, 0.12, 0), col, 0.012, 10)
+			_curve(top, _v2([0.0, 0.0, 0.35, 0.0, 0.52, 0.02, 0.62, 0.08, 0.64, 0.105, 0.6, 0.105, 0.5, 0.055, 0.35, 0.035, 0.0, 0.035]), hc + Vector3(0, 0.17, 0), col)
+			_curve(top, _v2([0.2, 0.0, 0.2, 0.1, 0.18, 0.2, 0.14, 0.245, 0.08, 0.238, 0.0, 0.205]), hc + Vector3(0, 0.18, 0), col.lightened(0.05))
 
 
 # --- public animation API ----------------------------------------------------------------------
@@ -704,7 +769,7 @@ func express(emotion: String, hold := 4.0) -> void:
 
 ## One-shot animation. See ACTIONS for names.
 func play(action: String) -> void:
-	if not ACTIONS.has(action) or _tumble > 0.0:
+	if not ACTIONS.has(action) or _rd_state == 1 or _rd_state == 2:
 		return
 	_action = action
 	_action_t = 0.0
@@ -721,18 +786,207 @@ func hop() -> void:
 	play("hop")
 
 
-## Fall over and roll like an egg, then wobble back up dizzy.
-func tumble(direction: Vector3, strength := 1.0) -> void:
-	_tumble = 1.1 + strength * 0.5
+## Knock the egg down. Small hits just make it flinch; real ones turn it into a ragdoll
+## that flies, flops and slides, then lies there a moment before scrambling back up.
+## Returns roughly how long the whole thing takes (so controllers can wait).
+func tumble(direction: Vector3, strength := 1.0) -> float:
 	var flat := Vector3(direction.x, 0, direction.z)
-	_tumble_dir = flat.normalized() if flat.length() > 0.01 else Vector3.FORWARD
-	_getup = 0.0
-	_action = ""
-	express("scared", 2.5)
+	var dir := flat.normalized() if flat.length() > 0.01 else global_basis.z
+	strength = clampf(strength, 0.2, 3.0)
+	if strength < 0.45:
+		flinch(dir, strength)
+		return 0.5
+	if _rd_state == 1 or _rd_state == 2:
+		_rd.shove(dir * (3.0 + 3.0 * strength) + Vector3(0, 2.0, 0))
+		_rd_state = 1
+		_rd_still = 0.0
+		return 2.4
+	_start_ragdoll(dir, strength)
+	return 3.6 + strength * 0.3
+
+
+## A small hit: the whole body jolts away and springs back, arms flapping.
+func flinch(direction: Vector3, strength := 0.5) -> void:
+	var local := global_basis.inverse() * direction
+	_bump("lean_x", -local.z * 5.0 * strength)
+	_bump("lean_z", local.x * 5.0 * strength)
+	_bump("land", -3.0 * strength)
+	for i in 2:
+		_bump("af%d" % i, randf_range(-8.0, 8.0) * strength)
+		_bump("ao%d" % i, randf_range(2.0, 7.0) * strength)
+	express("scared", 1.5)
 
 
 func is_tumbling() -> bool:
-	return _tumble > 0.0 or _getup > 0.0
+	return _rd_state != 0
+
+
+# --- ragdoll -----------------------------------------------------------------------------------------
+
+func _start_ragdoll(dir: Vector3, strength: float) -> void:
+	_action = ""
+	flailing = false
+	_hop = 0.0
+	waving = false
+	var P := Ragdoll.P
+	var pts: Array = []
+	pts.resize(Ragdoll.COUNT)
+	pts[P.HEAD] = _head.to_global(Vector3(0, HEAD_R, 0))
+	pts[P.NECK] = _head.global_position
+	pts[P.CHEST] = _torso.to_global(Vector3(0, 0.3, 0))
+	pts[P.PELVIS] = _hips.global_position
+	for i in 2:
+		pts[P.SHL + i] = _shoulders[i].global_position
+		pts[P.ELL + i] = _elbows[i].global_position
+		pts[P.HANDL + i] = _wrists[i].to_global(Vector3(0, -0.12, 0))
+		pts[P.HIPL + i] = _legs[i].global_position if i < _legs.size() else _hips.to_global(Vector3(0.124 * (i * 2 - 1), 0, 0))
+		pts[P.FOOTL + i] = _boots[i].global_position if i < _boots.size() else _hips.to_global(Vector3(0.124 * (i * 2 - 1), -_leg_len, 0))
+	_rig.basis = Basis()
+	_rig.position = Vector3.ZERO
+	_torso.scale = Vector3.ONE
+	var sp: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state if is_inside_tree() else null
+	_rd = Ragdoll.new()
+	_rd.setup(pts, _s, Vector3(_vel.x, 0.0, _vel.z), sp, global_position.y)
+	_rd.shove(dir * (2.6 + 2.8 * strength) + Vector3(0, 1.8 + 1.5 * strength, 0), 1.2)
+	# arms, legs and head start out flailing in different directions
+	for i in 2:
+		_rd.kick(P.HANDL + i, Vector3(randf_range(-3, 3), randf_range(0, 4), randf_range(-3, 3)) * strength)
+		_rd.kick(P.FOOTL + i, Vector3(randf_range(-2, 2), randf_range(0, 3), randf_range(-2, 2)) * strength)
+	_rd.kick(P.HEAD, Vector3(randf_range(-1, 1), 0.5, randf_range(-1, 1)))
+	_rd_last = Array(_rd.pos)
+	_rd_state = 1
+	_rd_t = 0.0
+	_rd_still = 0.0
+	_rd_lie = randf_range(0.5, 0.9)
+	_dizzy_t = 0.0
+	express("scared", 3.0)
+	for i in 2:
+		curl_hand(_fingers[i], 0.0)
+
+
+func _ragdoll_process(delta: float) -> void:
+	var P := Ragdoll.P
+	_rd_t += delta
+	_rd.step(delta)
+	_rd.collide_walls(_rd_last)
+	_rd_last = Array(_rd.pos)
+	_ragdoll_pose()
+	_vel = _rd.velocity_of(P.PELVIS)
+	_vel.y = 0.0
+	if _rd_state == 1:
+		if _rd.time > 0.8 and _rd.energy() < 2.0:
+			_rd_still += delta
+		else:
+			_rd_still = 0.0
+		if _rd_still > 0.25 or _rd.time > 3.4:
+			_rd_state = 2
+			_rd_t = 0.0
+	elif _rd_state == 2:
+		# lying dazed: a limp little wiggle of the fingers
+		for i in 2:
+			curl_hand(_fingers[i], 0.25 + sin(_t * 3.0 + i) * 0.15)
+		if _rd_t > _rd_lie:
+			_begin_getup()
+
+
+func _frame(up: Vector3, right: Vector3) -> Basis:
+	var y := up.normalized()
+	var x := right - y * right.dot(y)
+	if x.length() < 0.001:
+		x = y.cross(Vector3.FORWARD)
+		if x.length() < 0.001:
+			x = y.cross(Vector3.RIGHT)
+	x = x.normalized()
+	return Basis(x, y, x.cross(y))
+
+
+func _down(dir: Vector3, ref: Vector3) -> Basis:
+	return _frame(-dir, ref)
+
+
+func _set_global(n: Node3D, b: Basis, origin: Vector3, gs: float) -> void:
+	n.global_transform = Transform3D(b.scaled(Vector3.ONE * gs), origin)
+
+
+func _ragdoll_pose() -> void:
+	var P := Ragdoll.P
+	var p := _rd.pos
+	var gs := global_basis.get_scale().x
+	var tb := _frame(p[P.NECK] - p[P.PELVIS], p[P.SHR] - p[P.SHL])
+	var hb := _frame(p[P.CHEST] - p[P.PELVIS], p[P.HIPR] - p[P.HIPL])
+	_set_global(_hips, hb, p[P.PELVIS], gs)
+	_set_global(_torso, tb, p[P.PELVIS], gs)
+	_set_global(_head, _frame(p[P.HEAD] - p[P.NECK], tb.x), p[P.NECK], gs)
+	for i in 2:
+		_set_global(_shoulders[i], _down(p[P.ELL + i] - p[P.SHL + i], tb.x), p[P.SHL + i], gs)
+		_set_global(_elbows[i], _down(p[P.HANDL + i] - p[P.ELL + i], tb.x), p[P.ELL + i], gs)
+		if i < _legs.size():
+			_set_global(_legs[i], _down(p[P.FOOTL + i] - p[P.HIPL + i], hb.x), p[P.HIPL + i], gs)
+			_knees[i].rotation = Vector3(0.25 + 0.3 * sin(_t * 9.0 + i * 2.0) if _rd_state == 1 else 0.45, 0, 0)
+			_boots[i].rotation.x = 0.0
+		_wrists[i].rotation = Vector3(sin(_t * 11.0 + i * 2.0) * 0.5, 0.0, sin(_t * 9.0 + i) * 0.4)
+		if _rd_state == 1:
+			curl_hand(_fingers[i], 0.15 + 0.2 * sin(_t * 14.0 + i * 3.0))
+	_hat.rotation = _hat.rotation.lerp(Vector3(sin(_t * 8.0) * 0.4, 0, cos(_t * 7.0) * 0.4), 0.2)
+
+
+func _begin_getup() -> void:
+	var P := Ragdoll.P
+	var p := _rd.pos
+	if ragdoll_relocate:
+		var tb := _frame(p[P.NECK] - p[P.PELVIS], p[P.SHR] - p[P.SHL])
+		var f := tb.z
+		var flat := Vector3(f.x, 0, f.z)
+		var yaw := global_rotation.y
+		if flat.length() > 0.4:
+			yaw = atan2(flat.x, flat.z)
+		var land := Vector3(p[P.PELVIS].x, _rd.floor_y[P.PELVIS], p[P.PELVIS].z)
+		if relocator.is_valid():
+			relocator.call(land, yaw)
+		else:
+			global_position = land
+			global_rotation = Vector3(0, yaw, 0)
+	_rd_start.clear()
+	for n in _tracked():
+		_rd_start[n] = n.global_transform
+	_rd_state = 3
+	_rd_t = 0.0
+	_dizzy_t = 2.4
+	_last_pos = global_position
+	_vel = Vector3.ZERO
+	ragdoll_finished.emit(global_position)
+
+
+func _tracked() -> Array[Node3D]:
+	var out: Array[Node3D] = [_hips, _torso, _head]
+	for i in 2:
+		out.append(_shoulders[i])
+	for i in 2:
+		out.append(_elbows[i])
+	for l in _legs:
+		out.append(l)
+	return out
+
+
+## Scrambling back up: the normal standing animation is blended in over the lying pose,
+## with an overshoot so the egg pops up and wobbles.
+func _ragdoll_getup_blend(delta: float) -> void:
+	_rd_t += delta
+	var u := clampf(_rd_t / 0.9, 0.0, 1.0)
+	var c1 := 1.9
+	var c3 := c1 + 1.0
+	var k := 1.0 + c3 * pow(u - 1.0, 3.0) + c1 * pow(u - 1.0, 2.0)
+	var nodes := _tracked()
+	var anim: Array[Transform3D] = []
+	for n in nodes:
+		anim.append(n.global_transform)
+	for i in nodes.size():
+		var from: Transform3D = _rd_start[nodes[i]]
+		nodes[i].global_transform = from.interpolate_with(anim[i], k)
+	if u >= 1.0:
+		_rd_state = 0
+		_rd = null
+		_rd_start.clear()
 
 
 # --- springs ---------------------------------------------------------------------------------------
@@ -788,39 +1042,60 @@ func _process(delta: float) -> void:
 		ground_speed = speed * 1.4
 	var moving := clampf(ground_speed / 1.6, 0.0, 2.0)
 
-	if _tumble > 0.0 or _getup > 0.0:
-		_animate_tumble(delta)
-		_animate_face(delta, {"brow_tilt": 0.0, "brow_raise": 0.05, "eye": 1.25, "mouth_w": 0.8, "mouth_h": 3.0})
+	if _rd_state == 3:
+		for n in _tracked():
+			n.transform = _rest[n]       # the normal animation below starts from the standing rig each frame
+	if _rd_state == 1 or _rd_state == 2:
+		_ragdoll_process(delta)
+		_animate_face(delta, {"brow_tilt": 0.0, "brow_raise": 0.08, "eye": 1.35, "mouth_w": 0.8, "mouth_h": 3.0})
 		return
 
 	# 1. Locomotion ----------------------------------------------------------------
-	var stride := 0.5
+	# A real gait: legs and knees on a phase clock, opposite-arm swing, hips that sway and twist
+	# against the shoulders, a head that stays level, and a squish on every footfall.
 	var waddle := float(look.get("waddle", 0.5))
 	var bounce := float(look.get("bounce", 0.5))
+	var run_t := smoothstep(2.0, 3.8, ground_speed)
+	var stride := lerpf(0.5, 0.82, run_t)
 	if moving > 0.05:
 		_phase += ground_speed * delta / stride * PI
 	else:
 		_phase = lerp_angle(_phase, roundf(_phase / PI) * PI, 1.0 - exp(-6.0 * delta))
-	var step := sin(_phase)
-	var walk := minf(moving, 1.2)
+	var walk := minf(moving, 1.0)
+	var s0 := sin(_phase)
+	var c0 := cos(_phase)
+	var amp := lerpf(0.5, 0.9, run_t) * walk
+	var k_amp := lerpf(0.75, 1.8, run_t)
+	var shift := sin(_t * 0.6)                        # idle weight shift
+	var still := 1.0 - walk
 	var pose := {
-		"lean_x": clampf(local_acc.z * 0.012 + local_vel.z * 0.05, -0.35, 0.35),   # lean into acceleration
-		"lean_z": -step * 0.09 * waddle * walk + clampf(-local_acc.x * 0.01, -0.2, 0.2),
-		"yaw": step * 0.12 * walk,
-		"y": absf(cos(_phase)) * (0.04 + 0.05 * bounce) * walk,
+		"lean_x": clampf(local_acc.z * 0.012 + local_vel.z * 0.05, -0.35, 0.35) + (0.04 + 0.2 * run_t) * walk,
+		"lean_z": -s0 * 0.1 * waddle * walk * (1.0 + run_t * 0.3) + clampf(-local_acc.x * 0.01, -0.2, 0.2) + shift * 0.03 * still,
+		"yaw": s0 * 0.2 * walk,
+		"hip_yaw": -s0 * 0.1 * walk,
+		"hip_roll": s0 * 0.05 * waddle * walk + shift * 0.03 * still,
+		"head_y": -s0 * 0.1 * walk,
+		"y": absf(c0) * (0.025 + 0.05 * bounce) * walk * (1.0 + run_t),
 		"squash": 1.0 + sin(_t * 2.1) * 0.012,
-		"leg": [step * 0.6 * walk, -step * 0.6 * walk],
-		"lift": [maxf(0.0, -cos(_phase)) * 0.09 * walk, maxf(0.0, cos(_phase)) * 0.09 * walk],
-		"arm_out": [0.3 + 0.06 * walk, 0.3 + 0.06 * walk],
-		"arm_fwd": [step * 0.5 * walk, -step * 0.5 * walk],
-		"arm_bend": [-0.22 - 0.25 * walk, -0.22 - 0.25 * walk],
+		"leg": [s0 * amp + shift * 0.05 * still, -s0 * amp - shift * 0.05 * still],
+		"knee": [walk * (0.1 + pow(maxf(0.0, -c0), 1.2) * k_amp) + maxf(0.0, shift) * 0.25 * still, walk * (0.1 + pow(maxf(0.0, c0), 1.2) * k_amp) + maxf(0.0, -shift) * 0.25 * still],
+		"foot": [s0 * 0.45 * walk, -s0 * 0.45 * walk],
+		"lift": [0.0, 0.0],
+		"arm_out": [0.28 + 0.07 * walk + absf(s0) * 0.08 * walk, 0.28 + 0.07 * walk + absf(s0) * 0.08 * walk],
+		"arm_fwd": [-s0 * lerpf(0.65, 0.78, run_t) * walk, s0 * lerpf(0.65, 0.78, run_t) * walk],
+		"arm_bend": [-0.3 - lerpf(0.15, 0.55, run_t) * walk, -0.3 - lerpf(0.15, 0.55, run_t) * walk],
 		"twist": [0.9, 0.9],          # palms toward the body
 		"grip": [0.3, 0.3],           # relaxed fingers
 		"brow_tilt": 0.0, "brow_raise": 0.0, "eye": 1.0, "mouth_w": 1.0, "mouth_h": 1.0,
 	}
+	# A squish on every footfall (the sign of sin flips each time a foot lands)
+	var plant := signf(s0)
+	if walk > 0.3 and plant != _last_plant and _last_plant != 0.0:
+		_bump("land", -(1.4 + run_t * 2.0))
+		_bump("hx", 0.9 + run_t * 1.2)
+	_last_plant = plant if absf(s0) > 0.02 else _last_plant
 	# Idle: weight shift + random fidgets
 	if moving < 0.05:
-		pose.lean_z += sin(_t * 0.9) * 0.025
 		pose.y += sin(_t * 2.1) * 0.006
 		_idle_timer -= delta
 		if idle_fidgets and _idle_timer <= 0.0 and _action == "" and not talking and not carrying and not waving:
@@ -882,6 +1157,7 @@ func _process(delta: float) -> void:
 			pose.arm_fwd[i] = sin(_t * 25.0 + i * 2.0) * 1.2
 			pose.arm_bend[i] = -0.4
 		pose.leg = [sin(_t * 28.0) * 0.8, -sin(_t * 28.0) * 0.8]
+		pose.knee = [0.6 + sin(_t * 28.0) * 0.5, 0.6 - sin(_t * 28.0) * 0.5]
 
 	# Hands follow what the arms are doing.
 	if carrying:
@@ -901,6 +1177,8 @@ func _process(delta: float) -> void:
 		pose[k] = pose_override[k]
 	_apply_pose(pose, delta)
 	_animate_face(delta, pose)
+	if _rd_state == 3:
+		_ragdoll_getup_blend(delta)
 
 
 func _apply_emotion(pose: Dictionary) -> void:
@@ -1065,7 +1343,7 @@ func _apply_action(pose: Dictionary, a: String, u: float, w: float) -> void:
 			pose.lean_z += sin(u * TAU) * 0.05 * w
 		"tap_foot":
 			pose.leg[1] -= maxf(0.0, sin(t * 14.0)) * 0.25 * w
-			pose.lift[1] += maxf(0.0, sin(t * 14.0)) * 0.05 * w
+			pose.knee[1] += maxf(0.0, sin(t * 14.0)) * 0.4 * w
 			for i in 2:
 				pose.arm_out[i] = lerpf(pose.arm_out[i], 0.6, w)
 				pose.arm_bend[i] = lerpf(pose.arm_bend[i], -1.6, w)
@@ -1113,7 +1391,8 @@ func _apply_pose(pose: Dictionary, delta: float) -> void:
 	_rig.position.y = hop_y
 	if hop_y > 0.02:
 		pose.leg = [0.5, -0.3]
-		pose.lift = [0.06, 0.1]
+		pose.knee = [1.0, 0.5]
+		pose.foot = [0.4, 0.3]
 	var y := _spring("y", float(pose.y), delta, 220.0, 18.0)
 	var lean_x := _spring("lean_x", pose.lean_x, delta, 120.0, 13.0)
 	var lean_z := _spring("lean_z", pose.lean_z, delta, 120.0, 12.0)
@@ -1151,7 +1430,7 @@ func _apply_pose(pose: Dictionary, delta: float) -> void:
 		var fwd_t := float(pose.arm_fwd[i]) + sin(_t * 0.85 + i * 2.3) * 0.05 * calm + clampf(_acc_local.z * 0.035, -0.4, 0.4) * calm
 		var bend_t := float(pose.arm_bend[i])
 		if fwd_t < 0.0 and float(pose.arm_out[i]) < 1.0:
-			bend_t += fwd_t * 0.7                 # forearm tucks forward as the arm swings forward
+			bend_t += fwd_t * 0.5                 # forearm tucks forward as the arm swings forward
 			out_t += -fwd_t * 0.1                 # and the arm flares out a little
 		bend_t += sin(_t * 1.6 + i) * 0.04 * calm
 		var out := _spring("ao%d" % i, out_t, delta, 150.0, 11.0)
@@ -1172,14 +1451,25 @@ func _apply_pose(pose: Dictionary, delta: float) -> void:
 			_wrists[i].rotation.z = _spring("wz%d" % i, clampf(vo * 0.06, -0.5, 0.5) * side, delta, 120.0, 7.0)
 			var speed_curl := clampf((absf(vf) + absf(vb)) * 0.025, 0.0, 0.25)
 			curl_hand(_fingers[i], _spring("gr%d" % i, float(gr[i]) + speed_curl, delta, 200.0, 15.0), false, _t + i * 2.0, 1.0 - clampf(float(gr[i]), 0.0, 1.0))
-	# Legs + boot lift
+	# Legs: hip swing, knee bend, foot pitch. The hips sink as the legs spread so the planted
+	# foot stays on the ground; the whole pelvis sways and twists a little.
+	var lgf := _leg_len / HIPS_Y
+	var knee_len := 0.30 * lgf
+	var shin_len := _leg_len - knee_len
+	var reach := 0.0
 	for i in _legs.size():
-		var swing := _spring("leg%d" % i, pose.leg[i], delta, 260.0, 18.0)
+		var swing := _spring("leg%d" % i, pose.leg[i], delta, 210.0, 15.0)
+		var knee := maxf(0.0, _spring("kn%d" % i, pose.knee[i], delta, 240.0, 16.0))
+		var foot := _spring("ft%d" % i, pose.foot[i], delta, 190.0, 11.0)
 		_legs[i].rotation.x = swing
 		_legs[i].rotation.z = _leg_splay[i]
+		_knees[i].rotation.x = knee
 		_boots[i].rotation.z = -_leg_splay[i]
-		_boots[i].position.y = -_leg_len + float(pose.lift[i])
-		_boots[i].rotation.x = -swing * 0.6
+		_boots[i].rotation.x = foot - swing - knee
+		reach = maxf(reach, knee_len * cos(swing) + shin_len * cos(swing + knee))
+	if _legs.size() > 0:
+		_hips.position.y = _spring("hips_y", clampf(reach, _leg_len * 0.55, _leg_len), delta, 420.0, 26.0)
+	_hips.rotation = Vector3(0.0, _spring("hip_yaw", float(pose.get("hip_yaw", 0.0)), delta, 120.0, 12.0), _spring("hip_roll", float(pose.get("hip_roll", 0.0)), delta, 120.0, 11.0))
 	# Hat lags behind the head (springy wobble)
 	if _hat:
 		_hat.rotation.x = _spring("hat_x", -(lean_x - float(pose.lean_x)) * 2.0 + (y - float(pose.y)) * 1.5, delta, 90.0, 7.0)
@@ -1202,38 +1492,6 @@ func _apply_pose(pose: Dictionary, delta: float) -> void:
 			var target := head_top.global_position + Vector3(0, 0.45 * _s, 0) if carry_style == "overhead" \
 				else _torso.global_position + global_basis * Vector3(0, 0.38, 0.5) * 1.0
 			hand_socket.global_position = hand_socket.global_position.lerp(target, 0.85)
-
-
-func _animate_tumble(delta: float) -> void:
-	if _tumble > 0.0:
-		_tumble -= delta
-		# Roll over onto the side, rocking like an egg on a table.
-		var t := 1.0 - clampf(_tumble / 1.6, 0.0, 1.0)
-		var rock := sin(_t * 9.0) * 0.35 * (1.0 - t)
-		var axis := Vector3.UP.cross(_tumble_dir).normalized()
-		var local_axis := (global_basis.inverse() * axis).normalized()
-		_rig.basis = Basis(local_axis, deg_to_rad(80.0) + rock)
-		_rig.position = Vector3(0, 0.3, 0)
-		for i in 2:
-			_shoulders[i].rotation = Vector3(sin(_t * 20.0 + i) * 1.0, 0, (2.0 + sin(_t * 25.0) * 0.5) * (-1.0 if i == 0 else 1.0))
-		for l in _legs:
-			l.rotation.x = sin(_t * 22.0) * 0.8
-		if _tumble <= 0.0:
-			_getup = 1.2
-			_dizzy_t = 2.4
-	elif _getup > 0.0:
-		_getup -= delta
-		# Wobble back up with a damped rock.
-		var g := clampf(1.0 - _getup / 1.2, 0.0, 1.0)
-		var wobble := sin(g * 22.0) * 0.4 * (1.0 - g)
-		var axis2 := Vector3.UP.cross(_tumble_dir).normalized()
-		var local_axis2 := (global_basis.inverse() * axis2).normalized()
-		_rig.basis = Basis(local_axis2, lerpf(deg_to_rad(80.0), 0.0, ease(g, 0.4)) + wobble)
-		_rig.position = Vector3(0, lerpf(0.3, 0.0, g), 0)
-		if _getup <= 0.0:
-			_rig.basis = Basis()
-			_rig.position = Vector3.ZERO
-	_dizzy_t = maxf(0.0, _dizzy_t - delta)
 
 
 func _animate_face(delta: float, pose: Dictionary) -> void:
@@ -1273,6 +1531,7 @@ func _animate_face(delta: float, pose: Dictionary) -> void:
 		_googly_v = Vector2.ZERO
 	for p in _pupils:
 		p.position = p.position.lerp(Vector3(look_off.x + _googly.x, look_off.y + _googly.y, 0.018), 0.25)
+	_dizzy_t = maxf(0.0, _dizzy_t - delta)
 	if _dizzy:
 		_dizzy.visible = _dizzy_t > 0.0
 		_dizzy.rotation.y += delta * 6.0

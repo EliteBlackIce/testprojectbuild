@@ -465,6 +465,7 @@ func _build_cockpit() -> void:
 	var small := Toon.cyl(c, 0.055, 0.055, 0.02, Vector3(-0.25, 1.36, -0.31), Color("#fff8e7"), 0.005, 14)
 	small.rotation.x = PI / 2 - 0.45
 	_speed_label = Toon.label(c, "0", Vector3(-0.42, 1.335, -0.286), 26, Color("#2b1c18"), false)
+	_speed_label.font = UiTheme.ui_font()
 	_speed_label.outline_size = 0
 	_speed_label.pixel_size = 0.0022
 	_speed_label.rotation.x = -0.45

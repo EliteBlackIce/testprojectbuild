@@ -26,26 +26,15 @@ func spawn(count: int, rng: RandomNumberGenerator) -> void:
 		add_child(egg)
 		egg.build(Characters.random_pedestrian_look(rng))
 		egg.set_meta("on_bonk", _bonked.bind(egg))
-		_walkers.append({"egg": egg, "corners": corners, "seg": rng.randi() % 4, "t": rng.randf(),
-			"speed": rng.randf_range(1.0, 1.6), "fly": Vector3.ZERO, "flying": false, "spin": 0.0, "pause": 0.0})
+		var w := {"egg": egg, "corners": corners, "seg": rng.randi() % 4, "t": rng.randf(),
+			"speed": rng.randf_range(1.0, 1.6), "pause": 0.0, "off": Vector3.ZERO, "path_pos": corners[0]}
+		egg.relocator = _relocate.bind(w)
+		_walkers.append(w)
 
 
 func _process(delta: float) -> void:
 	for w in _walkers:
 		var egg := w.egg as EggBody
-		if w.flying:
-			w.fly.y -= 22.0 * delta
-			egg.position += w.fly * delta
-			egg.rotation.x += w.spin * delta
-			if egg.position.y <= 0.06 and w.fly.y < 0.0:
-				w.flying = false
-				egg.flailing = false
-				egg.rotation = Vector3(0, egg.rotation.y, 0)
-				egg.position.y = 0.06
-				egg.express("angry", 3.0)
-				w.pause = 2.0
-				Sfx.play("splat", randf_range(0.8, 1.2), -4.0)
-			continue
 		if w.pause > 0.0:
 			w.pause -= delta
 			egg.speed = 0.0
@@ -57,7 +46,10 @@ func _process(delta: float) -> void:
 		if w.t >= 1.0:
 			w.t = 0.0
 			w.seg = (w.seg + 1) % 4
-		egg.position = a.lerp(b, w.t)
+		w.path_pos = a.lerp(b, w.t)
+		# After a tumble they stand up wherever they landed and stroll back onto the sidewalk.
+		w.off = (w.off as Vector3).move_toward(Vector3.ZERO, 1.6 * delta)
+		egg.position = (w.path_pos as Vector3) + (w.off as Vector3)
 		var dir := (b - a).normalized()
 		egg.rotation.y = lerp_angle(egg.rotation.y, atan2(dir.x, dir.z), 1.0 - exp(-8.0 * delta))
 		egg.speed = w.speed / 1.4
@@ -65,22 +57,22 @@ func _process(delta: float) -> void:
 		if car and car.velocity.length() > 6.0:
 			var d := Vector2(egg.global_position.x - car.global_position.x, egg.global_position.z - car.global_position.z).length()
 			if d < 1.6:
-				w.flying = true
-				w.fly = car.velocity * 0.8 + Vector3(0, 10.0, 0)
-				w.spin = randf_range(10.0, 18.0)
-				egg.flailing = true
-				egg.express("scared", 3.0)
+				w.pause = egg.tumble(car.velocity.normalized() + Vector3(0, 0.3, 0), clampf(car.velocity.length() / 6.0, 1.0, 3.0))
 				Sfx.play("scream", randf_range(0.8, 1.3))
 				yeeted.emit()
 
 
-## Hit by a thrown prop: launched like a car hit, just smaller.
+## Hit by a thrown prop (or anything else): a ragdoll, then back to strolling.
 func _bonked(dir: Vector3, strength: float, egg: EggBody) -> void:
 	for w in _walkers:
-		if w.egg == egg and not w.flying:
-			w.flying = true
-			w.fly = dir * 6.0 * strength + Vector3(0, 7.0 + 2.0 * strength, 0)
-			w.spin = randf_range(8.0, 16.0)
-			egg.flailing = true
-			egg.express("scared", 3.0)
+		if w.egg == egg and w.pause <= 0.0:
+			w.pause = egg.tumble(dir, strength * 1.2)
 			Sfx.play("scream", randf_range(1.0, 1.5), -4.0)
+
+
+func _relocate(land: Vector3, _yaw: float, w: Dictionary) -> void:
+	var egg := w.egg as EggBody
+	var p := to_local(land)
+	p.y = 0.06
+	w.off = p - (w.path_pos as Vector3)
+	egg.position = p

@@ -116,6 +116,15 @@ your boss Tony Pepperoni, plus dozens of generated weirdos.
 - Orders arrive slower now (3 open at a time to start) and every order is a receipt: HUD cards,
   a notepad during the call, and slips on the kitchen rail.
 
+## Animation
+
+- **Ragdoll falls.** Any real hit (thrown props, cars, goats, grease, explosions) turns the egg into a verlet
+  ragdoll (`scripts/characters/ragdoll.gd`): it flies, flops, bounces and slides with loose limbs, lies there dazed,
+  then pops back up with an overshoot. Small hits just make it flinch.
+- **A proper walk and run.** Knees, foot roll, hip sway against opposite arm swing, a squish on every footstep.
+- Hats, hair and beards are smooth shells that fade into the skull (no rims, no clipping).
+- Signs use the bundled Erica One font and auto-fit their text to the board. The UI uses Outfit. Both are OFL (`fonts/`).
+
 ## Chaos (the slapstick layer)
 
 - **Grab and throw anything.** Loose props lie around the pizzeria: rubber chickens, frying pans,
