@@ -112,6 +112,89 @@ static func egg(height := 1.3, radius := 0.55, segments := 12, rings := 9) -> Ar
 	return lathe(p, segments, 0.5)
 
 
+## The character egg: a real egg profile (fat round bottom, narrower top),
+## a little belly bulge in front and a flatter back, so it's not perfectly
+## symmetrical. Origin at the bottom. Still faceted, just more facets.
+static func body_egg(height := 1.45, radius := 0.5, belly := 0.1, segments := 18, rings := 14) -> ArrayMesh:
+	var key := "begg|%s|%s|%s|%d|%d" % [height, radius, belly, segments, rings]
+	if _cache.has(key):
+		return _cache[key]
+	var grid: Array = []   # rings+1 rows of segments+1 points
+	for i in rings + 1:
+		var th := PI * float(i) / rings
+		var yn := (1.0 - cos(th)) * 0.5                    # 0 bottom .. 1 top
+		var r := sin(th) * radius * (1.0 + 0.26 * cos(th))  # wide bottom, narrow top
+		r *= 1.0 - 0.12 * pow(maxf(yn - 0.55, 0.0) / 0.45, 1.5)  # a slightly pointier crown
+		var row: Array = []
+		for j in segments + 1:
+			var ang := TAU * (float(j) + 0.5) / segments
+			var x := cos(ang) * r
+			var z := sin(ang) * r
+			if z > 0.0:
+				z *= 1.0 + belly * pow(sin(PI * clampf(yn * 1.6, 0.0, 1.0)), 2.0)
+			else:
+				z *= 0.94
+			row.append(Vector3(x, yn * height, z))
+		grid.append(row)
+	var center := Vector3(0, height * 0.45, 0)
+	var out_v := PackedVector3Array()
+	var out_n := PackedVector3Array()
+	for i in rings:
+		for j in segments:
+			var p00: Vector3 = grid[i][j]
+			var p01: Vector3 = grid[i][j + 1]
+			var p10: Vector3 = grid[i + 1][j]
+			var p11: Vector3 = grid[i + 1][j + 1]
+			_tri(out_v, out_n, p00, p10, p11, center)
+			_tri(out_v, out_n, p00, p11, p01, center)
+	var mesh := _commit(out_v, out_n)
+	_cache[key] = mesh
+	return mesh
+
+
+## Low-poly capsule along -Y from the origin (arms, legs). Rounder than a cylinder.
+static func limb(length: float, r_top: float, r_bottom: float, segments := 10) -> ArrayMesh:
+	var key := "limb|%s|%s|%s|%d" % [length, r_top, r_bottom, segments]
+	if _cache.has(key):
+		return _cache[key]
+	var p := PackedVector2Array()
+	for k in 4:
+		var a := PI * 0.5 * float(k) / 3.0
+		p.append(Vector2(sin(a) * r_bottom, -length + r_bottom - cos(a) * r_bottom))
+	for k in 4:
+		var a := PI * 0.5 + PI * 0.5 * float(k) / 3.0
+		p.append(Vector2(sin(a) * r_top, -cos(a) * r_top))
+	var m := lathe(p, segments, 0.5)
+	_cache[key] = m
+	return m
+
+
+## Rounded clompy boot, toe pointing +Z. Origin at the bottom of the heel.
+static func boot(width := 0.3, height := 0.2, length := 0.44) -> ArrayMesh:
+	var key := "boot|%s|%s|%s" % [width, height, length]
+	if _cache.has(key):
+		return _cache[key]
+	var dome := PackedVector2Array([Vector2(0, 0), Vector2(0.92, 0), Vector2(1.0, 0.12), Vector2(0.98, 0.45),
+		Vector2(0.82, 0.78), Vector2(0.5, 0.97), Vector2(0, 1.0)])
+	var base := lathe(dome, 12, 0.5)
+	var arrays := base.surface_get_arrays(0)
+	var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var norms: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+	var out_v := PackedVector3Array()
+	var out_n := PackedVector3Array()
+	var sc := Vector3(width * 0.5, height, length * 0.5)
+	for i in verts.size():
+		var v := verts[i] * sc
+		# Toe cap: the front half is fatter and lower; the heel is taller.
+		if v.z > 0.0:
+			v.y *= 1.0 - 0.25 * (v.z / (length * 0.5))
+		out_v.append(v + Vector3(0, 0, length * 0.12))
+		out_n.append((norms[i] / sc).normalized())
+	var m := faceted(_commit(out_v, out_n))
+	_cache[key] = m
+	return m
+
+
 ## Chunky chamfered block (boots, crates, counters). Origin at the bottom center.
 static func chamfer_box(size: Vector3, bevel := 0.15) -> ArrayMesh:
 	var key := "cbox|%s|%s" % [size, bevel]

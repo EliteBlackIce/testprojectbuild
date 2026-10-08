@@ -1,213 +1,285 @@
 class_name EggBody
 extends Node3D
-## The universal character model: a faceted egg with stubby arms, mitten
-## hands, chunky boots, a face on the front and a silly hat. Every person
-## in the game (you, Tony, customers, pedestrians) is one of these.
+## The universal character: a tall, round, slightly lopsided egg with stubby
+## arms, mitten hands, clompy boots, a face on the front and a silly hat.
+## Everyone in the game is one of these (you, Tony, customers, staff, pedestrians).
 ##
-## Faces +Z. Origin is between the feet.
+## Faces +Z, origin between the feet.
 ##
-## `look` keys (all optional):
-##   skin, size, stretch (taller/thinner egg), boots, legs, eye ("normal", "big",
-##   "sleepy", "tiny"), brows, mustache, beard, hat, hat_color, glasses, tie,
-##   bow, apron, ears, snout, tail, ghost, baby, blush, hair (puffs), cape
+## ANIMATION: layered + springy, all procedural:
+##   locomotion (stride-synced waddle) -> carry pose -> one-shot action
+##   -> emotion -> talking gestures -> springs (follow-through, overshoot)
+##   + secondary motion (hat wobble, belly jiggle, squash & stretch, blinking).
+## Drive it by setting `velocity_hint` (or `speed`) every frame, and call
+## play("wave"), express("angry"), tumble(dir) etc.
+##
+## `look` keys (all optional): skin, size, stretch, round, belly, boots, legs,
+## sleeves, eye ("normal","big","sleepy","tiny"), brows, mustache, beard,
+## hair_color, hat, hat_color, hat_front, glasses, tie, bow, apron, ears,
+## snout, tail, ghost, baby, blush, hair (puffs), cape, grumpy,
+## waddle (0..1), bounce (0..1)
+
+const ACTIONS := {
+	"wave": 1.6, "knock": 1.1, "celebrate": 1.3, "stomp": 1.0, "laugh": 1.5, "shrug": 1.1,
+	"point": 1.2, "flex": 1.6, "dance": 2.4, "yawn": 2.0, "scratch": 1.6, "look_around": 2.2,
+	"tap_foot": 1.6, "eat": 1.6, "hop": 0.6, "spin": 0.8, "nod": 0.8, "shake_head": 0.9,
+	"facepalm": 1.4, "slam": 0.9, "work": 1.2,
+}
 
 var look: Dictionary = {}
-var speed := 0.0            ## 0 = idle, 1 = walking, 2 = running
-var carrying := false       ## arm up, box overhead (like the poster)
-var waving := false
+var speed := 0.0              ## 0 idle, 1 walk, 2 run (used if velocity_hint isn't set)
+var velocity_hint := Vector3.INF  ## world velocity; more accurate than speed (lean, stride)
+var carrying := false
+var carry_style := "overhead" ## "overhead" (poster pose) or "front"
+var waving := false           ## continuous wave (customers waiting for you)
 var talking := false
-var flailing := false
+var flailing := false         ## mid-air panic
+var phone_mode := false       ## hand to ear
+var look_target: Node3D       ## turn eyes (and a little body) toward this
+var idle_fidgets := true
 
-var hand_socket: Node3D     ## put carried things here (above the raised hand)
-var head_top: Node3D        ## top of the head (for labels)
+var hand_socket: Node3D       ## carried things go here
+var head_top: Node3D          ## top of the head (labels, hats)
 
+# --- rig ---
 var _s := 1.0
-var _h := 1.15              ## egg height (before size scale)
-var _r := 0.5               ## egg radius
-var _torso: Node3D
+var _h := 1.45
+var _r := 0.5
+var _belly := 0.1
+var _leg_len := 0.3
+var _rig: Node3D              ## everything; rotated when tumbling
 var _hips: Node3D
+var _torso: Node3D
+var _hat: Node3D
 var _legs: Array[Node3D] = []
+var _boots: Array[Node3D] = []
 var _shoulders: Array[Node3D] = []   ## [left, right]
 var _elbows: Array[Node3D] = []
+var _hands: Array[Node3D] = []
 var _eyes: Array[Node3D] = []
 var _pupils: Array[Node3D] = []
 var _brows: Array[Node3D] = []
+var _brow_base: Array[float] = []
 var _mouth: MeshInstance3D
 var _tail: Node3D
-var _phase := 0.0
+var _dizzy: Node3D
+
+# --- animation state ---
 var _t := 0.0
+var _phase := 0.0
 var _blink := 0.0
 var _next_blink := 2.0
 var _emotion := "neutral"
 var _emotion_timer := 0.0
+var _action := ""
+var _action_t := 0.0
+var _action_dur := 1.0
+var _idle_timer := 4.0
+var _last_pos := Vector3.ZERO
+var _vel := Vector3.ZERO
+var _prev_vel := Vector3.ZERO
+var _land_squash := 0.0
 var _hop := 0.0
+var _tumble := 0.0            ## >0 while rolling around
+var _tumble_dir := Vector3.FORWARD
+var _getup := 0.0             ## >0 while wobbling back up
+var _dizzy_t := 0.0
+## Springs: name -> [value, velocity]
+var _spr: Dictionary = {}
 
 
 func build(l: Dictionary) -> void:
 	look = l
 	_s = float(look.get("size", 1.0))
 	var stretch := float(look.get("stretch", 1.0))
-	_h = 1.15 * stretch
-	_r = 0.5 / sqrt(stretch)
+	_h = 1.45 * stretch
+	_r = 0.5 / sqrt(stretch) * float(look.get("round", 1.0))
+	_belly = float(look.get("belly", 0.1))
 	scale = Vector3.ONE * _s
 	var skin := Color(look.get("skin", "#e8b77a"))
 	var ghost: bool = look.get("ghost", false)
-	var leg_len := 0.0 if ghost else (0.22 if look.get("baby", false) else 0.34)
+	_leg_len = 0.0 if ghost else (0.18 if look.get("baby", false) else 0.3)
 
+	_rig = Node3D.new()
+	add_child(_rig)
 	_hips = Node3D.new()
-	_hips.position = Vector3(0, leg_len, 0)
-	add_child(_hips)
+	_hips.position = Vector3(0, _leg_len, 0)
+	_rig.add_child(_hips)
 	if not ghost:
-		_build_legs(leg_len, Color(look.get("legs", skin.darkened(0.08))), Color(look.get("boots", "#6b4a35")))
+		_build_legs(Color(look.get("legs", skin.darkened(0.06))), Color(look.get("boots", "#6b4a35")))
 
 	_torso = Node3D.new()
 	_hips.add_child(_torso)
-	var body := Toon.mesh(_torso, Shapes.egg(_h, _r), Vector3(0, -0.06, 0), skin, 0.02)
+	var body := Toon.mesh(_torso, Shapes.body_egg(_h, _r, _belly), Vector3(0, -0.08, 0), skin, 0.018)
 	body.name = "Egg"
 	if ghost:
-		for i in 7:
-			var a := TAU * i / 7.0
-			Toon.ball(_torso, 0.13, Vector3(cos(a) * _r * 0.95, 0.02, sin(a) * _r * 0.95), skin, 0.012, 6)
+		# Wavy sheet hem instead of legs
+		for i in 9:
+			var a := TAU * i / 9.0
+			Toon.ball(_torso, 0.12, Vector3(cos(a) * _r * 1.05, -0.02, sin(a) * _r * 1.05), skin, 0.01, 8)
 
 	head_top = Node3D.new()
-	head_top.position = Vector3(0, _h - 0.06, 0)
+	head_top.position = Vector3(0, _h - 0.1, 0)
 	_torso.add_child(head_top)
+	_hat = Node3D.new()
+	head_top.add_child(_hat)
 
 	_build_face(skin)
 	_build_arms(skin)
 	_build_extras(skin)
 	_build_hat()
+	_dizzy = Node3D.new()
+	_dizzy.position = Vector3(0, 0.35, 0)
+	head_top.add_child(_dizzy)
+	for i in 3:
+		var a := TAU * i / 3.0
+		Toon.ball(_dizzy, 0.06, Vector3(cos(a) * 0.35, 0, sin(a) * 0.35), Color("#ffd166"), 0.0, 5)
+	_dizzy.visible = false
+	_last_pos = global_position if is_inside_tree() else Vector3.ZERO
 
 
-# --- construction --------------------------------------------------------------------
+# --- geometry helpers ------------------------------------------------------------------------
 
-## Radius of the egg at height y (0..h) measured from its bottom.
+## Radius of the egg at height y (0..h above its bottom). Matches Shapes.body_egg.
 func _egg_r(y: float) -> float:
 	var c := clampf(1.0 - 2.0 * y / _h, -1.0, 1.0)
 	var th := acos(c)
-	return sin(th) * _r * (1.0 + 0.16 * cos(th))
+	var yn := y / _h
+	var r := sin(th) * _r * (1.0 + 0.26 * cos(th))
+	r *= 1.0 - 0.12 * pow(maxf(yn - 0.55, 0.0) / 0.45, 1.5)
+	return r
 
 
-## A point on the egg's front surface. x = sideways offset, y = height.
+## A point on the egg's front surface (x sideways, y height above the egg bottom).
 func _surface(x: float, y: float, inset := 0.0) -> Vector3:
 	var r := _egg_r(y)
-	var z := sqrt(maxf(r * r - x * x, 0.0)) - inset
-	return Vector3(x, y - 0.06, z)
+	var yn := y / _h
+	var z := sqrt(maxf(r * r - x * x, 0.0))
+	z *= 1.0 + _belly * pow(sin(PI * clampf(yn * 1.6, 0.0, 1.0)), 2.0)
+	return Vector3(x, y - 0.08, z - inset)
 
 
-## Turn a face part so it lies on the curved surface.
+## Put a face part on the curved surface, turned to match it.
 func _on_surface(node: Node3D, x: float, y: float, inset := 0.0) -> void:
 	var p := _surface(x, y, inset)
 	node.position = p
-	node.rotation.y = atan2(x, p.z) * 0.9
+	node.rotation.y = atan2(x, p.z) * 0.95
+	# Tilt with the egg's slope (top of the egg leans back).
+	var above := _surface(x, y + 0.05)
+	node.rotation.x = -atan2(above.z - p.z, 0.05) * 0.8
 
 
-func _build_legs(leg_len: float, leg_color: Color, boot_color: Color) -> void:
+# --- construction ------------------------------------------------------------------------------
+
+func _build_legs(leg_color: Color, boot_color: Color) -> void:
 	for side: int in [-1, 1]:
 		var pivot := Node3D.new()
-		pivot.position = Vector3(0.18 * side, 0.0, 0.0)
+		pivot.position = Vector3(0.17 * side, 0.02, 0.0)
 		_hips.add_child(pivot)
-		Toon.cyl(pivot, 0.1, 0.09, leg_len, Vector3(0, -leg_len * 0.5, 0), leg_color, 0.012, 6)
-		var boot := Toon.block(pivot, Vector3(0.3, 0.17, 0.42), Vector3(0, -leg_len - 0.01, 0.05), boot_color, 0.22, 0.015)
-		Toon.block(pivot, Vector3(0.32, 0.05, 0.45), Vector3(0, -leg_len - 0.02, 0.05), boot_color.darkened(0.3), 0.1, 0.0)
-		boot.name = "Boot"
+		Toon.mesh(pivot, Shapes.limb(_leg_len + 0.04, 0.1, 0.085, 9), Vector3.ZERO, leg_color, 0.01)
+		var boot := Node3D.new()
+		boot.position = Vector3(0, -_leg_len - 0.02, 0)
+		pivot.add_child(boot)
+		Toon.mesh(boot, Shapes.boot(0.3, 0.2, 0.44), Vector3.ZERO, boot_color, 0.014)
+		Toon.box(boot, Vector3(0.28, 0.04, 0.42), Vector3(0, 0.02, 0.06), boot_color.darkened(0.35), 0.0)
 		_legs.append(pivot)
+		_boots.append(boot)
 
 
 func _build_arms(skin: Color) -> void:
-	var shoulder_y := _h * 0.5
+	var shoulder_y := _h * 0.46
 	var arm_color := Color(look.get("sleeves", skin))
 	for side: int in [-1, 1]:
 		var shoulder := Node3D.new()
-		shoulder.position = Vector3((_egg_r(shoulder_y) - 0.04) * side, shoulder_y - 0.06, 0.0)
+		shoulder.position = Vector3((_egg_r(shoulder_y) - 0.05) * side, shoulder_y - 0.08, 0.02)
 		_torso.add_child(shoulder)
-		Toon.ball(shoulder, 0.1, Vector3.ZERO, arm_color, 0.01, 7)
-		Toon.cyl(shoulder, 0.085, 0.075, 0.26, Vector3(0, -0.13, 0), arm_color, 0.012, 6)
+		Toon.mesh(shoulder, Shapes.limb(0.27, 0.095, 0.08, 9), Vector3.ZERO, arm_color, 0.01)
 		var elbow := Node3D.new()
-		elbow.position = Vector3(0, -0.26, 0)
+		elbow.position = Vector3(0, -0.22, 0)
 		shoulder.add_child(elbow)
-		Toon.cyl(elbow, 0.075, 0.07, 0.22, Vector3(0, -0.11, 0), skin, 0.012, 6)
-		# Chunky mitten hand + thumb
-		var hand := Toon.ball(elbow, 0.105, Vector3(0, -0.29, 0.01), skin, 0.012, 7)
-		hand.scale = Vector3(0.9, 1.1, 0.8)
-		Toon.ball(elbow, 0.045, Vector3(-0.08 * side, -0.24, 0.05), skin, 0.008, 5)
+		Toon.mesh(elbow, Shapes.limb(0.22, 0.08, 0.075, 9), Vector3.ZERO, skin, 0.01)
+		# Chunky round mitten + thumb
+		var hand := Node3D.new()
+		hand.position = Vector3(0, -0.26, 0.01)
+		elbow.add_child(hand)
+		var mitt := Toon.ball(hand, 0.11, Vector3.ZERO, skin, 0.012, 12)
+		mitt.scale = Vector3(0.95, 1.12, 0.85)
+		var thumb := Toon.ball(hand, 0.05, Vector3(-0.075 * side, 0.04, 0.05), skin, 0.008, 8)
+		thumb.scale = Vector3(0.9, 1.3, 0.9)
 		_shoulders.append(shoulder)
 		_elbows.append(elbow)
+		_hands.append(hand)
 		if side == 1:
 			hand_socket = Node3D.new()
-			hand_socket.position = Vector3(0, -0.42, 0.0)
-			elbow.add_child(hand_socket)
+			hand_socket.position = Vector3(0, -0.14, 0.0)
+			hand.add_child(hand_socket)
 
 
 func _build_face(skin: Color) -> void:
 	var eye_style: String = look.get("eye", "normal")
-	var eye_y := _h * 0.68
-	var eye_x := 0.14
+	var eye_y := _h * 0.66
+	var eye_x := 0.13
 	var w := 0.12
-	var h := 0.15
+	var h := 0.16
 	match eye_style:
 		"big":
 			w = 0.15
 			h = 0.2
 		"tiny":
-			w = 0.07
-			h = 0.08
+			w = 0.075
+			h = 0.085
 		"sleepy":
-			h = 0.08
+			h = 0.09
 	for side: int in [-1, 1]:
 		var eye := Node3D.new()
 		_torso.add_child(eye)
 		_on_surface(eye, eye_x * side, eye_y)
-		Toon.block(eye, Vector3(w, h, 0.05), Vector3(0, -h * 0.5, -0.02), Color("#fbf6ee"), 0.2, 0.008)
+		Toon.block(eye, Vector3(w, h, 0.05), Vector3(0, -h * 0.5, -0.025), Color("#fbf6ee"), 0.35, 0.008)
 		var pupil := Node3D.new()
-		pupil.position = Vector3(0.012 * side, 0, 0.02)
+		pupil.position = Vector3(0.0, 0, 0.018)
 		eye.add_child(pupil)
-		var pw := w * 0.48
-		var ph := h * 0.62
-		Toon.block(pupil, Vector3(pw, ph, 0.04), Vector3(0, -ph * 0.5, 0), Color("#1d1517"), 0.25, 0.0)
-		Toon.box(pupil, Vector3(pw * 0.32, pw * 0.32, 0.02), Vector3(pw * 0.15, ph * 0.22, 0.03), Color.WHITE, 0.0)
+		var pw := w * 0.5
+		var ph := h * 0.64
+		Toon.block(pupil, Vector3(pw, ph, 0.04), Vector3(0, -ph * 0.5, 0), Color("#1d1517"), 0.4, 0.0)
+		Toon.box(pupil, Vector3(pw * 0.34, pw * 0.34, 0.02), Vector3(pw * 0.14, ph * 0.22, 0.026), Color.WHITE, 0.0)
 		_eyes.append(eye)
 		_pupils.append(pupil)
-		# Brows: chunky dark bars, rotated per emotion.
 		var brow := Node3D.new()
 		_torso.add_child(brow)
-		_on_surface(brow, eye_x * side, eye_y + h * 0.5 + 0.06)
-		Toon.box(brow, Vector3(0.17, 0.05, 0.05), Vector3(0, 0, 0.0), Color(look.get("brows", "#2b1c18")), 0.0)
+		_on_surface(brow, eye_x * side, eye_y + h * 0.5 + 0.07)
+		Toon.block(brow, Vector3(0.17, 0.05, 0.05), Vector3(0, -0.025, 0), Color(look.get("brows", "#2b1c18")), 0.35, 0.0)
 		_brows.append(brow)
-	# Cheeks
+		_brow_base.append(brow.position.y)
 	if look.get("blush", false):
 		for side: int in [-1, 1]:
 			var b := Node3D.new()
 			_torso.add_child(b)
-			_on_surface(b, 0.24 * side, eye_y - 0.13)
-			Toon.box(b, Vector3(0.09, 0.04, 0.02), Vector3.ZERO, Color("#ff8fa3"), 0.0)
-	# Mouth
+			_on_surface(b, 0.23 * side, eye_y - 0.14)
+			Toon.ball(b, 0.05, Vector3.ZERO, Color("#ff8fa3"), 0.0, 8).scale = Vector3(1.4, 0.7, 0.3)
 	var mouth_root := Node3D.new()
 	_torso.add_child(mouth_root)
-	_on_surface(mouth_root, 0.0, eye_y - 0.24)
-	_mouth = Toon.box(mouth_root, Vector3(0.13, 0.03, 0.04), Vector3.ZERO, Color("#4a1f1c"), 0.0)
-	# Snout (dogs, pigs, whatever)
+	_on_surface(mouth_root, 0.0, eye_y - 0.25)
+	_mouth = Toon.mesh(mouth_root, Shapes.chamfer_box(Vector3(0.13, 0.035, 0.04), 0.4), Vector3(0, -0.017, 0), Color("#4a1f1c"), 0.0)
 	if look.get("snout", false):
 		var sn := Node3D.new()
 		_torso.add_child(sn)
-		_on_surface(sn, 0.0, eye_y - 0.14)
-		Toon.ball(sn, 0.11, Vector3(0, 0, 0.05), skin.lightened(0.15), 0.01, 7)
-		Toon.ball(sn, 0.045, Vector3(0, 0.04, 0.15), Color("#1d1517"), 0.0, 6)
-	# Mustache: two chunky angled slabs, like the poster.
+		_on_surface(sn, 0.0, eye_y - 0.15)
+		Toon.ball(sn, 0.11, Vector3(0, 0, 0.05), skin.lightened(0.15), 0.01, 10)
+		Toon.ball(sn, 0.045, Vector3(0, 0.04, 0.15), Color("#1d1517"), 0.0, 8)
 	if look.get("mustache", false):
 		var col := Color(look.get("hair_color", "#2b1c18"))
 		for side: int in [-1, 1]:
 			var m := Node3D.new()
 			_torso.add_child(m)
-			_on_surface(m, 0.07 * side, eye_y - 0.16)
-			var slab := Toon.block(m, Vector3(0.16, 0.07, 0.06), Vector3(0, -0.035, 0), col, 0.3, 0.008)
-			slab.rotation.z = -0.32 * side
+			_on_surface(m, 0.075 * side, eye_y - 0.17)
+			var slab := Toon.mesh(m, Shapes.chamfer_box(Vector3(0.17, 0.075, 0.07), 0.4), Vector3(0, -0.037, 0), col, 0.008)
+			slab.rotation.z = -0.3 * side
 	if look.get("beard", false):
 		var bd := Node3D.new()
 		_torso.add_child(bd)
-		_on_surface(bd, 0.0, eye_y - 0.33)
-		var beard := Toon.mesh(bd, Shapes.blob(0.2, 3, 0.12), Vector3(0, -0.04, -0.06), Color(look.get("hair_color", "#d9d4cc")), 0.012)
-		beard.scale = Vector3(1.4, 1.2, 0.7)
+		_on_surface(bd, 0.0, eye_y - 0.34)
+		var beard := Toon.mesh(bd, Shapes.blob(0.2, 3, 0.1), Vector3(0, -0.04, -0.06), Color(look.get("hair_color", "#d9d4cc")), 0.012)
+		beard.scale = Vector3(1.4, 1.25, 0.7)
 	if look.get("glasses", false):
 		for side: int in [-1, 1]:
 			var g := Node3D.new()
@@ -217,12 +289,12 @@ func _build_face(skin: Color) -> void:
 			var tm := TorusMesh.new()
 			tm.inner_radius = 0.085
 			tm.outer_radius = 0.11
-			tm.rings = 8
+			tm.rings = 10
 			tm.ring_segments = 4
 			frame.mesh = Shapes.faceted(tm)
 			frame.material_override = Toon.mat(Color("#2b1c18"), 0.0)
 			frame.rotation.x = PI / 2
-			frame.position = Vector3(0, -0.07, 0.04)
+			frame.position = Vector3(0, -0.075, 0.04)
 			g.add_child(frame)
 
 
@@ -239,115 +311,115 @@ func _build_extras(skin: Color) -> void:
 	if apron != null:
 		var ap := Node3D.new()
 		_torso.add_child(ap)
-		_on_surface(ap, 0.0, _h * 0.25, 0.03)
-		var cloth := Toon.block(ap, Vector3(0.52, 0.42, 0.05), Vector3(0, -0.2, 0.01), Color(apron), 0.1, 0.01)
-		cloth.rotation.x = -0.2
+		_on_surface(ap, 0.0, _h * 0.26, 0.02)
+		var cloth := Toon.block(ap, Vector3(0.56, 0.46, 0.05), Vector3(0, -0.22, 0.01), Color(apron), 0.12, 0.01)
+		cloth.rotation.x = -0.25
+		Toon.box(ap, Vector3(0.6, 0.04, 0.03), Vector3(0, 0.0, -0.01), Color(apron).darkened(0.1), 0.0)
 	var bow = look.get("bow", null)
 	if bow != null:
 		var bw := Node3D.new()
 		_torso.add_child(bw)
-		_on_surface(bw, 0.0, _h * 0.4)
+		_on_surface(bw, 0.0, _h * 0.42)
 		for side: int in [-1, 1]:
-			Toon.ball(bw, 0.07, Vector3(0.07 * side, 0, 0.02), Color(bow), 0.008, 6).scale = Vector3(1.2, 0.8, 0.6)
+			Toon.ball(bw, 0.07, Vector3(0.07 * side, 0, 0.02), Color(bow), 0.008, 8).scale = Vector3(1.2, 0.8, 0.6)
 	if look.get("ears", false):
 		for side: int in [-1, 1]:
-			var ear := Toon.mesh(_torso, Shapes.egg(0.36, 0.1, 6, 5), Vector3(_r * 0.82 * side, _h * 0.85, -0.02), Color(look.get("hair_color", skin.darkened(0.25))), 0.01)
-			ear.rotation.z = (PI - 0.5) * side
+			var ear := Toon.mesh(_torso, Shapes.body_egg(0.38, 0.1, 0.0, 8, 6), Vector3(_r * 0.78 * side, _h * 0.86, -0.02), Color(look.get("hair_color", skin.darkened(0.25))), 0.01)
+			ear.rotation.z = (PI - 0.45) * side
 			ear.rotation.x = 0.2
+			ear.name = "Ear"
 	if look.get("tail", false):
 		_tail = Node3D.new()
-		_tail.position = Vector3(0, _h * 0.2, -_r * 0.95)
+		_tail.position = Vector3(0, _h * 0.22, -_r * 0.9)
 		_torso.add_child(_tail)
-		var tl := Toon.cyl(_tail, 0.03, 0.06, 0.32, Vector3(0, 0.14, -0.06), skin, 0.01, 5)
-		tl.rotation.x = -0.6
+		var tl := Toon.mesh(_tail, Shapes.limb(0.34, 0.035, 0.06, 6), Vector3.ZERO, skin, 0.01)
+		tl.rotation.x = PI - 0.7
 	if look.get("baby", false):
-		var diaper := Toon.mesh(_torso, Shapes.egg(0.42, _r * 1.05, 10, 4), Vector3(0, -0.08, 0), Color("#f6f4ef"), 0.015)
-		diaper.scale = Vector3(1, 1, 1)
+		Toon.mesh(_torso, Shapes.body_egg(0.45, _r * 1.06, 0.0, 14, 5), Vector3(0, -0.1, 0), Color("#f6f4ef"), 0.015)
 	var hair = look.get("hair", null)
 	if hair != null:
 		for side: int in [-1, 1]:
-			Toon.mesh(_torso, Shapes.blob(0.14, 7 + side, 0.15), Vector3(_r * 0.9 * side, _h * 0.78, -0.08), Color(hair), 0.01)
+			Toon.mesh(_torso, Shapes.blob(0.15, 7 + side, 0.15), Vector3(_r * 0.85 * side, _h * 0.78, -0.08), Color(hair), 0.01)
 	var cape = look.get("cape", null)
 	if cape != null:
-		var cp := Toon.block(_torso, Vector3(_r * 2.0, _h * 0.75, 0.04), Vector3(0, 0.05, -_r * 0.85), Color(cape), 0.1, 0.012)
-		cp.rotation.x = 0.12
+		var cp := Toon.block(_torso, Vector3(_r * 1.9, _h * 0.72, 0.04), Vector3(0, 0.05, -_r * 0.86), Color(cape), 0.1, 0.012)
+		cp.rotation.x = 0.14
 
 
 func _build_hat() -> void:
 	var hat: String = look.get("hat", "none")
 	var col := Color(look.get("hat_color", "#c0392b"))
-	var top := head_top
+	var top := _hat
+	var hr := _egg_r(_h * 0.88) + 0.04   # hat radius that fits this egg
 	match hat:
 		"cap":
-			# Two-tone trucker cap like the poster.
-			var crown := Toon.mesh(top, Shapes.lathe(PackedVector2Array([Vector2(0.4, 0), Vector2(0.39, 0.14), Vector2(0.28, 0.27), Vector2(0, 0.3)]), 7, 0.5), Vector3(0, -0.13, 0), Color(look.get("hat_front", "#e8dccb")), 0.012)
-			crown.rotation.x = -0.12
-			Toon.mesh(top, Shapes.lathe(PackedVector2Array([Vector2(0.41, 0), Vector2(0.41, 0.07), Vector2(0, 0.07)]), 7, 0.5), Vector3(0, -0.14, 0), col, 0.012)
-			var brim := Toon.block(top, Vector3(0.48, 0.04, 0.3), Vector3(0, -0.1, 0.36), col, 0.3, 0.01)
-			brim.rotation.x = 0.12
+			var crown := Toon.mesh(top, Shapes.lathe(PackedVector2Array([Vector2(hr, 0), Vector2(hr * 0.97, 0.13), Vector2(hr * 0.7, 0.26), Vector2(0, 0.29)]), 12, 0.5), Vector3(0, -0.12, 0), Color(look.get("hat_front", "#e8dccb")), 0.012)
+			crown.rotation.x = -0.1
+			Toon.mesh(top, Shapes.lathe(PackedVector2Array([Vector2(hr + 0.01, 0), Vector2(hr + 0.01, 0.07), Vector2(0, 0.07)]), 12, 0.5), Vector3(0, -0.13, 0), col, 0.012)
+			var brim := Toon.mesh(top, Shapes.chamfer_box(Vector3(hr * 1.2, 0.04, 0.32), 0.4), Vector3(0, -0.11, hr * 0.85), col, 0.01)
+			brim.rotation.x = 0.14
 		"chef":
-			Toon.cyl(top, 0.3, 0.28, 0.3, Vector3(0, 0.03, 0), Color.WHITE, 0.012, 9)
-			Toon.mesh(top, Shapes.blob(0.33, 11, 0.12), Vector3(0, 0.3, 0), Color.WHITE, 0.012).scale = Vector3(1.1, 0.75, 1.1)
+			Toon.cyl(top, hr * 0.85, hr * 0.8, 0.3, Vector3(0, 0.05, 0), Color.WHITE, 0.012, 12)
+			Toon.mesh(top, Shapes.blob(hr * 0.95, 11, 0.12), Vector3(0, 0.32, 0), Color.WHITE, 0.012).scale = Vector3(1.1, 0.75, 1.1)
 		"wizard":
-			Toon.cyl(top, 0.56, 0.56, 0.04, Vector3(0, -0.06, 0), col, 0.012, 9)
-			var cone := Toon.cyl(top, 0.0, 0.32, 0.85, Vector3(0.05, 0.36, 0), col, 0.012, 7)
+			Toon.cyl(top, hr * 1.5, hr * 1.5, 0.04, Vector3(0, -0.04, 0), col, 0.012, 12)
+			var cone := Toon.cyl(top, 0.0, hr * 0.9, 0.85, Vector3(0.05, 0.38, 0), col, 0.012, 9)
 			cone.rotation.z = -0.22
-			Toon.ball(top, 0.06, Vector3(0.0, 0.25, 0.27), Color("#ffd166"), 0.0, 5)
-			Toon.ball(top, 0.04, Vector3(0.1, 0.45, 0.2), Color("#ffd166"), 0.0, 5)
+			Toon.ball(top, 0.06, Vector3(0.0, 0.25, hr * 0.75), Color("#ffd166"), 0.0, 6)
+			Toon.ball(top, 0.04, Vector3(0.1, 0.45, hr * 0.5), Color("#ffd166"), 0.0, 6)
 		"tinfoil":
-			var foil := Toon.cyl(top, 0.0, 0.38, 0.5, Vector3(0, 0.15, 0), Color("#d7dbe2"), 0.012, 5)
+			var foil := Toon.cyl(top, 0.0, hr * 1.05, 0.5, Vector3(0, 0.17, 0), Color("#d7dbe2"), 0.012, 5)
 			foil.material_override = Toon.mat(Color("#dfe3ea"), 0.012, 0.25)
 		"crown":
-			Toon.cyl(top, 0.25, 0.23, 0.16, Vector3(0, 0.02, 0), Color("#ffd166"), 0.01, 8)
+			Toon.cyl(top, hr * 0.7, hr * 0.66, 0.16, Vector3(0, 0.03, 0), Color("#ffd166"), 0.01, 10)
 			for i in 5:
 				var a := TAU * i / 5.0
-				Toon.cyl(top, 0.0, 0.05, 0.12, Vector3(cos(a) * 0.23, 0.16, sin(a) * 0.23), Color("#ffd166"), 0.0, 4)
-				Toon.ball(top, 0.03, Vector3(cos(a) * 0.24, 0.05, sin(a) * 0.24), Color("#e84393"), 0.0, 5)
+				Toon.cyl(top, 0.0, 0.05, 0.12, Vector3(cos(a) * hr * 0.66, 0.17, sin(a) * hr * 0.66), Color("#ffd166"), 0.0, 4)
+				Toon.ball(top, 0.03, Vector3(cos(a) * hr * 0.69, 0.06, sin(a) * hr * 0.69), Color("#e84393"), 0.0, 6)
 		"beanie":
-			Toon.mesh(top, Shapes.lathe(PackedVector2Array([Vector2(0.4, 0), Vector2(0.38, 0.16), Vector2(0.24, 0.3), Vector2(0, 0.33)]), 8, 0.5), Vector3(0, -0.14, 0), col, 0.012)
-			Toon.ball(top, 0.08, Vector3(0, 0.22, 0), col.lightened(0.3), 0.008, 6)
+			Toon.mesh(top, Shapes.lathe(PackedVector2Array([Vector2(hr, 0), Vector2(hr * 0.95, 0.16), Vector2(hr * 0.6, 0.31), Vector2(0, 0.34)]), 12, 0.5), Vector3(0, -0.12, 0), col, 0.012)
+			Toon.ball(top, 0.08, Vector3(0, 0.25, 0), col.lightened(0.3), 0.008, 8)
 		"propeller":
-			Toon.mesh(top, Shapes.lathe(PackedVector2Array([Vector2(0.38, 0), Vector2(0.3, 0.16), Vector2(0, 0.2)]), 8, 0.5), Vector3(0, -0.12, 0), col, 0.012)
+			Toon.mesh(top, Shapes.lathe(PackedVector2Array([Vector2(hr, 0), Vector2(hr * 0.8, 0.16), Vector2(0, 0.2)]), 12, 0.5), Vector3(0, -0.1, 0), col, 0.012)
 			var prop := Node3D.new()
 			prop.name = "Propeller"
-			prop.position = Vector3(0, 0.12, 0)
+			prop.position = Vector3(0, 0.14, 0)
 			top.add_child(prop)
 			Toon.cyl(prop, 0.015, 0.015, 0.1, Vector3(0, -0.02, 0), Color("#555555"), 0.0, 4)
 			Toon.box(prop, Vector3(0.5, 0.02, 0.08), Vector3(0, 0.04, 0), Color("#ffd166"), 0.006)
 		"tophat":
-			Toon.cyl(top, 0.42, 0.42, 0.04, Vector3(0, -0.06, 0), Color("#1d1517"), 0.012, 9)
-			Toon.cyl(top, 0.26, 0.26, 0.42, Vector3(0, 0.16, 0), Color("#1d1517"), 0.012, 9)
-			Toon.cyl(top, 0.265, 0.265, 0.06, Vector3(0, 0.0, 0), col, 0.0, 9)
+			Toon.cyl(top, hr * 1.15, hr * 1.15, 0.04, Vector3(0, -0.04, 0), Color("#1d1517"), 0.012, 12)
+			Toon.cyl(top, hr * 0.72, hr * 0.72, 0.42, Vector3(0, 0.18, 0), Color("#1d1517"), 0.012, 12)
+			Toon.cyl(top, hr * 0.73, hr * 0.73, 0.06, Vector3(0, 0.02, 0), col, 0.0, 12)
 		"headband":
-			var band := Toon.cyl(top, _egg_r(_h * 0.86) + 0.01, _egg_r(_h * 0.86) + 0.02, 0.07, Vector3(0, -_h * 0.12, 0), col, 0.008, 10)
-			band.name = "Headband"
+			Toon.cyl(top, _egg_r(_h * 0.8) + 0.01, _egg_r(_h * 0.76) + 0.015, 0.07, Vector3(0, -_h * 0.16, 0), col, 0.008, 14)
 		"headset":
 			var arc := MeshInstance3D.new()
 			var tm := TorusMesh.new()
-			tm.inner_radius = 0.36
-			tm.outer_radius = 0.41
+			tm.inner_radius = hr * 0.95
+			tm.outer_radius = hr * 1.06
 			tm.ring_segments = 4
-			tm.rings = 12
+			tm.rings = 14
 			arc.mesh = Shapes.faceted(tm)
 			arc.material_override = Toon.mat(Color("#2d3436"), 0.0)
 			arc.rotation.z = PI / 2
 			arc.position = Vector3(0, -0.2, 0)
 			top.add_child(arc)
 			for side: int in [-1, 1]:
-				var cup := Toon.cyl(top, 0.11, 0.11, 0.09, Vector3(0.41 * side, -0.25, 0), col, 0.008, 7)
+				var cup := Toon.cyl(top, 0.11, 0.11, 0.09, Vector3(hr * 1.02 * side, -0.26, 0), col, 0.008, 9)
 				cup.rotation.z = PI / 2
 		"bun":
-			Toon.mesh(top, Shapes.blob(0.17, 5, 0.1), Vector3(0, 0.06, -0.1), Color(look.get("hair_color", "#d9d4cc")), 0.01)
+			Toon.mesh(top, Shapes.blob(0.17, 5, 0.1), Vector3(0, 0.07, -0.1), Color(look.get("hair_color", "#d9d4cc")), 0.01)
 		"bow":
 			for side: int in [-1, 1]:
-				Toon.ball(top, 0.1, Vector3(0.12 * side, 0.02, 0.05), col, 0.008, 6).scale = Vector3(1.3, 0.9, 0.6)
-			Toon.ball(top, 0.05, Vector3(0, 0.02, 0.06), col.darkened(0.2), 0.0, 5)
+				Toon.ball(top, 0.1, Vector3(0.12 * side, 0.03, 0.05), col, 0.008, 8).scale = Vector3(1.3, 0.9, 0.6)
+			Toon.ball(top, 0.05, Vector3(0, 0.03, 0.06), col.darkened(0.2), 0.0, 6)
 		"cowboy":
-			Toon.cyl(top, 0.6, 0.6, 0.04, Vector3(0, -0.05, 0), col, 0.012, 10).scale = Vector3(1, 1, 0.8)
-			Toon.cyl(top, 0.24, 0.3, 0.28, Vector3(0, 0.1, 0), col, 0.012, 8)
+			Toon.cyl(top, hr * 1.7, hr * 1.7, 0.04, Vector3(0, -0.03, 0), col, 0.012, 14).scale = Vector3(1, 1, 0.8)
+			Toon.cyl(top, hr * 0.68, hr * 0.82, 0.28, Vector3(0, 0.12, 0), col, 0.012, 10)
 
 
-# --- behavior --------------------------------------------------------------------------
+# --- public animation API ----------------------------------------------------------------------
 
 ## neutral, happy, angry, confused, excited, sad, scared, suspicious, in_love, smug
 func express(emotion: String, hold := 4.0) -> void:
@@ -355,147 +427,481 @@ func express(emotion: String, hold := 4.0) -> void:
 	_emotion_timer = hold
 
 
-func hop() -> void:
-	_hop = 1.0
+## One-shot animation. See ACTIONS for names.
+func play(action: String) -> void:
+	if not ACTIONS.has(action) or _tumble > 0.0:
+		return
+	_action = action
+	_action_t = 0.0
+	_action_dur = ACTIONS[action]
+	if action == "hop" or action == "celebrate":
+		_hop = 1.0
 
+
+func is_playing() -> bool:
+	return _action != ""
+
+
+func hop() -> void:
+	play("hop")
+
+
+## Fall over and roll like an egg, then wobble back up dizzy.
+func tumble(direction: Vector3, strength := 1.0) -> void:
+	_tumble = 1.1 + strength * 0.5
+	_tumble_dir = Vector3(direction.x, 0, direction.z).normalized() if direction.length() > 0.01 else Vector3.FORWARD
+	_getup = 0.0
+	_action = ""
+	express("scared", 2.5)
+
+
+func is_tumbling() -> bool:
+	return _tumble > 0.0 or _getup > 0.0
+
+
+# --- springs ---------------------------------------------------------------------------------------
+
+func _spring(name: String, target: float, delta: float, stiffness := 160.0, damping := 16.0) -> float:
+	var st: Array = _spr.get(name, [target, 0.0])
+	var x: float = st[0]
+	var v: float = st[1]
+	v += (target - x) * stiffness * delta
+	v *= exp(-damping * delta)
+	x += v * delta
+	_spr[name] = [x, v]
+	return x
+
+
+func _bump(name: String, impulse: float) -> void:
+	var st: Array = _spr.get(name, [0.0, 0.0])
+	st[1] = float(st[1]) + impulse
+	_spr[name] = st
+
+
+# --- per-frame ---------------------------------------------------------------------------------------
 
 func _process(delta: float) -> void:
 	if _torso == null:
 		return
+	delta = minf(delta, 0.05)
 	_t += delta
 	_emotion_timer -= delta
 	if _emotion_timer <= 0.0 and _emotion != "neutral":
 		_emotion = "neutral"
 
-	# Walk cycle
-	var moving := clampf(speed, 0.0, 2.0)
-	_phase += delta * (6.0 + moving * 4.0) * (1.0 if moving > 0.05 else 0.0)
-	var swing := sin(_phase) * 0.7 * minf(moving, 1.2)
-	for i in _legs.size():
-		var target := swing * (1.0 if i == 0 else -1.0)
-		_legs[i].rotation.x = lerpf(_legs[i].rotation.x, target, 1.0 - exp(-18.0 * delta))
-	var bob := absf(sin(_phase)) * 0.05 * minf(moving, 1.0)
-	var breathe := sin(_t * 2.2) * 0.012
-	var ghost: bool = look.get("ghost", false)
-	if ghost:
-		bob = 0.25 + sin(_t * 1.6) * 0.1
-	_hop = maxf(0.0, _hop - delta * 2.5)
-	var hop_y := sin(_hop * PI) * 0.6
-	_torso.position.y = bob + breathe + hop_y
-	_torso.rotation.z = sin(_phase * 0.5) * 0.06 * minf(moving, 1.0)
-	_torso.rotation.x = 0.08 * minf(moving, 2.0) * 0.5
-	var squash := 1.0 + sin(_t * (14.0 if talking else 2.2)) * (0.025 if talking else 0.01)
-	_torso.scale = Vector3(1.0 / sqrt(squash), squash, 1.0 / sqrt(squash))
+	# Where are we going? (works for anything that moves us)
+	var gp := global_position
+	var measured := (gp - _last_pos) / maxf(delta, 0.0001)
+	_last_pos = gp
+	if measured.length() > 30.0:
+		measured = Vector3.ZERO   # teleported
+	var vel: Vector3 = velocity_hint if velocity_hint != Vector3.INF else measured
+	vel.y = 0.0
+	_vel = _vel.lerp(vel, 1.0 - exp(-12.0 * delta))
+	var accel := (_vel - _prev_vel) / maxf(delta, 0.0001)
+	_prev_vel = _vel
+	var local_vel := global_basis.inverse() * _vel / maxf(_s, 0.01)
+	var local_acc := global_basis.inverse() * accel / maxf(_s, 0.01)
+	var ground_speed := local_vel.length()
+	if velocity_hint == Vector3.INF and measured.length() < 0.05:
+		ground_speed = speed * 1.4
+	var moving := clampf(ground_speed / 1.6, 0.0, 2.0)
 
-	_animate_arms(delta, swing)
-	_animate_face(delta)
-	# Whatever we carry stays level, no matter how the arm is bent.
-	if hand_socket:
-		hand_socket.global_basis = Basis(Vector3.UP, global_rotation.y).scaled(Vector3.ONE * _s)
-		if carrying:
-			# Box balanced right over the head, like the poster.
-			var over := head_top.global_position + Vector3(0, 0.3 * _s, 0)
-			hand_socket.global_position = hand_socket.global_position.lerp(over, 0.85)
+	if _tumble > 0.0 or _getup > 0.0:
+		_animate_tumble(delta)
+		_animate_face(delta, {"brow_tilt": 0.0, "brow_raise": 0.05, "eye": 1.25, "mouth_w": 0.8, "mouth_h": 3.0})
+		return
+
+	# 1. Locomotion ----------------------------------------------------------------
+	var stride := 0.5
+	var waddle := float(look.get("waddle", 0.5))
+	var bounce := float(look.get("bounce", 0.5))
+	if moving > 0.05:
+		_phase += ground_speed * delta / stride * PI
+	else:
+		_phase = lerp_angle(_phase, roundf(_phase / PI) * PI, 1.0 - exp(-6.0 * delta))
+	var step := sin(_phase)
+	var walk := minf(moving, 1.2)
+	var pose := {
+		"lean_x": clampf(local_acc.z * 0.012 + local_vel.z * 0.05, -0.35, 0.35),   # lean into acceleration
+		"lean_z": -step * 0.09 * waddle * walk + clampf(-local_acc.x * 0.01, -0.2, 0.2),
+		"yaw": step * 0.12 * walk,
+		"y": absf(cos(_phase)) * (0.04 + 0.05 * bounce) * walk,
+		"squash": 1.0 + sin(_t * 2.1) * 0.012,
+		"leg": [step * 0.6 * walk, -step * 0.6 * walk],
+		"lift": [maxf(0.0, -cos(_phase)) * 0.09 * walk, maxf(0.0, cos(_phase)) * 0.09 * walk],
+		"arm_out": [0.16 + 0.05 * walk, 0.16 + 0.05 * walk],
+		"arm_fwd": [step * 0.55 * walk, -step * 0.55 * walk],
+		"arm_bend": [-0.3 - 0.25 * walk, -0.3 - 0.25 * walk],
+		"brow_tilt": 0.0, "brow_raise": 0.0, "eye": 1.0, "mouth_w": 1.0, "mouth_h": 1.0,
+	}
+	# Idle: weight shift + random fidgets
+	if moving < 0.05:
+		pose.lean_z += sin(_t * 0.9) * 0.025
+		pose.y += sin(_t * 2.1) * 0.006
+		_idle_timer -= delta
+		if idle_fidgets and _idle_timer <= 0.0 and _action == "" and not talking and not carrying and not waving:
+			_idle_timer = randf_range(4.0, 9.0)
+			play(["look_around", "tap_foot", "scratch", "look_around", "yawn", "nod"][randi() % 6])
+	else:
+		_idle_timer = maxf(_idle_timer, 2.0)
+
+	# 2. Carrying / waiting / phone --------------------------------------------------
+	if carrying:
+		if carry_style == "overhead":
+			pose.arm_out[1] = 2.95
+			pose.arm_fwd[1] = 0.0
+			pose.arm_bend[1] = -0.3
+			pose.arm_out[0] = 0.7
+			pose.arm_fwd[0] = 0.35
+			pose.arm_bend[0] = -1.7       # hand on hip
+		else:
+			for i in 2:
+				pose.arm_out[i] = 0.35
+				pose.arm_fwd[i] = -0.9
+				pose.arm_bend[i] = -1.0
+	elif waving:
+		pose.arm_out[1] = 2.5
+		pose.arm_fwd[1] = 0.0
+		pose.arm_bend[1] = -0.5 + sin(_t * 12.0) * 0.5
+	if phone_mode:
+		pose.arm_out[1] = 1.2
+		pose.arm_fwd[1] = -0.3
+		pose.arm_bend[1] = -2.3
+
+	# 3. Talking gestures ----------------------------------------------------------------
+	if talking and _action == "" and not carrying:
+		pose.arm_out[0] = 0.45 + sin(_t * 4.6) * 0.25
+		pose.arm_fwd[0] = -0.5 + sin(_t * 3.3) * 0.25
+		pose.arm_bend[0] = -1.0
+		if not waving and not phone_mode:
+			pose.arm_out[1] = 0.45 + sin(_t * 3.9 + 1.0) * 0.3
+			pose.arm_fwd[1] = -0.6 + sin(_t * 5.1 + 2.0) * 0.3
+			pose.arm_bend[1] = -1.1
+		pose.y += absf(sin(_t * 7.0)) * 0.015
+		pose.lean_x += sin(_t * 3.0) * 0.03
+
+	# 4. Emotion posture -------------------------------------------------------------------
+	_apply_emotion(pose)
+
+	# 5. One-shot action ----------------------------------------------------------------------
+	if _action != "":
+		_action_t += delta
+		var u := clampf(_action_t / _action_dur, 0.0, 1.0)
+		var w := minf(1.0, minf(u, 1.0 - u) * 6.0)   # ease in/out
+		_apply_action(pose, _action, u, w)
+		if u >= 1.0:
+			_action = ""
+
+	if flailing:
+		for i in 2:
+			pose.arm_out[i] = 2.4 + sin(_t * 30.0 + i) * 0.6
+			pose.arm_fwd[i] = sin(_t * 25.0 + i * 2.0) * 1.2
+			pose.arm_bend[i] = -0.4
+		pose.leg = [sin(_t * 28.0) * 0.8, -sin(_t * 28.0) * 0.8]
+
+	_apply_pose(pose, delta)
+	_animate_face(delta, pose)
+
+
+func _apply_emotion(pose: Dictionary) -> void:
+	match _emotion:
+		"angry":
+			pose.brow_tilt = 0.45
+			pose.brow_raise = -0.025
+			if not carrying and not talking:
+				for i in 2:
+					pose.arm_out[i] = 0.5
+					pose.arm_bend[i] = -0.6
+			pose.lean_x += 0.08
+		"happy", "in_love":
+			pose.brow_raise = 0.03
+			pose.mouth_w = 1.4
+			pose.mouth_h = 2.2
+			pose.y += absf(sin(_t * 6.0)) * 0.02
+		"excited":
+			pose.brow_raise = 0.04
+			pose.mouth_w = 1.5
+			pose.mouth_h = 3.0
+			pose.y += absf(sin(_t * 9.0)) * 0.05
+			if not carrying:
+				pose.arm_out[0] = 2.2 + sin(_t * 14.0) * 0.3
+				pose.arm_out[1] = 2.2 + sin(_t * 14.0 + PI) * 0.3
+				pose.arm_fwd = [0.0, 0.0]
+		"sad":
+			pose.brow_tilt = -0.4
+			pose.mouth_w = 0.7
+			pose.lean_x += 0.18
+			pose.y -= 0.03
+			pose.arm_out = [0.08, 0.08]
+		"scared", "surprised":
+			pose.brow_raise = 0.05
+			pose.eye = 1.25
+			pose.mouth_w = 0.7
+			pose.mouth_h = 4.0
+			pose.lean_x -= 0.12
+			pose.lean_z += sin(_t * 40.0) * 0.03
+		"confused":
+			pose.brow_tilt = 0.25
+			pose.lean_z += 0.1
+		"suspicious":
+			pose.brow_tilt = 0.25
+			pose.eye = 0.75
+			pose.lean_x += 0.05
+		"smug":
+			pose.brow_tilt = 0.2
+			pose.mouth_w = 1.3
+			pose.lean_x -= 0.08
+	if look.get("grumpy", false) and _emotion == "neutral":
+		pose.brow_tilt = 0.3   # resting angry-face, like the poster
+
+
+func _apply_action(pose: Dictionary, a: String, u: float, w: float) -> void:
+	var t := u * _action_dur
+	match a:
+		"wave":
+			pose.arm_out[1] = lerpf(pose.arm_out[1], 2.6, w)
+			pose.arm_fwd[1] = lerpf(pose.arm_fwd[1], 0.0, w)
+			pose.arm_bend[1] = lerpf(pose.arm_bend[1], -0.5 + sin(t * 13.0) * 0.6, w)
+			pose.lean_z += 0.08 * w
+		"knock":
+			var rap := maxf(0.0, sin(t * 17.0))
+			pose.arm_out[1] = lerpf(pose.arm_out[1], 0.55, w)
+			pose.arm_fwd[1] = lerpf(pose.arm_fwd[1], -1.35 - rap * 0.2, w)
+			pose.arm_bend[1] = lerpf(pose.arm_bend[1], -1.1 + rap * 0.6, w)
+			pose.lean_x += 0.08 * w
+		"celebrate":
+			for i in 2:
+				pose.arm_out[i] = lerpf(pose.arm_out[i], 2.7, w)
+				pose.arm_fwd[i] = lerpf(pose.arm_fwd[i], 0.0, w)
+				pose.arm_bend[i] = lerpf(pose.arm_bend[i], -0.15, w)
+			pose.yaw += TAU * smoothstep(0.1, 0.7, u)
+			pose.mouth_h = 3.0
+			pose.brow_raise = 0.05
+		"stomp":
+			pose.y += absf(sin(u * PI * 3.0)) * 0.12 * w
+			for i in 2:
+				pose.arm_out[i] = lerpf(pose.arm_out[i], 0.35, w)
+				pose.arm_fwd[i] = lerpf(pose.arm_fwd[i], 0.25, w)
+				pose.arm_bend[i] = lerpf(pose.arm_bend[i], -0.2, w)
+			pose.lean_z += sin(t * 30.0) * 0.06 * w
+			pose.leg[0] -= absf(sin(u * PI * 3.0)) * 0.6 * w
+			pose.brow_tilt = 0.5
+		"laugh":
+			pose.lean_x -= 0.25 * w
+			pose.y += absf(sin(t * 18.0)) * 0.04 * w
+			pose.squash += sin(t * 18.0) * 0.04 * w
+			pose.mouth_h = 4.0
+			pose.mouth_w = 1.5
+			for i in 2:
+				pose.arm_fwd[i] = lerpf(pose.arm_fwd[i], -0.7, w)
+				pose.arm_bend[i] = lerpf(pose.arm_bend[i], -1.4, w)
+				pose.arm_out[i] = lerpf(pose.arm_out[i], 0.5, w)
+		"shrug":
+			for i in 2:
+				pose.arm_out[i] = lerpf(pose.arm_out[i], 1.0, w)
+				pose.arm_fwd[i] = lerpf(pose.arm_fwd[i], -0.4, w)
+				pose.arm_bend[i] = lerpf(pose.arm_bend[i], -1.4, w)
+			pose.y += 0.04 * w
+			pose.brow_raise = 0.05 * w
+			pose.lean_z += 0.1 * w
+		"point":
+			pose.arm_out[1] = lerpf(pose.arm_out[1], 0.4, w)
+			pose.arm_fwd[1] = lerpf(pose.arm_fwd[1], -1.55, w)
+			pose.arm_bend[1] = lerpf(pose.arm_bend[1], 0.0, w)
+			pose.lean_x += 0.1 * w
+		"flex":
+			for i in 2:
+				pose.arm_out[i] = lerpf(pose.arm_out[i], 1.55, w)
+				pose.arm_fwd[i] = lerpf(pose.arm_fwd[i], 0.0, w)
+				pose.arm_bend[i] = lerpf(pose.arm_bend[i], -2.2 + sin(t * 10.0) * 0.15, w)
+			pose.squash += 0.04 * w * sin(t * 10.0)
+			pose.brow_tilt = 0.3
+		"dance":
+			var b := sin(t * 9.0)
+			pose.lean_z += b * 0.2 * w
+			pose.y += absf(b) * 0.06 * w
+			pose.arm_out[0] = lerpf(pose.arm_out[0], 1.8 + b, w)
+			pose.arm_out[1] = lerpf(pose.arm_out[1], 1.8 - b, w)
+			pose.yaw += b * 0.3 * w
+			pose.leg[0] += b * 0.4 * w
+			pose.leg[1] -= b * 0.4 * w
+		"yawn":
+			for i in 2:
+				pose.arm_out[i] = lerpf(pose.arm_out[i], 2.5, w)
+				pose.arm_bend[i] = lerpf(pose.arm_bend[i], -0.6, w)
+				pose.arm_fwd[i] = lerpf(pose.arm_fwd[i], 0.2, w)
+			pose.lean_x -= 0.15 * w
+			pose.squash += 0.06 * w
+			pose.mouth_h = 1.0 + 5.0 * w
+			pose.eye = 1.0 - 0.8 * w
+		"scratch":
+			pose.arm_out[1] = lerpf(pose.arm_out[1], 2.3, w)
+			pose.arm_fwd[1] = lerpf(pose.arm_fwd[1], -0.2, w)
+			pose.arm_bend[1] = lerpf(pose.arm_bend[1], -1.9 + sin(t * 22.0) * 0.25, w)
+			pose.lean_z -= 0.1 * w
+			pose.brow_tilt = 0.2
+		"look_around":
+			pose.yaw += sin(u * TAU) * 0.6 * w
+			pose.lean_z += sin(u * TAU) * 0.05 * w
+		"tap_foot":
+			pose.leg[1] -= maxf(0.0, sin(t * 14.0)) * 0.25 * w
+			pose.lift[1] += maxf(0.0, sin(t * 14.0)) * 0.05 * w
+			for i in 2:
+				pose.arm_out[i] = lerpf(pose.arm_out[i], 0.6, w)
+				pose.arm_bend[i] = lerpf(pose.arm_bend[i], -1.6, w)
+		"eat":
+			var chomp := maxf(0.0, sin(t * 10.0))
+			pose.arm_out[1] = lerpf(pose.arm_out[1], 0.6, w)
+			pose.arm_fwd[1] = lerpf(pose.arm_fwd[1], -1.0, w)
+			pose.arm_bend[1] = lerpf(pose.arm_bend[1], -2.0 - chomp * 0.2, w)
+			pose.mouth_h = 1.0 + chomp * 3.0
+		"hop":
+			pose.squash += (-0.15 if u < 0.15 else (0.12 if u < 0.5 else 0.0)) * w
+		"spin":
+			pose.yaw += TAU * smoothstep(0.0, 1.0, u)
+			for i in 2:
+				pose.arm_out[i] = lerpf(pose.arm_out[i], 1.6, w)
+		"nod":
+			pose.lean_x += sin(u * TAU * 2.0) * 0.12 * w
+		"shake_head":
+			pose.yaw += sin(u * TAU * 3.0) * 0.25 * w
+		"facepalm":
+			pose.arm_out[1] = lerpf(pose.arm_out[1], 0.9, w)
+			pose.arm_fwd[1] = lerpf(pose.arm_fwd[1], -1.2, w)
+			pose.arm_bend[1] = lerpf(pose.arm_bend[1], -2.1, w)
+			pose.lean_x += 0.15 * w
+			pose.eye = 1.0 - 0.9 * w
+		"slam":
+			pose.arm_out[1] = lerpf(pose.arm_out[1], 0.5, w)
+			pose.arm_fwd[1] = lerpf(pose.arm_fwd[1], -1.2 + sin(u * PI) * 0.8, w)
+			pose.arm_bend[1] = lerpf(pose.arm_bend[1], -0.4, w)
+			pose.lean_x += 0.2 * sin(u * PI) * w
+		"work":
+			# Generic busy hands at a counter.
+			for i in 2:
+				pose.arm_out[i] = lerpf(pose.arm_out[i], 0.45, w)
+				pose.arm_fwd[i] = lerpf(pose.arm_fwd[i], -1.0 + sin(t * 9.0 + i * PI) * 0.25, w)
+				pose.arm_bend[i] = lerpf(pose.arm_bend[i], -0.9 + sin(t * 7.0 + i) * 0.3, w)
+			pose.lean_x += 0.15 * w
+
+
+func _apply_pose(pose: Dictionary, delta: float) -> void:
+	var land := _spring("land", 0.0, delta, 260.0, 12.0)
+	_hop = maxf(0.0, _hop - delta * 1.8)
+	# Jumps lift the whole egg (legs dangle); bobs only move the body.
+	var hop_y := sin(clampf(_hop, 0.0, 1.0) * PI) * 0.55
+	_rig.position.y = hop_y
+	if hop_y > 0.02:
+		pose.leg = [0.5, -0.3]
+		pose.lift = [0.06, 0.1]
+	var y := _spring("y", float(pose.y), delta, 220.0, 18.0)
+	var lean_x := _spring("lean_x", pose.lean_x, delta, 120.0, 13.0)
+	var lean_z := _spring("lean_z", pose.lean_z, delta, 120.0, 12.0)
+	var squash := _spring("squash", float(pose.squash) + land, delta, 300.0, 14.0)
+	_torso.position.y = y
+	_torso.rotation = Vector3(lean_x, _spring("yaw", pose.yaw, delta, 90.0, 12.0), lean_z)
+	var sq := clampf(squash, 0.7, 1.35)
+	_torso.scale = Vector3(1.0 / sqrt(sq), sq, 1.0 / sqrt(sq))
+	# Arms with follow-through (soft springs = a little overshoot)
+	for i in 2:
+		var side := -1.0 if i == 0 else 1.0
+		var out := _spring("ao%d" % i, pose.arm_out[i], delta, 150.0, 11.0)
+		var fwd := _spring("af%d" % i, pose.arm_fwd[i], delta, 150.0, 11.0)
+		var bend := _spring("ab%d" % i, pose.arm_bend[i], delta, 170.0, 12.0)
+		_shoulders[i].rotation = Vector3(fwd, 0, out * side)
+		_elbows[i].rotation = Vector3(bend, 0, 0)
+	# Legs + boot lift
+	for i in _legs.size():
+		var swing := _spring("leg%d" % i, pose.leg[i], delta, 260.0, 18.0)
+		_legs[i].rotation.x = swing
+		_boots[i].position.y = -_leg_len - 0.02 + float(pose.lift[i])
+		_boots[i].rotation.x = -swing * 0.6
+	# Hat lags behind the head (springy wobble)
+	if _hat:
+		_hat.rotation.x = _spring("hat_x", -(lean_x - float(pose.lean_x)) * 2.0 + (y - float(pose.y)) * 1.5, delta, 90.0, 7.0)
+		_hat.rotation.z = _spring("hat_z", -(lean_z - float(pose.lean_z)) * 2.0, delta, 90.0, 7.0)
 	if _tail:
 		_tail.rotation.y = sin(_t * (22.0 if _emotion in ["happy", "excited", "in_love"] else 6.0)) * 0.7
 	var prop := head_top.get_node_or_null("Propeller")
+	if prop == null and _hat:
+		prop = _hat.get_node_or_null("Propeller")
 	if prop:
-		prop.rotation.y += delta * (6.0 + moving * 20.0)
+		prop.rotation.y += delta * (6.0 + _vel.length() * 8.0)
+	# Landing from a hop: squash + bounce
+	if _hop <= 0.0 and float(_spr.get("was_air", [0.0])[0]) > 0.5:
+		_bump("land", -2.5)
+	_spr["was_air"] = [1.0 if _hop > 0.1 else 0.0, 0.0]
+	# Whatever we carry stays level.
+	if hand_socket:
+		hand_socket.global_basis = Basis(Vector3.UP, global_rotation.y).scaled(Vector3.ONE * _s)
+		if carrying:
+			var target := head_top.global_position + Vector3(0, 0.32 * _s, 0) if carry_style == "overhead" \
+				else _torso.global_position + global_basis * Vector3(0, _h * 0.42, _r * 1.25) * 1.0
+			hand_socket.global_position = hand_socket.global_position.lerp(target, 0.85)
 
 
-func _animate_arms(delta: float, swing: float) -> void:
-	var k := 1.0 - exp(-14.0 * delta)
-	for i in 2:
-		var side := -1.0 if i == 0 else 1.0
-		var sh := _shoulders[i]
-		var el := _elbows[i]
-		var out := 0.18     # rotation.z outward amount (multiplied by side)
-		var fwd := -swing * (1.0 if i == 0 else -1.0) * 0.8
-		var bend := -0.25
-		if flailing:
-			out = 2.4 + sin(_t * 30.0 + i) * 0.6
-			fwd = sin(_t * 25.0 + i * 2.0) * 1.2
-			bend = -0.4
-		elif i == 1 and carrying:
-			# Right arm straight up, box overhead.
-			out = 2.95
-			fwd = 0.0
-			bend = -0.35
-		elif i == 1 and waving:
-			out = 2.5
-			fwd = 0.0
-			bend = -0.6 + sin(_t * 12.0) * 0.5
-		elif i == 0 and carrying:
-			# Other hand on the hip, like the poster.
-			out = 0.6
-			fwd = 0.3
-			bend = -1.6
-		elif talking:
-			out = 0.4 + sin(_t * 5.0 + i * 1.7) * 0.3
-			fwd = -0.5 + sin(_t * 4.0 + i) * 0.3
-			bend = -0.9
-		elif _emotion in ["excited", "happy"] and _emotion_timer > 0.0:
-			out = 2.3 + sin(_t * 16.0 + i * PI) * 0.3
-			fwd = 0.0
-			bend = -0.3
-		sh.rotation.z = lerp_angle(sh.rotation.z, out * side, k)
-		sh.rotation.x = lerp_angle(sh.rotation.x, fwd, k)
-		el.rotation.x = lerp_angle(el.rotation.x, bend, k)
+func _animate_tumble(delta: float) -> void:
+	if _tumble > 0.0:
+		_tumble -= delta
+		# Roll over onto the side, rocking like an egg on a table.
+		var t := 1.0 - clampf(_tumble / 1.6, 0.0, 1.0)
+		var rock := sin(_t * 9.0) * 0.35 * (1.0 - t)
+		var axis := Vector3.UP.cross(_tumble_dir).normalized()
+		var local_axis := (global_basis.inverse() * axis).normalized()
+		_rig.basis = Basis(local_axis, deg_to_rad(80.0) + rock)
+		_rig.position = Vector3(0, _r * 0.55, 0)
+		for i in 2:
+			_shoulders[i].rotation = Vector3(sin(_t * 20.0 + i) * 1.0, 0, (2.0 + sin(_t * 25.0) * 0.5) * (-1.0 if i == 0 else 1.0))
+		for l in _legs:
+			l.rotation.x = sin(_t * 22.0) * 0.8
+		if _tumble <= 0.0:
+			_getup = 1.2
+			_dizzy_t = 2.4
+	elif _getup > 0.0:
+		_getup -= delta
+		# Wobble back up with a damped rock.
+		var g := clampf(1.0 - _getup / 1.2, 0.0, 1.0)
+		var wobble := sin(g * 22.0) * 0.4 * (1.0 - g)
+		var axis2 := Vector3.UP.cross(_tumble_dir).normalized()
+		var local_axis2 := (global_basis.inverse() * axis2).normalized()
+		_rig.basis = Basis(local_axis2, lerpf(deg_to_rad(80.0), 0.0, ease(g, 0.4)) + wobble)
+		_rig.position = Vector3(0, lerpf(_r * 0.55, 0.0, g), 0)
+		if _getup <= 0.0:
+			_rig.basis = Basis()
+			_rig.position = Vector3.ZERO
+	_dizzy_t = maxf(0.0, _dizzy_t - delta)
 
 
-func _animate_face(delta: float) -> void:
-	# Blinking
+func _animate_face(delta: float, pose: Dictionary) -> void:
 	_next_blink -= delta
 	if _next_blink <= 0.0:
-		_blink = 0.14
+		_blink = 0.13
 		_next_blink = randf_range(2.0, 5.0)
 	_blink = maxf(0.0, _blink - delta)
 	var open := 0.1 if _blink > 0.0 else 1.0
-	var eye_scale := 1.0
-	var brow_tilt := 0.0
-	var brow_raise := 0.0
-	var mouth_w := 1.0
-	var mouth_h := 1.0
-	match _emotion:
-		"angry":
-			brow_tilt = 0.45
-			brow_raise = -0.025
-		"happy", "in_love", "excited":
-			brow_raise = 0.03
-			mouth_w = 1.4
-			mouth_h = 2.0
-		"sad":
-			brow_tilt = -0.4
-			mouth_w = 0.7
-		"scared", "surprised":
-			brow_raise = 0.05
-			eye_scale = 1.2
-			mouth_w = 0.7
-			mouth_h = 4.0
-		"confused", "suspicious":
-			brow_tilt = 0.25
-		"smug":
-			brow_tilt = 0.2
-			mouth_w = 1.3
-	if look.get("grumpy", false) and _emotion == "neutral":
-		brow_tilt = 0.3   # resting angry-face, like the poster
+	var eye_scale := float(pose.get("eye", 1.0))
 	for i in _brows.size():
 		var side := -1.0 if i == 0 else 1.0
 		var b := _brows[i]
-		var tilt := brow_tilt
+		var tilt := float(pose.get("brow_tilt", 0.0))
 		if _emotion == "suspicious" and i == 0:
 			tilt = -0.2
 		b.rotation.z = lerp_angle(b.rotation.z, -tilt * side, 0.3)
-		b.scale.y = 1.0
-		var base_y: float = b.get_meta("base_y", b.position.y)
-		b.set_meta("base_y", base_y)
-		b.position.y = lerpf(b.position.y, base_y + brow_raise, 0.3)
+		b.position.y = lerpf(b.position.y, _brow_base[i] + float(pose.get("brow_raise", 0.0)), 0.3)
 	for e in _eyes:
-		e.scale = e.scale.lerp(Vector3(eye_scale, open * eye_scale, 1.0), 0.5)
+		e.scale = e.scale.lerp(Vector3(eye_scale, open * minf(eye_scale, 1.0) if open < 1.0 else eye_scale, 1.0), 0.5)
+	var mh := float(pose.get("mouth_h", 1.0))
 	if talking:
-		mouth_h = 1.0 + absf(sin(_t * 17.0)) * 4.0
-	_mouth.scale = _mouth.scale.lerp(Vector3(mouth_w, mouth_h, 1.0), 0.4)
-	# Pupils wander a little.
+		mh = 1.0 + absf(sin(_t * 17.0)) * 4.0
+	_mouth.scale = _mouth.scale.lerp(Vector3(float(pose.get("mouth_w", 1.0)), mh, 1.0), 0.4)
+	# Pupils: look at the target if we have one, else wander.
+	var look_off := Vector2(sin(_t * 0.7) * 0.01, cos(_t * 0.5) * 0.006)
+	if look_target and is_instance_valid(look_target):
+		var local := global_basis.inverse() * (look_target.global_position - global_position)
+		look_off = Vector2(clampf(local.x * 0.02, -0.025, 0.025), clampf((local.y - 1.0) * 0.01, -0.015, 0.015))
 	for p in _pupils:
-		var target := Vector3(sin(_t * 0.7) * 0.012, cos(_t * 0.5) * 0.008, 0.02)
-		p.position = p.position.lerp(Vector3(target.x + p.position.x * 0.0, target.y, 0.02), 0.05)
+		p.position = p.position.lerp(Vector3(look_off.x, look_off.y, 0.018), 0.15)
+	if _dizzy:
+		_dizzy.visible = _dizzy_t > 0.0
+		_dizzy.rotation.y += delta * 6.0
