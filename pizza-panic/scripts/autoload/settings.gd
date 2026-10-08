@@ -49,6 +49,38 @@ var reply_mode := "voice"
 func _ready() -> void:
 	load_settings()
 	_register_inputs()
+	_fit_window()
+
+
+## The project asks for 1600x900, which is bigger than many laptop screens (a
+## 13" Mac is 1440x900 minus the menu bar and dock). Shrink to fit, keep 16:9, center.
+func _fit_window() -> void:
+	if DisplayServer.get_name() == "headless" or OS.has_feature("editor"):
+		return
+	var win := get_window()
+	if win.mode != Window.MODE_WINDOWED:
+		return
+	var screen := DisplayServer.window_get_current_screen()
+	var area := Rect2(DisplayServer.screen_get_usable_rect(screen))
+	var k := minf(1.0, minf(area.size.x * 0.94 / 1600.0, area.size.y * 0.90 / 900.0))
+	var size := Vector2i(roundi(1600.0 * k), roundi(900.0 * k))
+	win.size = size
+	win.position = Vector2i(area.position) + (Vector2i(area.size) - size) / 2
+
+
+## F11 or Alt+Enter toggles fullscreen.
+func _unhandled_key_input(event: InputEvent) -> void:
+	var k := event as InputEventKey
+	if k == null or not k.pressed or k.echo:
+		return
+	if k.keycode == KEY_F11 or (k.keycode == KEY_ENTER and k.alt_pressed):
+		var win := get_window()
+		if win.mode == Window.MODE_FULLSCREEN:
+			win.mode = Window.MODE_WINDOWED
+			_fit_window()
+		else:
+			win.mode = Window.MODE_FULLSCREEN
+		get_viewport().set_input_as_handled()
 
 
 func load_settings() -> void:

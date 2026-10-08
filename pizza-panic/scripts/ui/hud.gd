@@ -179,7 +179,7 @@ func _ready() -> void:
 	hbox.add_theme_constant_override("separation", 8)
 	_help.add_child(hbox)
 	for line in ["[WASD] Move   [E] Use   [CLICK] Poke / throw   [R-CLICK] Grab prop   [SPACE] Hop   [T] Talk",
-			"[F] Car in / out   [V] Camera   [H] Honk   [Q] Phone   [ESC] Pause   [F1] Hide this"]:
+			"[F] Car in / out   [V] Camera   [H] Honk   [Q] Phone   [ESC] Pause   [F1] Hide this   [F11] Fullscreen"]:
 		var kt := UiTheme.keyed_text(line, 15)
 		kt.alignment = BoxContainer.ALIGNMENT_BEGIN
 		hbox.add_child(kt)
