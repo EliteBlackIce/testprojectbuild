@@ -28,6 +28,11 @@ var claude_effort := "low"
 ## Local brain (Ollama, e.g. llama3.2): NPCs think on your own machine, no key needed.
 var local_url := "http://localhost:11434"
 var local_model := "llama3.2"
+## Local voice server (tools/voice_server): your voice -> text, and NPCs speak in the cloned voice.
+var local_voice_url := "http://localhost:8880"
+var google_key := ""
+## "auto" uses OpenAI/ElevenLabs; "local" uses the voice server.
+var stt_choice := "auto"
 ## "auto" picks ElevenLabs if that key exists, else OpenAI, else babble.
 ## Other values: "elevenlabs", "openai", "system" (OS robot voice), "babble".
 var tts_provider := "auto"
@@ -59,6 +64,9 @@ func load_settings() -> void:
 		claude_effort = cfg.get_value("ai", "claude_effort", claude_effort)
 		local_url = cfg.get_value("ai", "local_url", local_url)
 		local_model = cfg.get_value("ai", "local_model", local_model)
+		local_voice_url = cfg.get_value("ai", "local_voice_url", local_voice_url)
+		google_key = cfg.get_value("ai", "google_key", "")
+		stt_choice = cfg.get_value("ai", "stt_choice", stt_choice)
 		tts_provider = cfg.get_value("ai", "tts_provider", tts_provider)
 		master_volume = cfg.get_value("audio", "master_volume", master_volume)
 		voice_volume = cfg.get_value("audio", "voice_volume", voice_volume)
@@ -82,6 +90,9 @@ func save_settings() -> void:
 	cfg.set_value("ai", "claude_effort", claude_effort)
 	cfg.set_value("ai", "local_url", local_url)
 	cfg.set_value("ai", "local_model", local_model)
+	cfg.set_value("ai", "local_voice_url", local_voice_url)
+	cfg.set_value("ai", "google_key", google_key)
+	cfg.set_value("ai", "stt_choice", stt_choice)
 	cfg.set_value("ai", "tts_provider", tts_provider)
 	cfg.set_value("audio", "master_volume", master_volume)
 	cfg.set_value("audio", "voice_volume", voice_volume)
@@ -142,6 +153,8 @@ func has_brain() -> bool:
 
 ## Can we turn the player's voice into text?
 func has_speech_to_text() -> bool:
+	if stt_choice == "local":
+		return true
 	match effective_mode():
 		"proxy":
 			return proxy_url != ""
@@ -155,8 +168,10 @@ func voice_engine() -> String:
 	if reply_mode == "text":
 		return "none"
 	var mode := effective_mode()
-	if tts_provider in ["system", "babble"]:
+	if tts_provider in ["system", "babble", "local"]:
 		return tts_provider
+	if tts_provider == "google" and google_key != "":
+		return "google"
 	if mode == "offline":
 		return "babble"
 	if mode == "proxy":
@@ -219,6 +234,8 @@ func elevenlabs_auth_header() -> String:
 
 
 func stt_provider() -> String:
+	if stt_choice == "local":
+		return "local"
 	if effective_mode() == "proxy":
 		return "openai"
 	return "openai" if get_openai_key() != "" else "elevenlabs"

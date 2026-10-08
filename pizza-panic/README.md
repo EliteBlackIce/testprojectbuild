@@ -309,3 +309,13 @@ in your own tool.
 Settings -> AI mode -> "Local llama (Ollama)". Run `ollama serve` and `ollama pull llama3.2`
 (any model that follows JSON schemas works; bigger = smarter NPCs). Server URL defaults to
 `http://localhost:11434`. Voice-to-text and NPC voices still use their own providers (or babble/text-only).
+
+## Your voice in, cloned voice out (local, free)
+1. Put your voice sample (e.g. `google_tts_female.wav`, 6-30 s of clean speech is best) somewhere handy.
+2. `pip install fastapi uvicorn python-multipart faster-whisper TTS soundfile numpy`
+3. `python pizza-panic/tools/voice_server/server.py --voice /path/to/google_tts_female.wav`
+   (first run downloads Whisper + XTTS; add `--no-tts` or `--no-stt` for just one half)
+4. In-game Settings: "Customer voices" -> "My local voice server (cloned voice)" and
+   "Your voice to text" -> "My local voice server (whisper)". Hold T to talk.
+
+Prefer the cloud? Pick "Google female voice" and paste a Google Cloud Text-to-Speech API key.

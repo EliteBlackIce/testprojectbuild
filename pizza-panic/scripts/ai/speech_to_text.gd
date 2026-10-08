@@ -19,7 +19,11 @@ func transcribe(wav: PackedByteArray) -> String:
 	var url: String
 	var headers := PackedStringArray()
 	var body: PackedByteArray
-	if Settings.stt_provider() == "openai":
+	if Settings.stt_provider() == "local":
+		# OpenAI-style endpoint served by tools/voice_server (faster-whisper).
+		url = Settings.local_voice_url.trim_suffix("/") + "/v1/audio/transcriptions"
+		body = _multipart(boundary, {"model": "whisper", "language": "en", "prompt": PROMPT_HINT}, "file", wav)
+	elif Settings.stt_provider() == "openai":
 		url = Settings.openai_url("/v1/audio/transcriptions")
 		headers.append(Settings.openai_auth_header())
 		body = _multipart(boundary, {"model": OPENAI_MODEL, "language": "en", "prompt": PROMPT_HINT}, "file", wav)

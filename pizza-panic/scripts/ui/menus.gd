@@ -30,6 +30,9 @@ var _anthropic: LineEdit
 var _openai: LineEdit
 var _eleven: LineEdit
 var _model: LineEdit
+var _voice_url: LineEdit
+var _google: LineEdit
+var _stt: OptionButton
 var _local_url: LineEdit
 var _local_model: LineEdit
 var _master: HSlider
@@ -40,8 +43,8 @@ var _mouse: HSlider
 
 const MODES := ["auto", "offline", "direct", "local"]
 const MODE_NAMES := ["Auto (AI if keys are set)", "Offline (no AI, free)", "AI with my own API keys", "Local llama (Ollama)"]
-const VOICES := ["auto", "openai", "elevenlabs", "system", "babble"]
-const VOICE_NAMES := ["Auto", "OpenAI voices (acting!)", "ElevenLabs (most realistic)", "Computer robot voice", "Gibberish babble"]
+const VOICES := ["auto", "openai", "elevenlabs", "local", "google", "system", "babble"]
+const VOICE_NAMES := ["Auto", "OpenAI voices (acting!)", "ElevenLabs (most realistic)", "My local voice server (cloned voice)", "Google female voice", "Computer robot voice", "Gibberish babble"]
 const REPLIES := ["voice", "text"]
 const REPLY_NAMES := ["Voice + text (they talk out loud)", "Text only (they text back, cheaper)"]
 
@@ -404,6 +407,9 @@ func _build_settings() -> void:
 	_eleven = _field(v, "ElevenLabs API key (optional, fancier voices)", "", true)
 	_reply = _option(v, "How customers answer", REPLY_NAMES)
 	_voice = _option(v, "Customer voices", VOICE_NAMES)
+	_google = _field(v, "Google Cloud TTS API key (for the Google female voice)", "AIza...", true)
+	_voice_url = _field(v, "Local voice server (cloned voice + your mic)", "http://localhost:8880", false)
+	_stt = _option(v, "Your voice to text", ["Auto (OpenAI / ElevenLabs)", "My local voice server (whisper)"])
 	_model = _field(v, "Claude model", "claude-opus-5-5", false)
 	_local_url = _field(v, "Local llama server (Ollama)", "http://localhost:11434", false)
 	_local_model = _field(v, "Local llama model name", "llama3.2", false)
@@ -475,6 +481,9 @@ func _open_settings(from: Control) -> void:
 	_openai.text = Settings.openai_key
 	_eleven.text = Settings.elevenlabs_key
 	_model.text = Settings.claude_model
+	_google.text = Settings.google_key
+	_voice_url.text = Settings.local_voice_url
+	_stt.selected = 1 if Settings.stt_choice == "local" else 0
 	_local_url.text = Settings.local_url
 	_local_model.text = Settings.local_model
 	_master.value = Settings.master_volume
@@ -503,6 +512,9 @@ func _save_settings() -> void:
 	Settings.claude_model = _model.text.strip_edges() if _model.text.strip_edges() != "" else "claude-opus-5-5"
 	Settings.local_url = _local_url.text.strip_edges() if _local_url.text.strip_edges() != "" else "http://localhost:11434"
 	Settings.local_model = _local_model.text.strip_edges() if _local_model.text.strip_edges() != "" else "llama3.2"
+	Settings.google_key = _google.text.strip_edges()
+	Settings.local_voice_url = _voice_url.text.strip_edges() if _voice_url.text.strip_edges() != "" else "http://localhost:8880"
+	Settings.stt_choice = "local" if _stt.selected == 1 else "auto"
 	Settings.master_volume = _master.value
 	Settings.voice_volume = _voice_vol.value
 	Settings.music_volume = _music_vol.value
