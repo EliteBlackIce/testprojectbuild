@@ -18,8 +18,8 @@ var offline := OfflineBrain.new()
 var ui: DialogueUi
 var player: PlayerEgg
 var car: PizzaCar
-var camera: GameCamera
 var kitchen: Kitchen
+var gags: Gags
 
 var mode := ""
 var house: House             ## customer (phone + door)
@@ -46,6 +46,7 @@ func _ready() -> void:
 
 func start_phone(caller: House) -> void:
 	_begin("phone", caller, null, caller.character)
+	player.body.phone_mode = true
 	ui.open("PHONE: " + caller.display_name(), "Calling from #%d" % caller.number, Settings.has_speech_to_text(), true)
 	Sfx.play("blip")
 	# Let them talk first: the player "answered" with the standard greeting.
@@ -60,7 +61,7 @@ func start_door(h: House) -> void:
 	h.come_out()
 	_begin("door", h, h.resident, h.character)
 	Sfx.play("knock")
-	camera.talk_partner = h.resident
+	player.look_at_point(h.resident.global_position + Vector3(0, 1.15, 0))
 	ui.open(h.display_name(), h.character.get("title", ""), Settings.has_speech_to_text(), false)
 	await get_tree().create_timer(0.45).timeout
 	if active and mode == "door":
@@ -70,7 +71,7 @@ func start_door(h: House) -> void:
 
 func start_tony() -> void:
 	_begin("tony", null, kitchen.tony, Characters.TONY)
-	camera.talk_partner = kitchen.tony
+	player.look_at_point(kitchen.tony.global_position + Vector3(0, 1.15, 0))
 	ui.open(Characters.TONY.name, Characters.TONY.title, Settings.has_speech_to_text(), false)
 	npc_say(Characters.TONY.greet.pick_random(), "excited")
 
@@ -92,9 +93,7 @@ func _begin(m: String, h: House, who: EggBody, c: Dictionary) -> void:
 
 
 func _face_each_other() -> void:
-	var to := speaker.global_position - player.global_position
-	player.body.rotation.y = atan2(to.x, to.z) - player.rotation.y
-	var back := -to
+	var back := player.global_position - speaker.global_position
 	speaker.rotation.y = atan2(back.x, back.z) - (speaker.get_parent() as Node3D).global_rotation.y
 
 
@@ -115,7 +114,8 @@ func end() -> void:
 	Game.in_dialogue = false
 	player.controls_enabled = true
 	player.body.talking = false
-	camera.talk_partner = null
+	player.body.phone_mode = false
+	player.clear_look()
 	if speaker:
 		speaker.talking = false
 	if mode == "door" and house and not _has_open_ticket(house):
@@ -243,6 +243,21 @@ func _apply(action: String, tip: int, order) -> void:
 		"door":
 			if action == "accept_pizza" and _held_is_theirs():
 				_ending = true
+				var cid := str(character.get("id", ""))
+				if cid == "chad" and gags:
+					ui.set_status("Chad wants to arm wrestle for the tip...")
+					var won: bool = await gags.arm_wrestle()
+					if not active:
+						return
+					if won:
+						tip += 8
+						speaker.play("shrug")
+						Game.say_toast("CHAD: ...RESPECT, BRO. (+tip)", UiTheme.TEAL)
+					else:
+						tip = 0
+						speaker.play("flex")
+						player.tumble(player.global_position - speaker.global_position, 0.8)
+						Game.say_toast("CHAD WINS. You got flung. No tip, bro.", UiTheme.PINK)
 				var p := _held_pizza()
 				var tid: int = p.data.ticket
 				var result := Game.complete_delivery(tid, p.data, tip)
@@ -281,6 +296,9 @@ func _apply(action: String, tip: int, order) -> void:
 func _finish_handoff(h: House, p: Pizza) -> void:
 	h.resident.carrying = false
 	if is_instance_valid(p):
+		if str(h.character.get("id", "")) == "dave" and gags:
+			gags.frogify(p)
+			Game.say_toast("DAVE: Abracadabra! ...oops. Your box is a frog now.", UiTheme.PINK)
 		p.queue_free()
 
 

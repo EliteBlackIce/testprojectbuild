@@ -8,6 +8,7 @@ signal toast(text: String, color: Color)
 signal day_started(day: int)
 signal day_ended(summary: Dictionary)
 signal upgrades_changed
+signal staff_changed
 
 const SAVE_PATH := "user://save.json"
 const OPEN_MINUTE := 10 * 60      ## 10:00
@@ -22,6 +23,7 @@ var money := 40
 var day := 1
 var reputation := 2.5             ## 0..5 stars
 var upgrades: Dictionary = {}     ## id -> level
+var staff: Dictionary = {}        ## hired StaffData id -> {"training": n}
 var lifetime := {"delivered": 0, "earned": 0, "best_tip": 0, "days": 0}
 
 var clock := float(OPEN_MINUTE)   ## minutes since midnight
@@ -53,7 +55,7 @@ func start_day() -> void:
 	in_dialogue = false
 	tickets.clear()
 	today = {"earned": 0, "tips": 0, "costs": 0, "delivered": 0, "failed": 0, "missed_calls": 0,
-		"rep_start": reputation, "perfect": 0}
+		"rep_start": reputation, "perfect": 0, "wages": 0, "staff_made": 0}
 	tickets_changed.emit()
 	day_started.emit(day)
 
@@ -67,6 +69,12 @@ func end_day() -> void:
 			t.status = "failed"
 			today.failed += 1
 			reputation = maxf(0.0, reputation - 0.2)
+	# Pay the staff
+	var wages := wages_total()
+	if wages > 0:
+		money = maxi(0, money - wages)
+		today.wages = wages
+		money_changed.emit(money, -wages)
 	var summary := today.duplicate()
 	summary["day"] = day
 	summary["rep_end"] = reputation
@@ -223,6 +231,52 @@ func buy_upgrade(id: String) -> bool:
 	return true
 
 
+# --- staff ---------------------------------------------------------------------------
+
+func is_hired(id: String) -> bool:
+	return staff.has(id)
+
+
+func hire(id: String) -> bool:
+	if is_hired(id) or not StaffData.CANDIDATES.has(id):
+		return false
+	if not spend(int(StaffData.CANDIDATES[id].hire)):
+		return false
+	staff[id] = {"training": 0}
+	staff_changed.emit()
+	save_game()
+	return true
+
+
+func fire(id: String) -> void:
+	if staff.erase(id):
+		staff_changed.emit()
+		save_game()
+
+
+func train(id: String) -> bool:
+	if not is_hired(id):
+		return false
+	var lv := int(staff[id].training)
+	if lv >= StaffData.TRAIN_MAX or not spend(StaffData.TRAIN_COST * (lv + 1)):
+		return false
+	staff[id].training = lv + 1
+	staff_changed.emit()
+	save_game()
+	return true
+
+
+func staff_skill(id: String) -> float:
+	return StaffData.skill_of(id, int(staff.get(id, {}).get("training", 0)))
+
+
+func wages_total() -> int:
+	var total := 0
+	for id: String in staff:
+		total += int(StaffData.CANDIDATES[id].wage)
+	return total
+
+
 func cargo_capacity() -> int:
 	return Upgrades.CARGO[level("cargo")]
 
@@ -258,7 +312,7 @@ func say_toast(text: String, color := Color("#ffd166")) -> void:
 # --- saving --------------------------------------------------------------------------
 
 func save_game() -> void:
-	var data := {"money": money, "day": day, "reputation": reputation, "upgrades": upgrades, "lifetime": lifetime}
+	var data := {"money": money, "day": day, "reputation": reputation, "upgrades": upgrades, "lifetime": lifetime, "staff": staff}
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(data, "  "))
@@ -277,6 +331,11 @@ func load_game() -> void:
 	upgrades = {}
 	for k in ups:
 		upgrades[k] = int(ups[k])
+	staff = {}
+	var st: Dictionary = data.get("staff", {})
+	for k: String in st:
+		if StaffData.CANDIDATES.has(k):
+			staff[k] = {"training": int(st[k].get("training", 0))}
 	var life: Dictionary = data.get("lifetime", {})
 	for k in life:
 		lifetime[k] = life[k]
@@ -291,8 +350,10 @@ func reset_save() -> void:
 	day = 1
 	reputation = 2.5
 	upgrades = {}
+	staff = {}
 	lifetime = {"delivered": 0, "earned": 0, "best_tip": 0, "days": 0}
 	if FileAccess.file_exists(SAVE_PATH):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_PATH))
 	money_changed.emit(money, 0)
 	upgrades_changed.emit()
+	staff_changed.emit()

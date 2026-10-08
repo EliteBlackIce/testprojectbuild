@@ -35,6 +35,12 @@ func _ready() -> void:
 	_sounds.airhorn = _make_airhorn()
 	_sounds.goat = _make_goat()
 	_sounds.hangup = _make_arpeggio([480.0, 480.0, 480.0], 0.12, 0.2, true)
+	_sounds.step = _make_noise_thud(0.07, 0.22, 420.0)
+	_sounds.squish = _make_noise_thud(0.14, 0.4, 1100.0)
+	_sounds.sprinkle = _make_noise_thud(0.05, 0.14, 6000.0)
+	_sounds.poke = _make_tone(620.0, 0.07, 0.25, "tri")
+	_sounds.whoosh = _make_noise_thud(0.45, 0.4, 900.0)
+	_sounds.chop = _make_noise_thud(0.09, 0.5, 3200.0)
 	_sounds.scream = babble("WAAAAAAAAAAAGH!!", 330.0, 1.8)
 
 

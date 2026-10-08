@@ -21,6 +21,9 @@ var _hint: Label
 var _toast_tween: Tween
 var _toast_queue: Array = []
 var _toast_busy := false
+var _cross: Control
+var crosshair_on := true
+var crosshair_hot := false
 
 
 func _ready() -> void:
@@ -75,13 +78,20 @@ func _ready() -> void:
 	_phone_banner.add_child(_phone_label)
 	_phone_banner.visible = false
 
-	_prompt = UiTheme.label("", 30, Color.WHITE, 10)
-	_prompt.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	# Crosshair: a little dot that puffs up into a ring when you're aiming at something usable
+	_cross = Control.new()
+	_cross.set_anchors_preset(Control.PRESET_CENTER)
+	_cross.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_cross.draw.connect(_draw_cross)
+	root.add_child(_cross)
+
+	_prompt = UiTheme.label("", 28, Color.WHITE, 10)
+	_prompt.set_anchors_preset(Control.PRESET_CENTER)
 	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_prompt.offset_left = -500
 	_prompt.offset_right = 500
-	_prompt.offset_top = -130
-	_prompt.offset_bottom = -80
+	_prompt.offset_top = 34
+	_prompt.offset_bottom = 80
 	root.add_child(_prompt)
 
 	_carry = UiTheme.label("", 22, Color.WHITE, 8)
@@ -123,7 +133,7 @@ func _ready() -> void:
 	_mode_badge.offset_bottom = -12
 	root.add_child(_mode_badge)
 
-	var help := UiTheme.label("WASD move · E use · F car · SPACE hop · T talk · Q phone (headset) · H honk · [ ] camera · ESC pause", 16, Color.WHITE, 6)
+	var help := UiTheme.label("MOUSE look · WASD walk · E / CLICK use · CLICK poke · F car · V car camera · SPACE hop · T talk · Q phone (headset) · H honk · ESC pause", 16, Color.WHITE, 6)
 	help.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	help.offset_left = 16
 	help.offset_right = 1100
@@ -156,6 +166,26 @@ func set_hint(text: String) -> void:
 
 func set_prompt(text: String) -> void:
 	_prompt.text = text
+	if crosshair_hot != (text != ""):
+		crosshair_hot = text != ""
+		_cross.queue_redraw()
+
+
+func set_crosshair(on: bool) -> void:
+	if crosshair_on != on:
+		crosshair_on = on
+		_cross.queue_redraw()
+
+
+func _draw_cross() -> void:
+	if not crosshair_on:
+		return
+	if crosshair_hot:
+		_cross.draw_arc(Vector2.ZERO, 13.0, 0.0, TAU, 24, UiTheme.INK, 6.0)
+		_cross.draw_arc(Vector2.ZERO, 13.0, 0.0, TAU, 24, UiTheme.YELLOW, 3.0)
+	else:
+		_cross.draw_circle(Vector2.ZERO, 5.0, UiTheme.INK)
+		_cross.draw_circle(Vector2.ZERO, 3.0, Color.WHITE)
 
 
 func show_toast(text: String, color := UiTheme.YELLOW) -> void:
@@ -193,7 +223,7 @@ func _on_money(total: int, delta: int) -> void:
 
 
 const STATUS_TEXT := {
-	"new": "Needs making!", "making": "On the prep table", "baking": "In the oven",
+	"new": "Needs making!", "making": "Being made", "baking": "In the oven",
 	"ready": "Boxed - load the car!", "in_car": "In the car - deliver it!",
 }
 
@@ -254,7 +284,7 @@ func _process(_delta: float) -> void:
 	var lines: PackedStringArray = []
 	if player and player.held is Pizza:
 		var p := player.held as Pizza
-		var what := "pizza box" if p.is_boxed() else ("baked pizza" if p.data.baked else "raw pizza")
+		var what := "pizza box" if p.is_boxed() else ("baked pizza" if p.data.baked else ("raw pizza" if p.data.assembled else "dough"))
 		lines.append("Holding %s #%d%s" % [what, p.data.ticket, ("  · heat %d%%" % int(p.data.heat)) if p.data.baked else ""])
 	if car and car.driving:
 		var hot := 0

@@ -90,6 +90,7 @@ var _spr: Dictionary = {}
 
 func build(l: Dictionary) -> void:
 	look = l
+	add_to_group("eggs")
 	_s = float(look.get("size", 1.0))
 	var stretch := float(look.get("stretch", 1.0))
 	_h = 1.45 * stretch

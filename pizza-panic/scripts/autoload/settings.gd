@@ -233,6 +233,13 @@ const BINDINGS := {
 	"cam_left": [KEY_BRACKETLEFT],
 	"cam_right": [KEY_BRACKETRIGHT],
 	"tickets": [KEY_TAB],
+	"view": [KEY_V],
+	"poke": [],
+	"tool_alt": [],
+	"look_left": [],
+	"look_right": [],
+	"look_up": [],
+	"look_down": [],
 }
 const PAD_BUTTONS := {
 	"accelerate": [JOY_BUTTON_RIGHT_SHOULDER],
@@ -248,6 +255,8 @@ const PAD_BUTTONS := {
 	"answer_phone": [JOY_BUTTON_DPAD_UP],
 	"cam_left": [JOY_BUTTON_DPAD_LEFT],
 	"cam_right": [JOY_BUTTON_DPAD_RIGHT],
+	"view": [JOY_BUTTON_DPAD_DOWN],
+	"poke": [JOY_BUTTON_RIGHT_SHOULDER],
 }
 
 
@@ -268,6 +277,20 @@ func _register_inputs() -> void:
 	_add_axis("steer_right", JOY_AXIS_LEFT_X, 1.0)
 	_add_axis("accelerate", JOY_AXIS_TRIGGER_RIGHT, 1.0)
 	_add_axis("brake", JOY_AXIS_TRIGGER_LEFT, 1.0)
+	_add_axis("accelerate", JOY_AXIS_LEFT_Y, -1.0)
+	_add_axis("brake", JOY_AXIS_LEFT_Y, 1.0)
+	# Right stick looks around (first person).
+	_add_axis("look_left", JOY_AXIS_RIGHT_X, -1.0)
+	_add_axis("look_right", JOY_AXIS_RIGHT_X, 1.0)
+	_add_axis("look_up", JOY_AXIS_RIGHT_Y, -1.0)
+	_add_axis("look_down", JOY_AXIS_RIGHT_Y, 1.0)
+	# Mouse buttons: left pokes / uses a tool, right is the alternate tool action.
+	var lmb := InputEventMouseButton.new()
+	lmb.button_index = MOUSE_BUTTON_LEFT
+	InputMap.action_add_event("poke", lmb)
+	var rmb := InputEventMouseButton.new()
+	rmb.button_index = MOUSE_BUTTON_RIGHT
+	InputMap.action_add_event("tool_alt", rmb)
 
 
 func _add_axis(action: String, axis: JoyAxis, dir: float) -> void:

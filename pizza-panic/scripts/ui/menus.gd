@@ -77,8 +77,8 @@ func show_results(s: Dictionary) -> void:
 	_hide_all()
 	_results.visible = true
 	var rep_delta: float = s.rep_end - s.rep_start
-	_results_body.text = "Pizzas delivered: %d  (perfect: %d)\nBotched / stolen / never delivered: %d\nMissed phone calls: %d\n\nMoney made: $%d  (tips: $%d)\nIngredients: -$%d\nReputation: %.1f stars (%s%.1f)\n\nBank account: $%d\n\nRANK: %s" % [
-		s.delivered, s.perfect, s.failed, s.missed_calls, s.earned, s.tips, s.costs, s.rep_end,
+	_results_body.text = "Pizzas delivered: %d  (perfect: %d)\nBotched / stolen / never delivered: %d\nMissed phone calls: %d\n\nMoney made: $%d  (tips: $%d)\nIngredients: -$%d\nStaff wages: -$%d  (they made %d pizzas)\nReputation: %.1f stars (%s%.1f)\n\nBank account: $%d\n\nRANK: %s" % [
+		s.delivered, s.perfect, s.failed, s.missed_calls, s.earned, s.tips, s.costs, int(s.get("wages", 0)), int(s.get("staff_made", 0)), s.rep_end,
 		"+" if rep_delta >= 0 else "", rep_delta, s.money, s.rank]
 
 
@@ -210,7 +210,7 @@ func _build_shop() -> void:
 	panel.add_child(outer)
 	var head := HBoxContainer.new()
 	outer.add_child(head)
-	head.add_child(UiTheme.label("TONY'S PC  ·  UPGRADES", 40, UiTheme.RED))
+	head.add_child(UiTheme.label("TONY'S PC  ·  UPGRADES & HIRING", 40, UiTheme.RED))
 	var sp := Control.new()
 	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(sp)
@@ -264,6 +264,75 @@ func _refresh_shop() -> void:
 			b.pressed.connect(_buy.bind(id))
 		h.add_child(b)
 		_shop_list.add_child(row)
+	_staff_rows()
+
+
+## Hire eggs to cook and answer the phone. Wages are paid at closing time.
+func _staff_rows() -> void:
+	_shop_list.add_child(UiTheme.label("HIRE STAFF  (wages today: $%d/day)" % Game.wages_total(), 30, UiTheme.RED))
+	var hint := UiTheme.label("Cooks make whole pizzas by themselves and put them on the pass shelf. Phone eggs take orders. Wages come out at closing time.", 17, Color(UiTheme.INK, 0.75))
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD
+	hint.custom_minimum_size.x = 900
+	_shop_list.add_child(hint)
+	for id: String in StaffData.CANDIDATES:
+		var c: Dictionary = StaffData.CANDIDATES[id]
+		var row := PanelContainer.new()
+		row.add_theme_stylebox_override("panel", UiTheme.box(Color("#f1fff7") if Game.is_hired(id) else Color("#fffdf5"), 3, 12, 12))
+		var h := HBoxContainer.new()
+		h.add_theme_constant_override("separation", 14)
+		row.add_child(h)
+		var info := VBoxContainer.new()
+		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		h.add_child(info)
+		var role := "Cook" if c.role == "cook" else "Phones"
+		var skill := Game.staff_skill(id) if Game.is_hired(id) else float(c.skill)
+		info.add_child(UiTheme.label("%s  ·  %s  ·  skill %d%%  ·  $%d/day%s" % [c.name, role, int(skill * 100), c.wage, "  ·  HIRED" if Game.is_hired(id) else ""], 22))
+		var d := UiTheme.label(str(c.pitch), 17, Color(UiTheme.INK, 0.75))
+		d.autowrap_mode = TextServer.AUTOWRAP_WORD
+		d.custom_minimum_size.x = 640
+		info.add_child(d)
+		if Game.is_hired(id):
+			var lv := int(Game.staff[id].training)
+			var tb := Button.new()
+			tb.custom_minimum_size = Vector2(150, 50)
+			if lv >= StaffData.TRAIN_MAX:
+				tb.text = "TRAINED"
+				tb.disabled = true
+			else:
+				var cost := StaffData.TRAIN_COST * (lv + 1)
+				tb.text = "TRAIN $%d" % cost
+				tb.disabled = cost > Game.money
+				tb.pressed.connect(_train.bind(id))
+			h.add_child(tb)
+			var fb := Button.new()
+			fb.custom_minimum_size = Vector2(110, 50)
+			fb.text = "FIRE"
+			fb.pressed.connect(_fire.bind(id))
+			h.add_child(fb)
+		else:
+			var b := Button.new()
+			b.custom_minimum_size = Vector2(180, 56)
+			b.text = "HIRE $%d" % int(c.hire)
+			b.disabled = int(c.hire) > Game.money
+			b.pressed.connect(_hire.bind(id))
+			h.add_child(b)
+		_shop_list.add_child(row)
+
+
+func _hire(id: String) -> void:
+	Sfx.play("register" if Game.hire(id) else "fail")
+	_refresh_shop()
+
+
+func _train(id: String) -> void:
+	Sfx.play("register" if Game.train(id) else "fail")
+	_refresh_shop()
+
+
+func _fire(id: String) -> void:
+	Game.fire(id)
+	Sfx.play("hangup")
+	_refresh_shop()
 
 
 func _buy(id: String) -> void:

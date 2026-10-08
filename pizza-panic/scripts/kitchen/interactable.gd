@@ -5,6 +5,8 @@ extends Node3D
 ## Override prompt() and use(). The player picks the closest one in front of them.
 
 @export var reach := 1.6
+## How big the thing is for aiming: the crosshair just has to be roughly on it.
+@export var aim_radius := 0.35
 
 ## Text shown on screen, e.g. "[E] Grab dough". Return "" to hide/disable.
 func prompt(_player: Node) -> String:

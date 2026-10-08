@@ -28,6 +28,18 @@ var _was_on_floor := true
 var _crash_cooldown := 0.0
 var _squash := 0.0
 var _boosting := false
+## First-person cockpit (V switches to the chase camera)
+var cockpit_cam: Camera3D
+var _wheel: Node3D
+var _needle: Node3D
+var _bobble: Node3D
+var _bobble_v := Vector2.ZERO
+var _bobble_p := Vector2.ZERO
+var _freshener: Node3D
+var _look := Vector2.ZERO
+var _look_idle := 0.0
+var _prev_vel := Vector3.ZERO
+const SHELL_LAYER := 8
 
 
 func _ready() -> void:
@@ -41,6 +53,7 @@ func _ready() -> void:
 	shape.position = Vector3(0, 0.8, 0)
 	add_child(shape)
 	_build_body()
+	_build_cockpit()
 	_build_bumper()
 	_build_engine()
 	Game.upgrades_changed.connect(_apply_upgrades)
@@ -178,6 +191,7 @@ func _process(delta: float) -> void:
 	if _boosting:
 		_flame.scale = Vector3(1, 1, randf_range(0.8, 1.4))
 	_driver.speed = 0.0
+	_update_cockpit(delta, fwd)
 	_update_engine(fwd)
 
 
@@ -272,12 +286,12 @@ func _build_body() -> void:
 	var trim := Color("#3b2a22")
 	# Chunky chamfered body + cabin
 	_body_mesh = Toon.block(_visual, Vector3(2.1, 0.85, 3.9), Vector3(0, 0.38, 0), Color("#c0392b"), 0.18, 0.025)
-	Toon.block(_visual, Vector3(1.85, 0.8, 2.0), Vector3(0, 1.15, 0.45), cream, 0.16, 0.022)
-	# Windows
+	Toon.block(_visual, Vector3(1.85, 0.8, 2.0), Vector3(0, 1.15, 0.45), cream, 0.16, 0.022).layers = SHELL_LAYER
+	# Windows (the cockpit camera looks straight through these)
 	for z in [-0.55, 1.45]:
-		Toon.box(_visual, Vector3(1.55, 0.5, 0.06), Vector3(0, 1.5, z), Color("#9cc9d9"), 0.0)
+		Toon.box(_visual, Vector3(1.55, 0.5, 0.06), Vector3(0, 1.5, z), Color("#9cc9d9"), 0.0).layers = SHELL_LAYER
 	for side: int in [-1, 1]:
-		Toon.box(_visual, Vector3(0.06, 0.45, 1.5), Vector3(0.93 * side, 1.52, 0.45), Color("#9cc9d9"), 0.0)
+		Toon.box(_visual, Vector3(0.06, 0.45, 1.5), Vector3(0.93 * side, 1.52, 0.45), Color("#9cc9d9"), 0.0).layers = SHELL_LAYER
 		# Side logo
 		var logo := Toon.label(_visual, "TONY'S", Vector3(1.06 * side, 0.82, 0.2), 60, Color("#ffd166"), false)
 		logo.rotation.y = PI / 2 * side
@@ -339,6 +353,131 @@ func _build_body() -> void:
 	_driver.position = Vector3(-0.35, 0.65, 0.2)
 	_driver.rotation.y = PI
 	_driver.visible = false
+	for n in _driver.find_children("*", "VisualInstance3D", true, false):
+		(n as VisualInstance3D).layers = SHELL_LAYER
+
+
+# --- first-person cockpit ------------------------------------------------------------------------
+
+func _build_cockpit() -> void:
+	var c := Node3D.new()
+	c.name = "Cockpit"
+	_visual.add_child(c)
+	var dash := Color("#3d3430")
+	# Dashboard, glovebox, little vents
+	Toon.block(c, Vector3(1.8, 0.28, 0.38), Vector3(0, 1.05, -0.42), dash, 0.1, 0.012)
+	Toon.block(c, Vector3(1.75, 0.06, 0.3), Vector3(0, 1.33, -0.44), Color("#4b403b"), 0.03, 0.008)
+	for k in 3:
+		Toon.box(c, Vector3(0.14, 0.05, 0.02), Vector3(0.15 + k * 0.2, 1.25, -0.22), Color("#1d1517"), 0.0)
+	Toon.box(c, Vector3(0.4, 0.1, 0.02), Vector3(0.45, 1.13, -0.22), Color("#58493f"), 0.004)
+	# Speedometer with a wobbly needle
+	var gauge := Toon.cyl(c, 0.12, 0.12, 0.02, Vector3(-0.35, 1.3, -0.3), Color("#fff8e7"), 0.006, 14)
+	gauge.rotation.x = PI / 2 - 0.5
+	_needle = Node3D.new()
+	_needle.position = Vector3(-0.35, 1.3, -0.285)
+	_needle.rotation.x = -0.5
+	c.add_child(_needle)
+	Toon.box(_needle, Vector3(0.012, 0.1, 0.006), Vector3(0, 0.045, 0), Color("#e63946"), 0.0)
+	var mph := Toon.label(c, "MPH", Vector3(-0.35, 1.25, -0.27), 18, Color("#2b1c18"), false)
+	mph.outline_size = 0
+	mph.pixel_size = 0.003
+	mph.rotation.x = -0.5
+	# Steering wheel + your mittens on it
+	_wheel = Node3D.new()
+	_wheel.position = Vector3(-0.35, 1.27, -0.12)
+	_wheel.rotation.x = 1.15
+	c.add_child(_wheel)
+	var rim := MeshInstance3D.new()
+	var torus := TorusMesh.new()
+	torus.inner_radius = 0.16
+	torus.outer_radius = 0.2
+	torus.rings = 16
+	torus.ring_segments = 6
+	rim.mesh = torus
+	rim.material_override = Toon.mat(Color("#2d3436"), 0.006)
+	_wheel.add_child(rim)
+	Toon.box(_wheel, Vector3(0.34, 0.03, 0.04), Vector3.ZERO, Color("#2d3436"), 0.0)
+	Toon.cyl(_wheel, 0.05, 0.05, 0.04, Vector3.ZERO, Color("#e63946"), 0.004, 10)
+	for side: int in [-1, 1]:
+		var mitt := Toon.ball(_wheel, 0.06, Vector3(0.18 * side, 0.02, 0.0), FpHands.SKIN, 0.006, 10)
+		mitt.scale = Vector3(1.0, 0.9, 1.2)
+		var arm := Toon.mesh(_wheel, Shapes.limb(0.45, 0.05, 0.045, 8), Vector3(0.2 * side, 0.03, 0.0), FpHands.SKIN.darkened(0.04), 0.006)
+		arm.rotation = Vector3(-0.3, 0.0, -0.4 * side)
+	# Pillars + roof edge frame the windshield
+	for side: int in [-1, 1]:
+		var pillar := Toon.box(c, Vector3(0.08, 0.72, 0.08), Vector3(0.88 * side, 1.6, -0.5), Color("#f1e6d0"), 0.006)
+		pillar.rotation.z = 0.18 * side
+	Toon.box(c, Vector3(1.8, 0.1, 0.12), Vector3(0, 1.93, -0.5), Color("#f1e6d0"), 0.006)
+	Toon.box(c, Vector3(1.8, 0.05, 2.0), Vector3(0, 1.97, 0.45), Color("#e6d8bd"), 0.0)
+	# Rear-view mirror + a pizza-slice air freshener
+	Toon.box(c, Vector3(0.28, 0.08, 0.03), Vector3(0, 1.84, -0.45), Color("#2d3436"), 0.004)
+	Toon.box(c, Vector3(0.25, 0.06, 0.01), Vector3(0, 1.84, -0.43), Color("#a8d8ea"), 0.0)
+	_freshener = Node3D.new()
+	_freshener.position = Vector3(0, 1.8, -0.43)
+	c.add_child(_freshener)
+	Toon.cyl(_freshener, 0.003, 0.003, 0.1, Vector3(0, -0.05, 0), Color("#f6f4ef"), 0.0, 3)
+	var slice := Toon.mesh(_freshener, Shapes.prism(Vector3(0.08, 0.1, 0.01)), Vector3(0, -0.15, 0), Color("#f2c14e"), 0.004)
+	slice.rotation.z = PI
+	Toon.ball(_freshener, 0.012, Vector3(0.01, -0.13, 0.01), Color("#c0392b"), 0.0, 5)
+	# Bobblehead egg on the dash (Tony, obviously)
+	_bobble = Node3D.new()
+	_bobble.position = Vector3(0.35, 1.36, -0.45)
+	c.add_child(_bobble)
+	Toon.cyl(_bobble, 0.004, 0.004, 0.05, Vector3(0, 0.025, 0), Color("#7f8c8d"), 0.0, 3)
+	var head := Toon.mesh(_bobble, Shapes.body_egg(0.12, 0.045, 0.01, 10, 7), Vector3(0, 0.05, 0), Color("#e8b77a"), 0.004)
+	head.rotation.y = PI
+	Toon.box(_bobble, Vector3(0.05, 0.008, 0.01), Vector3(0, 0.11, 0.035), Color("#3b2a22"), 0.0)
+	Toon.cyl(_bobble, 0.03, 0.035, 0.025, Vector3(0, 0.16, 0), Color("#f6f4ef"), 0.0, 8)
+	# The camera (your eyes)
+	cockpit_cam = Camera3D.new()
+	cockpit_cam.position = Vector3(-0.35, 1.6, 0.32)
+	cockpit_cam.rotation.x = -0.1
+	cockpit_cam.fov = 78.0
+	cockpit_cam.near = 0.03
+	cockpit_cam.far = 900.0
+	cockpit_cam.cull_mask = 0xFFFFF & ~SHELL_LAYER & ~2
+	c.add_child(cockpit_cam)
+	c.visible = false
+
+
+func set_cockpit(on: bool) -> void:
+	(_visual.get_node("Cockpit") as Node3D).visible = on
+	if on:
+		cockpit_cam.current = true
+		_look = Vector2.ZERO
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if driving and cockpit_cam.current and event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+		var m := (event as InputEventMouseMotion).relative * 0.0022 * Settings.mouse_sensitivity
+		_look.x = clampf(_look.x - m.x, -1.6, 1.6)
+		_look.y = clampf(_look.y - m.y, -0.6, 0.5)
+		_look_idle = 0.0
+
+
+func _update_cockpit(delta: float, fwd: float) -> void:
+	if not driving or cockpit_cam == null or not cockpit_cam.current:
+		return
+	_wheel.rotation.z = lerp_angle(_wheel.rotation.z, _steer * 1.8, 1.0 - exp(-12.0 * delta))
+	_needle.rotation.z = lerpf(1.9, -1.9, clampf(absf(fwd) / (max_speed() * 1.4), 0.0, 1.0)) + sin(Time.get_ticks_msec() * 0.05) * 0.02 * clampf(absf(fwd), 0.0, 1.0)
+	# Bobblehead + freshener react to acceleration (in car space)
+	var acc := (velocity - _prev_vel) / maxf(delta, 0.001)
+	_prev_vel = velocity
+	var local_acc := global_basis.inverse() * acc
+	var force := Vector2(-local_acc.x, -local_acc.z) * 0.004
+	_bobble_v += (force - _bobble_p * 90.0 - _bobble_v * 4.0) * delta
+	_bobble_p += _bobble_v * delta
+	_bobble_p = _bobble_p.limit_length(0.6)
+	_bobble.rotation = Vector3(_bobble_p.y, 0, -_bobble_p.x)
+	_freshener.rotation = Vector3(_bobble_p.y * 1.4, 0, -_bobble_p.x * 1.4)
+	# Look around (recenters on its own), lean into turns, little road shake
+	_look_idle += delta
+	if _look_idle > 1.2:
+		_look = _look.lerp(Vector2.ZERO, 1.0 - exp(-3.0 * delta))
+	var look_pad := Input.get_vector("look_left", "look_right", "look_up", "look_down")
+	var lx := _look.x - look_pad.x * 1.2
+	var shake := clampf(absf(fwd) / max_speed(), 0.0, 1.0) * 0.004
+	cockpit_cam.rotation = Vector3(-0.1 + _look.y + randf_range(-1, 1) * shake, lx - _steer * 0.12, -_steer * 0.03)
 
 
 # --- engine noise ----------------------------------------------------------------------------------

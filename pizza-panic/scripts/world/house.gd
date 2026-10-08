@@ -73,7 +73,7 @@ func build(num: int, c: Dictionary, rng: RandomNumberGenerator) -> void:
 	resident.position = door_spot.position
 	resident.visible = false
 
-	var door := Station.make(self, knock_spot.position, _knock_prompt, _knock_use, 2.2)
+	var door := Station.make(self, door_spot.position + Vector3(0, 1.1, -0.85), _knock_prompt, _knock_use, 3.4, 0.8)
 	door.name = "Door"
 	_limit_draw_distance(self)
 
@@ -98,6 +98,14 @@ func come_out() -> void:
 	resident.visible = true
 	resident.position = door_spot.position + Vector3(0, 0, -1.0)
 	resident.rotation.y = 0.0
+	if character.get("look", {}).get("ghost", false):
+		# Ghosts don't use doors. They just... come through.
+		resident.position = door_spot.position + Vector3(0, 0.4, -1.6)
+		var gt := create_tween()
+		gt.tween_property(resident, "position", door_spot.position + Vector3(0, 0.25, 0), 1.6).set_trans(Tween.TRANS_SINE)
+		gt.tween_property(resident, "position", door_spot.position, 0.5)
+		Sfx.play("boing", 0.5, -10.0)
+		return
 	var tw := create_tween()
 	tw.tween_property(_door, "rotation:y", -1.6, 0.25)
 	tw.parallel().tween_property(resident, "position", door_spot.position, 0.4)
