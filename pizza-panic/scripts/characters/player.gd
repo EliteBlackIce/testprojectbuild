@@ -14,7 +14,7 @@ const ACCEL := 26.0
 const AIR_ACCEL := 8.0
 const GRAVITY := 20.0
 const JUMP := 5.6
-const EYE := 1.36
+const EYE := 1.5
 const BODY_LAYER := 2
 const VIEWMODEL_LAYER := 4
 const MAX_PITCH := 1.45
@@ -56,9 +56,9 @@ func _ready() -> void:
 	var shape := CollisionShape3D.new()
 	var cap := CapsuleShape3D.new()
 	cap.radius = 0.4
-	cap.height = 1.45
+	cap.height = 1.8
 	shape.shape = cap
-	shape.position = Vector3(0, 0.73, 0)
+	shape.position = Vector3(0, 0.9, 0)
 	add_child(shape)
 	head = Node3D.new()
 	head.position = Vector3(0, EYE, 0)

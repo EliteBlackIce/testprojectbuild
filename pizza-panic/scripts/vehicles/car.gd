@@ -350,7 +350,7 @@ func _build_body() -> void:
 	look.hat = Game.current_hat()
 	_driver.build(look)
 	_driver.scale = Vector3.ONE * 0.6
-	_driver.position = Vector3(-0.35, 0.65, 0.2)
+	_driver.position = Vector3(-0.35, 0.82, 0.2)
 	_driver.rotation.y = PI
 	_driver.visible = false
 	for n in _driver.find_children("*", "VisualInstance3D", true, false):
@@ -399,8 +399,13 @@ func _build_cockpit() -> void:
 	Toon.box(_wheel, Vector3(0.28, 0.03, 0.04), Vector3.ZERO, Color("#2d3436"), 0.0)
 	Toon.cyl(_wheel, 0.05, 0.05, 0.04, Vector3.ZERO, Color("#e63946"), 0.004, 10)
 	for side: int in [-1, 1]:
-		var mitt := Toon.ball(_wheel, 0.05, Vector3(0.15 * side, 0.02, 0.0), FpHands.SKIN, 0.006, 10)
-		mitt.scale = Vector3(1.0, 0.9, 1.2)
+		# Hands gripping the rim (fingers wrapped around it)
+		var grip := Node3D.new()
+		grip.position = Vector3(0.15 * side, 0.02, 0.0)
+		grip.rotation = Vector3(-PI / 2, 0.0, -0.5 * side)
+		_wheel.add_child(grip)
+		var built := EggBody.build_hand(grip, FpHands.SKIN, -float(side), 0.42, 0.005)
+		EggBody.curl_hand(built[1], 1.0)
 		var arm := Toon.mesh(_wheel, Shapes.limb(0.45, 0.05, 0.045, 8), Vector3(0.16 * side, 0.03, 0.0), FpHands.SKIN.darkened(0.04), 0.006)
 		arm.rotation = Vector3(-0.3, 0.0, -0.4 * side)
 	# Pillars + roof edge frame the windshield

@@ -53,9 +53,14 @@ var _torso: Node3D
 var _hat: Node3D
 var _legs: Array[Node3D] = []
 var _boots: Array[Node3D] = []
+var _leg_splay: Array[float] = []
 var _shoulders: Array[Node3D] = []   ## [left, right]
 var _elbows: Array[Node3D] = []
 var _hands: Array[Node3D] = []
+var _wrists: Array[Node3D] = []           ## twists the hand (palm in / palm forward)
+var _fingers: Array = []                  ## per hand: [finger pivots..., thumb pivot]
+## Dev/tools: values here override the computed pose (e.g. a T-pose for model sheets).
+var pose_override: Dictionary = {}
 var _eyes: Array[Node3D] = []
 var _pupils: Array[Node3D] = []
 var _brows: Array[Node3D] = []
@@ -99,7 +104,7 @@ func build(l: Dictionary) -> void:
 	scale = Vector3.ONE * _s
 	var skin := Color(look.get("skin", "#e8b77a"))
 	var ghost: bool = look.get("ghost", false)
-	_leg_len = 0.0 if ghost else (0.18 if look.get("baby", false) else 0.3)
+	_leg_len = 0.0 if ghost else (0.3 if look.get("baby", false) else 0.66)
 
 	_rig = Node3D.new()
 	add_child(_rig)
@@ -143,12 +148,7 @@ func build(l: Dictionary) -> void:
 
 ## Radius of the egg at height y (0..h above its bottom). Matches Shapes.body_egg.
 func _egg_r(y: float) -> float:
-	var c := clampf(1.0 - 2.0 * y / _h, -1.0, 1.0)
-	var th := acos(c)
-	var yn := y / _h
-	var r := sin(th) * _r * (1.0 + 0.26 * cos(th))
-	r *= 1.0 - 0.12 * pow(maxf(yn - 0.55, 0.0) / 0.45, 1.5)
-	return r
+	return _r * Shapes.egg_profile(clampf(y / _h, 0.0, 1.0))
 
 
 ## A point on the egg's front surface (x sideways, y height above the egg bottom).
@@ -173,47 +173,98 @@ func _on_surface(node: Node3D, x: float, y: float, inset := 0.0) -> void:
 # --- construction ------------------------------------------------------------------------------
 
 func _build_legs(leg_color: Color, boot_color: Color) -> void:
+	# Two thick, straight legs coming out of the bottom of the egg, splayed a touch,
+	# planted in big chunky shoes with the toes turned out.
+	var spread := 0.31 * _r / 0.5
 	for side: int in [-1, 1]:
 		var pivot := Node3D.new()
-		pivot.position = Vector3(0.17 * side, 0.02, 0.0)
+		pivot.position = Vector3(spread * side, 0.1, 0.0)
 		_hips.add_child(pivot)
-		Toon.mesh(pivot, Shapes.limb(_leg_len + 0.04, 0.1, 0.085, 9), Vector3.ZERO, leg_color, 0.01)
+		_leg_splay.append(0.07 * side)
+		var thick := 0.132 if not look.get("baby", false) else 0.1
+		Toon.mesh(pivot, Shapes.limb(_leg_len + 0.02, thick, thick * 0.9, 10), Vector3.ZERO, leg_color, 0.01)
 		var boot := Node3D.new()
-		boot.position = Vector3(0, -_leg_len - 0.02, 0)
+		boot.position = Vector3(0, -_leg_len - 0.1, 0)
 		pivot.add_child(boot)
-		Toon.mesh(boot, Shapes.boot(0.3, 0.2, 0.44), Vector3.ZERO, boot_color, 0.014)
-		Toon.box(boot, Vector3(0.28, 0.04, 0.42), Vector3(0, 0.02, 0.06), boot_color.darkened(0.35), 0.0)
+		var shoe := Toon.mesh(boot, Shapes.shoe(0.38, 0.25, 0.6), Vector3.ZERO, boot_color, 0.014)
+		shoe.rotation.y = 0.5 * side        # toes point out, duck-footed
+		var sole := Toon.mesh(boot, Shapes.shoe(0.395, 0.05, 0.62), Vector3(0, -0.005, -0.005), boot_color.darkened(0.4), 0.0)
+		sole.rotation.y = 0.5 * side
 		_legs.append(pivot)
 		_boots.append(boot)
 
 
 func _build_arms(skin: Color) -> void:
-	var shoulder_y := _h * 0.46
+	# Long, skinny, tapered arms that stick out of the sides of the egg, with big
+	# four-fingered cartoon hands on the end.
+	var shoulder_y := _h * 0.63
 	var arm_color := Color(look.get("sleeves", skin))
+	var baby: bool = look.get("baby", false)
+	var upper := 0.3 if baby else 0.44
+	var fore := 0.26 if baby else 0.38
 	for side: int in [-1, 1]:
 		var shoulder := Node3D.new()
-		shoulder.position = Vector3((_egg_r(shoulder_y) - 0.05) * side, shoulder_y - 0.08, 0.02)
+		shoulder.position = Vector3((_egg_r(shoulder_y) - 0.07) * side, shoulder_y - 0.08, 0.0)
 		_torso.add_child(shoulder)
-		Toon.mesh(shoulder, Shapes.limb(0.27, 0.095, 0.08, 9), Vector3.ZERO, arm_color, 0.01)
+		Toon.mesh(shoulder, Shapes.limb(upper + 0.04, 0.112, 0.074, 9), Vector3.ZERO, arm_color, 0.01)
 		var elbow := Node3D.new()
-		elbow.position = Vector3(0, -0.22, 0)
+		elbow.position = Vector3(0, -upper, 0)
 		shoulder.add_child(elbow)
-		Toon.mesh(elbow, Shapes.limb(0.22, 0.08, 0.075, 9), Vector3.ZERO, skin, 0.01)
-		# Chunky round mitten + thumb
-		var hand := Node3D.new()
-		hand.position = Vector3(0, -0.26, 0.01)
-		elbow.add_child(hand)
-		var mitt := Toon.ball(hand, 0.11, Vector3.ZERO, skin, 0.012, 12)
-		mitt.scale = Vector3(0.95, 1.12, 0.85)
-		var thumb := Toon.ball(hand, 0.05, Vector3(-0.075 * side, 0.04, 0.05), skin, 0.008, 8)
-		thumb.scale = Vector3(0.9, 1.3, 0.9)
+		Toon.mesh(elbow, Shapes.limb(fore + 0.03, 0.073, 0.056, 9), Vector3.ZERO, skin, 0.01)
+		var wrist := Node3D.new()
+		wrist.position = Vector3(0, -fore, 0)
+		elbow.add_child(wrist)
+		var built := build_hand(wrist, skin, float(side), 0.9 if baby else 1.15, 0.009)
 		_shoulders.append(shoulder)
 		_elbows.append(elbow)
-		_hands.append(hand)
+		_wrists.append(wrist)
+		_hands.append(built[0])
+		_fingers.append(built[1])
 		if side == 1:
 			hand_socket = Node3D.new()
-			hand_socket.position = Vector3(0, -0.14, 0.0)
-			hand.add_child(hand_socket)
+			hand_socket.position = Vector3(0, -0.2, 0.0)
+			(built[0] as Node3D).add_child(hand_socket)
+
+
+## A big cartoon hand: chunky palm, three fat fingers and a thumb, all low-poly.
+## Built hanging down -Y from the wrist; the palm faces +Z. Returns [root, pivots]
+## where pivots are the three fingers then the thumb (rotate them on X to curl).
+## Shared by every egg, your first-person hands, the steering wheel and the kitchen cursor.
+static func build_hand(parent: Node3D, skin: Color, side: float, size := 1.0, outline := 0.008) -> Array:
+	var root := Node3D.new()
+	root.scale = Vector3.ONE * size
+	parent.add_child(root)
+	var palm := Toon.ball(root, 0.078, Vector3(0, -0.065, 0), skin, outline, 10)
+	palm.scale = Vector3(1.12, 1.0, 0.6)
+	var pivots: Array[Node3D] = []
+	var xs := [-0.05, 0.0, 0.05]
+	var lengths := [0.14, 0.16, 0.14]
+	for k in 3:
+		var f := Node3D.new()
+		f.position = Vector3(float(xs[k]) * side, -0.12, 0.0)
+		f.rotation.z = float(xs[k]) * side * 3.2      # fanned out a little
+		root.add_child(f)
+		Toon.mesh(f, Shapes.limb(lengths[k], 0.029, 0.024, 7), Vector3.ZERO, skin, outline)
+		pivots.append(f)
+	var thumb := Node3D.new()
+	thumb.position = Vector3(0.06 * side, -0.05, 0.012)
+	thumb.rotation = Vector3(0.0, 0.0, 1.0 * side)
+	root.add_child(thumb)
+	Toon.mesh(thumb, Shapes.limb(0.11, 0.03, 0.025, 7), Vector3.ZERO, skin, outline)
+	pivots.append(thumb)
+	return [root, pivots]
+
+
+## Curl the fingers: 0 = open hand, 1 = fist. Thumb folds in less.
+static func curl_hand(pivots: Array, amount: float, index_out := false) -> void:
+	for k in pivots.size():
+		var f := pivots[k] as Node3D
+		if k == pivots.size() - 1:
+			f.rotation.x = -amount * 0.6
+		elif index_out and k == 0:
+			f.rotation.x = 0.0
+		else:
+			f.rotation.x = -amount * 1.5
 
 
 func _build_face(skin: Color) -> void:
@@ -310,12 +361,9 @@ func _build_extras(skin: Color) -> void:
 		tail.rotation.x = 0.15
 	var apron = look.get("apron", null)
 	if apron != null:
-		var ap := Node3D.new()
-		_torso.add_child(ap)
-		_on_surface(ap, 0.0, _h * 0.26, 0.02)
-		var cloth := Toon.block(ap, Vector3(0.56, 0.46, 0.05), Vector3(0, -0.22, 0.01), Color(apron), 0.12, 0.01)
-		cloth.rotation.x = -0.25
-		Toon.box(ap, Vector3(0.6, 0.04, 0.03), Vector3(0, 0.0, -0.01), Color(apron).darkened(0.1), 0.0)
+		# Hugs the belly: a patch of the egg's own surface, pushed out a hair.
+		Toon.mesh(_torso, _surface_patch(_r * 0.62, _h * 0.04, _h * 0.33, 0.018, false), Vector3.ZERO, Color(apron), 0.006)
+		Toon.mesh(_torso, _surface_patch(_r * 0.7, _h * 0.32, _h * 0.36, 0.026, false), Vector3.ZERO, Color(apron).darkened(0.12), 0.0)
 	var bow = look.get("bow", null)
 	if bow != null:
 		var bw := Node3D.new()
@@ -343,8 +391,44 @@ func _build_extras(skin: Color) -> void:
 			Toon.mesh(_torso, Shapes.blob(0.15, 7 + side, 0.15), Vector3(_r * 0.85 * side, _h * 0.78, -0.08), Color(hair), 0.01)
 	var cape = look.get("cape", null)
 	if cape != null:
-		var cp := Toon.block(_torso, Vector3(_r * 1.9, _h * 0.72, 0.04), Vector3(0, 0.05, -_r * 0.86), Color(cape), 0.1, 0.012)
-		cp.rotation.x = 0.14
+		Toon.mesh(_torso, _surface_patch(_r * 0.85, _h * 0.02, _h * 0.7, 0.03, true), Vector3.ZERO, Color(cape), 0.008)
+
+
+## A curved piece of cloth that follows the egg's surface (aprons, capes).
+## half_w = half width at the front, y0..y1 = height range, lift = gap off the shell.
+func _surface_patch(half_w: float, y0: float, y1: float, lift: float, back: bool) -> ArrayMesh:
+	var cols := 8
+	var rows := 6
+	var grid: Array = []
+	for i in rows + 1:
+		var y := lerpf(y0, y1, float(i) / rows)
+		var r := _egg_r(y)
+		var hw := minf(half_w, r * 0.98)
+		var row: Array = []
+		for j in cols + 1:
+			var x := lerpf(-hw, hw, float(j) / cols)
+			var p := _surface(x, y, -lift)
+			if back:
+				p.z = -sqrt(maxf(r * r - x * x, 0.0)) * 0.94 - lift
+			row.append(p)
+		grid.append(row)
+	var out_v := PackedVector3Array()
+	var out_n := PackedVector3Array()
+	for i in rows:
+		for j in cols:
+			var quad := [grid[i][j], grid[i + 1][j], grid[i + 1][j + 1], grid[i][j + 1]]
+			for tri in [[0, 1, 2], [0, 2, 3]]:
+				for k in tri:
+					var v: Vector3 = quad[k]
+					out_v.append(v)
+					out_n.append(Vector3(v.x, 0.0, v.z).normalized())
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = out_v
+	arrays[Mesh.ARRAY_NORMAL] = out_n
+	var m := ArrayMesh.new()
+	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return Shapes.faceted(m)
 
 
 func _build_hat() -> void:
@@ -535,9 +619,11 @@ func _process(delta: float) -> void:
 		"squash": 1.0 + sin(_t * 2.1) * 0.012,
 		"leg": [step * 0.6 * walk, -step * 0.6 * walk],
 		"lift": [maxf(0.0, -cos(_phase)) * 0.09 * walk, maxf(0.0, cos(_phase)) * 0.09 * walk],
-		"arm_out": [0.16 + 0.05 * walk, 0.16 + 0.05 * walk],
-		"arm_fwd": [step * 0.55 * walk, -step * 0.55 * walk],
-		"arm_bend": [-0.3 - 0.25 * walk, -0.3 - 0.25 * walk],
+		"arm_out": [0.3 + 0.06 * walk, 0.3 + 0.06 * walk],
+		"arm_fwd": [step * 0.5 * walk, -step * 0.5 * walk],
+		"arm_bend": [-0.22 - 0.25 * walk, -0.22 - 0.25 * walk],
+		"twist": [0.9, 0.9],          # palms toward the body
+		"grip": [0.3, 0.3],           # relaxed fingers
 		"brow_tilt": 0.0, "brow_raise": 0.0, "eye": 1.0, "mouth_w": 1.0, "mouth_h": 1.0,
 	}
 	# Idle: weight shift + random fidgets
@@ -605,6 +691,22 @@ func _process(delta: float) -> void:
 			pose.arm_bend[i] = -0.4
 		pose.leg = [sin(_t * 28.0) * 0.8, -sin(_t * 28.0) * 0.8]
 
+	# Hands follow what the arms are doing.
+	if carrying:
+		pose.grip = [0.65, 0.65]
+		pose.twist = [0.2, 0.2] if carry_style == "front" else [0.9, 0.0]
+	if waving:
+		pose.grip[1] = 0.0
+		pose.twist[1] = 0.0
+	if phone_mode:
+		pose.grip[1] = 0.85
+	if flailing:
+		pose.grip = [0.0, 0.0]
+	if talking and not carrying:
+		pose.grip = [0.1 + sin(_t * 3.0) * 0.1, 0.15 + sin(_t * 2.4) * 0.15]
+		pose.twist = [0.3, 0.3]
+	for k in pose_override:
+		pose[k] = pose_override[k]
 	_apply_pose(pose, delta)
 	_animate_face(delta, pose)
 
@@ -816,10 +918,17 @@ func _apply_pose(pose: Dictionary, delta: float) -> void:
 		var bend := _spring("ab%d" % i, pose.arm_bend[i], delta, 170.0, 12.0)
 		_shoulders[i].rotation = Vector3(fwd, 0, out * side)
 		_elbows[i].rotation = Vector3(bend, 0, 0)
+		if i < _wrists.size():
+			var tw: Array = pose.get("twist", [0.9, 0.9])
+			var gr: Array = pose.get("grip", [0.3, 0.3])
+			_wrists[i].rotation.y = _spring("tw%d" % i, float(tw[i]) * side, delta, 140.0, 13.0)
+			curl_hand(_fingers[i], _spring("gr%d" % i, float(gr[i]), delta, 200.0, 15.0))
 	# Legs + boot lift
 	for i in _legs.size():
 		var swing := _spring("leg%d" % i, pose.leg[i], delta, 260.0, 18.0)
 		_legs[i].rotation.x = swing
+		_legs[i].rotation.z = _leg_splay[i]
+		_boots[i].rotation.z = -_leg_splay[i]
 		_boots[i].position.y = -_leg_len - 0.02 + float(pose.lift[i])
 		_boots[i].rotation.x = -swing * 0.6
 	# Hat lags behind the head (springy wobble)
@@ -841,7 +950,7 @@ func _apply_pose(pose: Dictionary, delta: float) -> void:
 	if hand_socket:
 		hand_socket.global_basis = Basis(Vector3.UP, global_rotation.y).scaled(Vector3.ONE * _s)
 		if carrying:
-			var target := head_top.global_position + Vector3(0, 0.32 * _s, 0) if carry_style == "overhead" \
+			var target := head_top.global_position + Vector3(0, 0.45 * _s, 0) if carry_style == "overhead" \
 				else _torso.global_position + global_basis * Vector3(0, _h * 0.42, _r * 1.25) * 1.0
 			hand_socket.global_position = hand_socket.global_position.lerp(target, 0.85)
 

@@ -39,6 +39,7 @@ var _cut_spot: Node3D
 var _pass_spots: Array[Node3D] = []
 var _cursor: Node3D
 var _cursor_tool: Node3D
+var _cursor_fingers: Array = []
 var _rings: Node3D
 var _preview: MeshInstance3D
 var _phone_handset: Node3D
@@ -412,6 +413,7 @@ func _release() -> void:
 		else:
 			Game.say_toast("Drag the wheel all the way across the pizza!", Color("#ff9f1c"))
 	if mode == "prep" and tool == "stretch" and board_pizza:
+		EggBody.curl_hand(_cursor_fingers, 0.0)
 		if board_pizza.is_torn():
 			_tear()
 
@@ -502,6 +504,7 @@ func _work_process(delta: float) -> void:
 	_sound_cd -= delta
 	if _mouse_down and _cursor_ok:
 		if tool == "stretch":
+			EggBody.curl_hand(_cursor_fingers, 0.45)
 			var want := _cursor_local.length() + 0.03
 			if want > p.radius():
 				var rate := 4.0 * (1.0 + Game.level("dough_press") * 0.6)
@@ -617,9 +620,12 @@ func _check(ok: bool, text: String) -> String:
 func _build_cursor() -> void:
 	_cursor = Node3D.new()
 	pizzeria.add_child(_cursor)
-	var mitt := Toon.ball(_cursor, 0.06, Vector3(0, 0.07, 0.03), FpHands.SKIN, 0.008, 10)
-	mitt.scale = Vector3(1.0, 0.8, 1.2)
-	Toon.ball(_cursor, 0.028, Vector3(-0.05, 0.08, 0.0), FpHands.SKIN, 0.006, 8)
+	# Your hand, hovering over the board (fingers pointing away from you, palm down)
+	var wrist := Node3D.new()
+	wrist.position = Vector3(0.02, 0.08, 0.12)
+	wrist.rotation = Vector3(PI / 2 - 0.5, 0.25, 0.0)
+	_cursor.add_child(wrist)
+	_cursor_fingers = EggBody.build_hand(wrist, FpHands.SKIN, -1.0, 0.75, 0.007)[1]
 	_cursor_tool = Node3D.new()
 	_cursor.add_child(_cursor_tool)
 	_cursor.visible = false
@@ -629,6 +635,8 @@ func _build_cursor() -> void:
 
 
 func _build_cursor_tool() -> void:
+	if not _cursor_fingers.is_empty():
+		EggBody.curl_hand(_cursor_fingers, 0.0 if tool == "stretch" else 0.85)
 	for c in _cursor_tool.get_children():
 		c.queue_free()
 	_cursor_tool.rotation = Vector3.ZERO

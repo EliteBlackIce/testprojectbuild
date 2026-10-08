@@ -32,6 +32,12 @@ func _ready() -> void:
 	await _stand(player, pz.to_global(Vector3(-1.2, 0, -1.4)), pz.to_global(Vector3(-5.0, 1.0, -4.5)))
 	await _frames(20)
 	await _shot("02_kitchen")
+	if OS.get_cmdline_user_args().has("quick"):
+		player.hands.play("poke")
+		await get_tree().create_timer(0.12).timeout
+		await _shot("02b_poke")
+		get_tree().quit()
+		return
 	# Grab dough, start the pizza
 	await _stand(player, pz.to_global(Vector3(-8.6, 0, -2.6)), pz.anchor("dough") + Vector3(0, 1.0, 0))
 	await _frames(10)

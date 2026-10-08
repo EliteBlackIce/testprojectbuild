@@ -56,7 +56,7 @@ func _build_car(root: Node3D, col: Color, rng: RandomNumberGenerator) -> void:
 	root.add_child(driver)
 	driver.build(Characters.random_pedestrian_look(rng))
 	driver.scale = Vector3.ONE * 0.55
-	driver.position = Vector3(-0.35, 0.6, 0.3)
+	driver.position = Vector3(-0.35, 0.78, 0.3)
 	driver.rotation.y = PI
 
 

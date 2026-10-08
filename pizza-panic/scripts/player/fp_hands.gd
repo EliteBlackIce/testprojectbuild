@@ -9,8 +9,8 @@ extends Node3D
 ## One-shots: poke, grab, knock, push, wave, shrug, clap, flail, thumbs.
 
 const SKIN := Color("#d9a066")
-const REST_L := Vector3(-0.27, -0.29, -0.5)
-const REST_R := Vector3(0.27, -0.29, -0.5)
+const REST_L := Vector3(-0.25, -0.26, -0.5)
+const REST_R := Vector3(0.25, -0.26, -0.5)
 
 var pose := "idle"
 var moving := 0.0           ## 0..1 walk speed (set by the player)
@@ -19,7 +19,8 @@ var hold_socket: Node3D     ## held items sit here (in front, at chest height)
 var hold_width := 0.6       ## how far apart the hands go to carry the item
 
 var _hands: Array[Node3D] = []
-var _fingers: Array[MeshInstance3D] = []
+var _fingers: Array = []          ## per hand: finger + thumb pivots (see EggBody.build_hand)
+var _curl: Array[float] = [0.3, 0.3]
 var _phone: Node3D
 var _pos: Array[Vector3] = [REST_L, REST_R]
 var _vel: Array[Vector3] = [Vector3.ZERO, Vector3.ZERO]
@@ -45,22 +46,14 @@ func _ready() -> void:
 		var hand := Node3D.new()
 		add_child(hand)
 		# Forearm going back toward you (you never see the elbow)
-		var arm := Toon.mesh(hand, Shapes.limb(0.42, 0.06, 0.055, 9), Vector3(0, 0.0, 0.05), SKIN.darkened(0.04), 0.008)
-		arm.rotation.x = -PI / 2 - 0.25
-		var mitt := Toon.ball(hand, 0.075, Vector3.ZERO, SKIN, 0.008, 12)
-		mitt.scale = Vector3(1.0, 0.82, 1.18)
-		var thumb := Toon.ball(hand, 0.034, Vector3(-0.06 * side, 0.025, -0.02), SKIN, 0.006, 8)
-		thumb.scale = Vector3(0.9, 1.3, 0.9)
-		thumb.rotation.z = 0.5 * side
-		# Pointer finger (pops out for pokes and thumbs-ups)
-		var finger := MeshInstance3D.new()
-		finger.mesh = Shapes.limb(0.08, 0.022, 0.02, 7)
-		finger.material_override = Toon.mat(SKIN, 0.005)
-		finger.rotation.x = PI / 2
-		finger.position = Vector3(-0.01 * side, 0.01, -0.07)
-		finger.scale = Vector3(1, 0.01, 1)
-		hand.add_child(finger)
-		_fingers.append(finger)
+		var arm := Toon.mesh(hand, Shapes.limb(0.42, 0.045, 0.04, 9), Vector3(0, 0.0, 0.03), SKIN.darkened(0.04), 0.008)
+		arm.rotation.x = -PI / 2 + 0.5     # back toward you and down, out of the way
+		# The same big four-fingered hand every egg has, fingers pointing ahead, palm down.
+		var wrist := Node3D.new()
+		wrist.rotation = Vector3(PI / 2 + 0.3, -0.3 * side, 0.5 * side)
+		hand.add_child(wrist)
+		var built := EggBody.build_hand(wrist, SKIN, -float(side), 0.62, 0.006)
+		_fingers.append(built[1])
 		_hands.append(hand)
 	# Phone handset for calls (left hand)
 	_phone = Node3D.new()
@@ -157,8 +150,30 @@ func _process(delta: float) -> void:
 		_rot[i] = _rot[i].lerp(rot, 1.0 - exp(-16.0 * delta))
 		_hands[i].position = _pos[i]
 		_hands[i].rotation = _rot[i]
-		var fs := _fingers[i].scale.y
-		_fingers[i].scale = Vector3(1, move_toward(fs, maxf(0.01, finger), delta * 8.0), 1)
+		# Fingers: relaxed, gripping what you carry, a fist to knock, one finger to poke.
+		var want := 0.3
+		match pose:
+			"carry":
+				want = 0.8
+			"phone":
+				want = 0.9 if i == 0 else 0.3
+			"talk":
+				want = 0.1
+		match _action:
+			"knock", "push":
+				want = 1.0 if i == 1 or _action == "push" else want
+			"grab":
+				want = 0.9
+			"poke":
+				want = 1.0 if i == 1 else want
+			"wave", "clap", "shrug", "flail":
+				want = 0.0
+			"thumbs":
+				want = 1.0 if i == 1 else want
+		if _action == "push":
+			want = 0.05
+		_curl[i] = lerpf(_curl[i], want, 1.0 - exp(-14.0 * delta))
+		EggBody.curl_hand(_fingers[i], _curl[i], finger > 0.5)
 	if hold_socket:
 		var hb := Vector3(0, -absf(cos(_phase)) * 0.014 * moving - _land * 0.08, 0) + Vector3(-_sway.x, _sway.y, 0) * 0.5
 		_hold_bob = _hold_bob.lerp(hb, 1.0 - exp(-14.0 * delta))

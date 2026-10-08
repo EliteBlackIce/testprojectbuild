@@ -74,6 +74,12 @@ calls. More stars means more calls and bigger tips. Your progress (and staff) sa
 | ![Kitchen](docs/screenshots/kitchen.png) | ![Oven](docs/screenshots/oven.png) |
 | ![Cutting](docs/screenshots/cutting.png) | ![Cockpit](docs/screenshots/cockpit.png) |
 
+**The eggs**: every character shares one model. It's a big low-poly egg standing on its fat end, with long skinny
+tapered arms, big four-fingered cartoon hands, thick straight legs and chunky toes-out shoes. Hats,
+mustaches, aprons and the rest go on top, and the faces animate.
+
+![Egg model](docs/screenshots/egg_model.png)
+
 **The town** has downtown shops, Yolk Park, a gas station, ~58 houses each with its own resident,
 traffic, egg pedestrians, streetlights that switch on at sunset, and hills and mountains.
 
@@ -178,7 +184,7 @@ scripts/ai/                   conversation.gd, claude_brain.gd, speech_to_text.g
 scripts/ui/                   hud (+ crosshair), dialogue box, station overlay, menus + upgrade/hiring shop, theme
 shaders/                      toon.gdshader (3-band faceted cel shading), outline.gdshader (ink lines)
 tests/                        automated play-throughs
-tools/                        screenshot + character lineup renderers
+tools/                        screenshot, character lineup, animation sheet + model sheet (T-pose) renderers
 ```
 
 ### Adding a character

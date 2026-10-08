@@ -36,7 +36,7 @@ func _ready() -> void:
 		e.idle_fidgets = false
 		var row := i / 6
 		var col := i % 6
-		e.position = Vector3((col - 2.5) * 1.7, 0, -row * 2.6)
+		e.position = Vector3((col - 2.5) * 2.2, 0, -row * 3.0)
 		e.rotation.y = 0.35
 		eggs.append(e)
 		var kind: String = SHOTS[i][0]
@@ -64,10 +64,10 @@ func _ready() -> void:
 			_:
 				e.play(kind)
 	var cam := Camera3D.new()
-	cam.position = Vector3(0, 3.6, 7.5)
+	cam.position = Vector3(0, 4.2, 10.0)
 	cam.fov = 50
 	add_child(cam)
-	cam.look_at(Vector3(0, 0.7, -1.3))
+	cam.look_at(Vector3(0, 1.0, -1.5))
 	cam.current = true
 	# Advance until each shot's moment; we freeze by pausing per-egg processing.
 	for f in 120:
