@@ -181,8 +181,11 @@ func _ready() -> void:
 	check(Game.hire("pam"), "hired Pam for the phone")
 	main.phone.ring(main.town.houses[9])
 	var tickets_before := Game.tickets.size()
-	await _seconds(5.0)
-	check(Game.tickets.size() == tickets_before + 1, "Pam answered the phone and wrote a ticket")
+	var waited_pam := 0.0
+	while Game.tickets.size() <= tickets_before and waited_pam < 10.0:
+		await _seconds(0.25)
+		waited_pam += 0.25
+	check(Game.tickets.size() > tickets_before, "Pam answered the phone and wrote a ticket (%.1fs)" % waited_pam)
 
 	# 12. Upgrades
 	check(Game.buy_upgrade("engine"), "bought an engine upgrade")

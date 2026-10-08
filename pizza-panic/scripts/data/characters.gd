@@ -74,7 +74,7 @@ const ROSTER := [
 		"idle": ["Woof.", "Bark?", "*sniffs the pizza aggressively*", "Arf! Arf!"],
 		"voice": {"openai": "verse", "eleven": "N2lVS1w4EtoT3dr4eOWO", "babble": 340.0, "speed": 1.5,
 			"style": "An overexcited dog that can barely talk. Panting, yappy, hyper, lots of barking sounds."},
-		"look": {"skin": "#e9b44c", "ears": true, "snout": true, "tail": true, "eye": "big", "hair_color": "#a8652a", "size": 0.8, "boots": "#a8652a", "bow": "#d62828"},
+		"look": {"eye_color": "#c9701a", "skin": "#e9b44c", "ears": true, "snout": true, "tail": true, "eye": "big", "hair_color": "#a8652a", "size": 0.8, "boots": "#a8652a", "bow": "#d62828"},
 	},
 	{
 		"id": "chad", "name": "Chad Thunderbro", "title": "Gym Bro",
@@ -100,7 +100,7 @@ const ROSTER := [
 		"idle": ["The moon is a hologram.", "Don't look at the cheese directly.", "They're listening. Through the oregano."],
 		"voice": {"openai": "fable", "eleven": "IKne3meq5aSn9XLyUdCD", "babble": 200.0, "speed": 1.35,
 			"style": "Paranoid conspiracy guy. Fast, twitchy whisper-yelling, suspicious, dramatic pauses."},
-		"look": {"skin": "#d8b48a", "hat": "tinfoil", "eye": "big", "boots": "#6b705c", "stretch": 1.1},
+		"look": {"eye_color": "#3fae5a", "skin": "#d8b48a", "hat": "tinfoil", "eye": "big", "boots": "#6b705c", "stretch": 1.1},
 	},
 	{
 		"id": "dave", "name": "Dave the Wizard", "title": "Level 900 Wizard",
@@ -113,7 +113,7 @@ const ROSTER := [
 		"idle": ["My staff is also a back scratcher.", "I cast... order more garlic knots.", "I am level 900. In Wizard."],
 		"voice": {"openai": "ballad", "eleven": "onwK4e9ZLuTAKqWW03F9", "babble": 110.0, "speed": 0.8,
 			"style": "Over-dramatic old wizard. Booming, theatrical, Shakespearean, way too serious."},
-		"look": {"skin": "#c8a27a", "hat": "wizard", "hat_color": "#3a0ca3", "beard": true, "hair_color": "#f0f0f0", "eye": "sleepy", "cape": "#3a0ca3"},
+		"look": {"eye_color": "#8e5bd8", "skin": "#c8a27a", "hat": "wizard", "hat_color": "#3a0ca3", "beard": true, "hair_color": "#f0f0f0", "eye": "sleepy", "cape": "#3a0ca3"},
 	},
 	{
 		"id": "bob", "name": "Big Baby Bob", "title": "A Baby. CEO Energy.",
@@ -127,7 +127,7 @@ const ROSTER := [
 		"idle": ["Bob want pizza.", "Waaah.", "*stares into your soul*", "Let's circle back. Goo."],
 		"voice": {"openai": "shimmer", "eleven": "pFZP5JQG7iQjIQuC4Bku", "babble": 420.0, "speed": 1.2,
 			"style": "A baby who talks. High pitched, babbling, cute, but sometimes switches to a serious business voice."},
-		"look": {"skin": "#ffd7ba", "baby": true, "hat": "bow", "hat_color": "#ff8fab", "eye": "big", "blush": true, "size": 0.62, "stretch": 0.9},
+		"look": {"eye_color": "#4a9be8", "skin": "#ffd7ba", "baby": true, "hat": "bow", "hat_color": "#ff8fab", "eye": "big", "blush": true, "size": 0.62, "stretch": 0.9},
 	},
 	{
 		"id": "ghost", "name": "Boo-ford", "title": "Haunts This House",
@@ -140,7 +140,7 @@ const ROSTER := [
 		"idle": ["I can't actually eat this. I'm a ghost.", "Oooooooo.", "I died ordering pizza. Long story."],
 		"voice": {"openai": "alloy", "eleven": "MF3mGyEYCl7XYWbV9V5O", "babble": 160.0, "speed": 0.7,
 			"style": "A theatrical ghost. Wobbly, echoey, wailing ooooOOOO sounds, very dramatic and a bit needy."},
-		"look": {"skin": "#f3f3f6", "ghost": true, "eye": "big", "blush": true},
+		"look": {"eye_color": "#5fd3ff", "skin": "#f3f3f6", "ghost": true, "eye": "big", "blush": true},
 	},
 	{
 		"id": "sparkle", "name": "Princess Sparkle-chan", "title": "Magical Girl (Self-Declared)",
@@ -153,7 +153,7 @@ const ROSTER := [
 		"idle": ["My power level is rising!", "Nya~! I mean. Hmph.", "This isn't even my final form!"],
 		"voice": {"openai": "coral", "eleven": "EXAVITQu4vr4xnSDxMaL", "babble": 380.0, "speed": 1.2,
 			"style": "A hyper dramatic anime magical girl. High energy, squeaky, shouting attack names, very theatrical."},
-		"look": {"skin": "#ffe3ea", "hat": "crown", "eye": "big", "blush": true, "hair": "#c77dff", "cape": "#ff8fab", "size": 0.9, "boots": "#ff8fab"},
+		"look": {"eye_color": "#e0479e", "skin": "#ffe3ea", "hat": "crown", "eye": "big", "blush": true, "hair": "#c77dff", "cape": "#ff8fab", "size": 0.9, "boots": "#ff8fab"},
 	},
 	{
 		"id": "sensei", "name": "Sensei Noodle", "title": "Ancient Master",
@@ -191,7 +191,7 @@ const ROSTER := [
 		"idle": ["Bro you have like four voice lines.", "Hold on, I'm gonna try to clip through the door.", "Is there a skip button?"],
 		"voice": {"openai": "echo", "eleven": "ErXwobaYiN019PkySvjV", "babble": 240.0, "speed": 1.3,
 			"style": "Nasal teenage gamer. Fast talking, easily amazed, says 'bro' and 'lowkey'."},
-		"look": {"skin": "#8d5524", "hat": "headset", "hat_color": "#06d6a0", "eye": "big", "boots": "#073b4c", "stretch": 1.05},
+		"look": {"eye_color": "#21c48a", "skin": "#8d5524", "hat": "headset", "hat_color": "#06d6a0", "eye": "big", "boots": "#073b4c", "stretch": 1.05},
 	},
 ]
 

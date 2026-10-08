@@ -39,6 +39,69 @@ static func faceted(mesh: Mesh) -> ArrayMesh:
 	return _commit(out_v, out_n)
 
 
+## Soft version of a mesh: vertices at the same spot share an averaged normal,
+## so cel shading flows smoothly over it (anime characters) instead of facets.
+static func smoothed(mesh: Mesh) -> ArrayMesh:
+	var key := "smooth|%d" % mesh.get_instance_id()
+	if _cache.has(key):
+		return _cache[key]
+	var arrays := mesh.surface_get_arrays(0)
+	var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var idx = arrays[Mesh.ARRAY_INDEX]
+	var order := PackedInt32Array()
+	if idx is PackedInt32Array and (idx as PackedInt32Array).size() > 0:
+		order = idx
+	else:
+		order.resize(verts.size())
+		for i in verts.size():
+			order[i] = i
+	var norms: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+	var acc: Dictionary = {}
+	var out_v := PackedVector3Array()
+	var face_n := PackedVector3Array()
+	for t in range(0, order.size() - 2, 3):
+		var a := verts[order[t]]
+		var b := verts[order[t + 1]]
+		var c := verts[order[t + 2]]
+		var fn := (b - a).cross(c - a)
+		var hint := norms[order[t]] + norms[order[t + 1]] + norms[order[t + 2]] if norms.size() == verts.size() else fn
+		if fn.dot(hint) < 0.0:
+			fn = -fn
+		for v in [a, b, c]:
+			var k := Vector3i(roundi(v.x * 2000.0), roundi(v.y * 2000.0), roundi(v.z * 2000.0))
+			acc[k] = acc.get(k, Vector3.ZERO) + fn
+		out_v.append_array([a, b, c])
+		face_n.append(fn)
+	var out_n := PackedVector3Array()
+	var final_v := PackedVector3Array()
+	for t in face_n.size():
+		var fn := face_n[t].normalized()
+		var tri: Array[Vector3] = []
+		var nn: Array[Vector3] = []
+		for k in 3:
+			var v := out_v[t * 3 + k]
+			var n: Vector3 = acc[Vector3i(roundi(v.x * 2000.0), roundi(v.y * 2000.0), roundi(v.z * 2000.0))].normalized()
+			# keep genuinely hard corners (> ~70 degrees) crisp
+			if n.dot(fn) < 0.35:
+				n = fn
+			tri.append(v)
+			nn.append(n)
+		_emit_smooth(final_v, out_n, tri, nn, fn)
+	var m := _commit(final_v, out_n)
+	_cache[key] = m
+	return m
+
+
+static func _emit_smooth(out_v: PackedVector3Array, out_n: PackedVector3Array, tri: Array[Vector3], nn: Array[Vector3], fn: Vector3) -> void:
+	# Same winding rule as _emit (front faces clockwise from outside).
+	if (tri[1] - tri[0]).cross(tri[2] - tri[0]).dot(fn) > 0.0:
+		out_v.append_array([tri[0], tri[2], tri[1]])
+		out_n.append_array([nn[0], nn[2], nn[1]])
+	else:
+		out_v.append_array([tri[0], tri[1], tri[2]])
+		out_n.append_array([nn[0], nn[1], nn[2]])
+
+
 ## Spins a 2D profile (x = radius, y = height, bottom to top) around the Y axis.
 ## Few segments = chunky low-poly. `phase` rotates the segments (0.5 = flat side forward).
 static func lathe(profile: PackedVector2Array, segments: int, phase := 0.0) -> ArrayMesh:

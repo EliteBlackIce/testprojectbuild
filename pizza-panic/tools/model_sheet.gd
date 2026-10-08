@@ -35,6 +35,9 @@ func _ready() -> void:
 	sun.rotation_degrees = Vector3(-35, 20, 0)
 	sun.light_energy = 0.75
 	add_child(sun)
+	if OS.get_cmdline_user_args().has("car"):
+		await _car_sheet(out)
+		return
 	var e := EggBody.new()
 	add_child(e)
 	e.build(look)
@@ -59,6 +62,25 @@ func _ready() -> void:
 		cam.position = sh[2]
 		cam.look_at(Vector3(0, 0.95, 0))
 		for i in 40:
+			await get_tree().process_frame
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png("%s/%s.png" % [out, sh[0]])
+		print("shot ", sh[0])
+	get_tree().quit()
+
+
+func _car_sheet(out: String) -> void:
+	var car := PizzaCar.new()
+	add_child(car)
+	car.set_physics_process(false)   # no ground here; just pose it
+	var cam := Camera3D.new()
+	cam.fov = 40
+	add_child(cam)
+	cam.current = true
+	for sh in [["car_34", Vector3(6.5, 3.2, -7.0)], ["car_side", Vector3(9.5, 1.6, 0.0)], ["car_back", Vector3(-5.0, 3.0, 7.5)]]:
+		cam.position = sh[1]
+		cam.look_at(Vector3(0, 1.0, 0))
+		for i in 20:
 			await get_tree().process_frame
 		await RenderingServer.frame_post_draw
 		get_viewport().get_texture().get_image().save_png("%s/%s.png" % [out, sh[0]])

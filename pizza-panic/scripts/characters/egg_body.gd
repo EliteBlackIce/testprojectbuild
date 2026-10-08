@@ -61,6 +61,9 @@ var _wrists: Array[Node3D] = []           ## twists the hand (palm in / palm for
 var _fingers: Array = []                  ## per hand: [finger pivots..., thumb pivot]
 ## Dev/tools: values here override the computed pose (e.g. a T-pose for model sheets).
 var pose_override: Dictionary = {}
+var _googly := Vector2.ZERO
+var _googly_v := Vector2.ZERO
+const IRIS_COLORS := ["#3a7bd5", "#2bb38a", "#8e5bd8", "#d9773a", "#c9415e", "#4aa3c8", "#7a5230", "#5c9c3a"]
 var _eyes: Array[Node3D] = []
 var _pupils: Array[Node3D] = []
 var _brows: Array[Node3D] = []
@@ -143,6 +146,11 @@ func build(l: Dictionary) -> void:
 		Toon.ball(_dizzy, 0.06, Vector3(cos(a) * 0.35, 0, sin(a) * 0.35), Color("#ffd166"), 0.0, 5)
 	_dizzy.visible = false
 	_last_pos = global_position if is_inside_tree() else Vector3.ZERO
+	# Anime look: soft, smooth shading over the whole character.
+	for n in find_children("*", "MeshInstance3D", true, false):
+		var mi := n as MeshInstance3D
+		if mi.mesh and not (mi.material_override is StandardMaterial3D):
+			mi.mesh = Shapes.smoothed(mi.mesh)
 
 
 # --- geometry helpers ------------------------------------------------------------------------
@@ -269,54 +277,65 @@ static func curl_hand(pivots: Array, amount: float, index_out := false) -> void:
 
 
 func _build_face(skin: Color) -> void:
+	# Simple goofy googly eyes: big round whites, a plain black dot that wobbles
+	# around (see _animate_face), one tiny shine. A little mismatched on purpose.
 	var eye_style: String = look.get("eye", "normal")
-	var eye_y := _h * 0.66
-	var eye_x := 0.13
-	var w := 0.12
-	var h := 0.16
+	var eye_y := _h * 0.63
+	var eye_x := 0.15
+	var w := 0.17
+	var h := 0.19
 	match eye_style:
 		"big":
-			w = 0.15
-			h = 0.2
+			w = 0.21
+			h = 0.23
 		"tiny":
-			w = 0.075
-			h = 0.085
+			w = 0.1
+			h = 0.11
 		"sleepy":
-			h = 0.09
+			h = 0.12
 	for side: int in [-1, 1]:
+		var goof := 1.0 if side == -1 else 1.08     # one eye a bit bigger
+		var ew := w * goof
+		var eh := h * goof
 		var eye := Node3D.new()
 		_torso.add_child(eye)
-		_on_surface(eye, eye_x * side, eye_y)
-		Toon.block(eye, Vector3(w, h, 0.05), Vector3(0, -h * 0.5, -0.025), Color("#fbf6ee"), 0.35, 0.008)
+		_on_surface(eye, eye_x * side, eye_y + (0.008 if side == 1 else 0.0))
+		var white := Toon.ball(eye, 0.5, Vector3(0, 0, -0.01), Color("#fffdf8"), 0.014, 16)
+		white.scale = Vector3(ew, eh, 0.08)
 		var pupil := Node3D.new()
 		pupil.position = Vector3(0.0, 0, 0.018)
 		eye.add_child(pupil)
-		var pw := w * 0.5
-		var ph := h * 0.64
-		Toon.block(pupil, Vector3(pw, ph, 0.04), Vector3(0, -ph * 0.5, 0), Color("#1d1517"), 0.4, 0.0)
-		Toon.box(pupil, Vector3(pw * 0.34, pw * 0.34, 0.02), Vector3(pw * 0.14, ph * 0.22, 0.026), Color.WHITE, 0.0)
+		var dot := Toon.ball(pupil, 0.5, Vector3(0, 0, 0.012), Color("#1a1020"), 0.0, 14)
+		dot.scale = Vector3(ew * 0.42, ew * 0.42, 0.03)
+		var shine := MeshInstance3D.new()
+		shine.mesh = Shapes.ball(0.5, 8, 4)
+		shine.material_override = Toon.glow(Color.WHITE, 1.0)
+		shine.scale = Vector3(ew * 0.12, ew * 0.12, 0.02)
+		shine.position = Vector3(ew * 0.07, ew * 0.07, 0.03)
+		pupil.add_child(shine)
 		_eyes.append(eye)
 		_pupils.append(pupil)
 		var brow := Node3D.new()
 		_torso.add_child(brow)
-		_on_surface(brow, eye_x * side, eye_y + h * 0.5 + 0.07)
-		Toon.block(brow, Vector3(0.17, 0.05, 0.05), Vector3(0, -0.025, 0), Color(look.get("brows", "#2b1c18")), 0.35, 0.0)
+		_on_surface(brow, eye_x * side, eye_y + h * 0.5 + 0.06)
+		Toon.block(brow, Vector3(0.16, 0.032, 0.04), Vector3(0, -0.016, 0), Color(look.get("brows", "#2b1c18")), 0.45, 0.0)
 		_brows.append(brow)
 		_brow_base.append(brow.position.y)
-	if look.get("blush", false):
-		for side: int in [-1, 1]:
-			var b := Node3D.new()
-			_torso.add_child(b)
-			_on_surface(b, 0.23 * side, eye_y - 0.14)
-			Toon.ball(b, 0.05, Vector3.ZERO, Color("#ff8fa3"), 0.0, 8).scale = Vector3(1.4, 0.7, 0.3)
+	# Soft anime blush on everyone (stronger if the look asks for it)
+	for side: int in [-1, 1]:
+		var b := Node3D.new()
+		_torso.add_child(b)
+		_on_surface(b, 0.27 * side, eye_y - 0.19)
+		var tint := Color("#ff8fa3") if look.get("blush", false) else skin.lerp(Color("#ff9aa8"), 0.35)
+		Toon.ball(b, 0.05, Vector3.ZERO, tint, 0.0, 10).scale = Vector3(1.5, 0.6, 0.25)
 	var mouth_root := Node3D.new()
 	_torso.add_child(mouth_root)
-	_on_surface(mouth_root, 0.0, eye_y - 0.25)
-	_mouth = Toon.mesh(mouth_root, Shapes.chamfer_box(Vector3(0.13, 0.035, 0.04), 0.4), Vector3(0, -0.017, 0), Color("#4a1f1c"), 0.0)
+	_on_surface(mouth_root, 0.0, eye_y - 0.27)
+	_mouth = Toon.mesh(mouth_root, Shapes.chamfer_box(Vector3(0.1, 0.03, 0.04), 0.45), Vector3(0, -0.015, 0), Color("#7a2a33"), 0.0)
 	if look.get("snout", false):
 		var sn := Node3D.new()
 		_torso.add_child(sn)
-		_on_surface(sn, 0.0, eye_y - 0.15)
+		_on_surface(sn, 0.0, eye_y - 0.19)
 		Toon.ball(sn, 0.11, Vector3(0, 0, 0.05), skin.lightened(0.15), 0.01, 10)
 		Toon.ball(sn, 0.045, Vector3(0, 0.04, 0.15), Color("#1d1517"), 0.0, 8)
 	if look.get("mustache", false):
@@ -324,7 +343,7 @@ func _build_face(skin: Color) -> void:
 		for side: int in [-1, 1]:
 			var m := Node3D.new()
 			_torso.add_child(m)
-			_on_surface(m, 0.075 * side, eye_y - 0.17)
+			_on_surface(m, 0.075 * side, eye_y - 0.22)
 			var slab := Toon.mesh(m, Shapes.chamfer_box(Vector3(0.17, 0.075, 0.07), 0.4), Vector3(0, -0.037, 0), col, 0.008)
 			slab.rotation.z = -0.3 * side
 	if look.get("beard", false):
@@ -340,14 +359,14 @@ func _build_face(skin: Color) -> void:
 			_on_surface(g, eye_x * side, eye_y)
 			var frame := MeshInstance3D.new()
 			var tm := TorusMesh.new()
-			tm.inner_radius = 0.085
-			tm.outer_radius = 0.11
+			tm.inner_radius = 0.125
+			tm.outer_radius = 0.15
 			tm.rings = 10
 			tm.ring_segments = 4
 			frame.mesh = Shapes.faceted(tm)
 			frame.material_override = Toon.mat(Color("#2b1c18"), 0.0)
 			frame.rotation.x = PI / 2
-			frame.position = Vector3(0, -0.075, 0.04)
+			frame.position = Vector3(0, 0.0, 0.05)
 			g.add_child(frame)
 
 
@@ -1015,8 +1034,16 @@ func _animate_face(delta: float, pose: Dictionary) -> void:
 	if look_target and is_instance_valid(look_target):
 		var local := global_basis.inverse() * (look_target.global_position - global_position)
 		look_off = Vector2(clampf(local.x * 0.02, -0.025, 0.025), clampf((local.y - 1.0) * 0.01, -0.015, 0.015))
+	# Googly wobble: pupils lag behind and bounce when the egg moves or hops.
+	_googly_v += (-_googly * 120.0 - _googly_v * 6.0) * delta
+	_googly_v += Vector2(-_vel.x, absf(_land_squash) * 4.0 - _hop * 2.0) * delta * 0.4
+	_googly += _googly_v * delta
+	_googly = _googly.limit_length(0.035)
+	if not _googly.is_finite():
+		_googly = Vector2.ZERO
+		_googly_v = Vector2.ZERO
 	for p in _pupils:
-		p.position = p.position.lerp(Vector3(look_off.x, look_off.y, 0.018), 0.15)
+		p.position = p.position.lerp(Vector3(look_off.x + _googly.x, look_off.y + _googly.y, 0.018), 0.25)
 	if _dizzy:
 		_dizzy.visible = _dizzy_t > 0.0
 		_dizzy.rotation.y += delta * 6.0

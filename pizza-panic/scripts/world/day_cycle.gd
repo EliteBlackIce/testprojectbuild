@@ -5,8 +5,8 @@ extends Node3D
 
 ## [day fraction, sky top, horizon, sun color, sun energy, sun pitch, ambient color, ambient energy]
 const KEYS := [
-	[0.00, "#4fa6ec", "#cfe9fa", "#fff4dc", 0.7, -58.0, "#c9c6e6", 0.2],
-	[0.45, "#4c9de6", "#d3ebf8", "#fff0d0", 0.68, -42.0, "#cdc6e2", 0.2],
+	[0.00, "#2f8ff0", "#bfe6ff", "#fff6e0", 0.72, -58.0, "#c4cdf0", 0.21],
+	[0.45, "#2c86ea", "#c6e8fc", "#fff1d4", 0.7, -42.0, "#c8c8ec", 0.21],
 	[0.66, "#5f86d0", "#ffcf9a", "#ffc488", 0.62, -16.0, "#dcbcbc", 0.21],
 	[0.74, "#5258a3", "#ff9a80", "#ff9068", 0.42, -4.0, "#b897b8", 0.2],
 	[0.82, "#232758", "#62558a", "#9fa8e8", 0.17, -30.0, "#6464a0", 0.2],
@@ -47,7 +47,7 @@ func _ready() -> void:
 	env.ssao_radius = 1.2
 	env.ssao_intensity = 1.6
 	env.adjustment_enabled = true
-	env.adjustment_saturation = 1.08
+	env.adjustment_saturation = 1.2      # bright anime colors
 	env.adjustment_contrast = 1.04
 	var we := WorldEnvironment.new()
 	we.environment = env

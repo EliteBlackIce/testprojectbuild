@@ -31,9 +31,15 @@ Each day runs from 10 AM to 10 PM (about 12 real minutes):
    - **Cutting board** (right island): drag the pizza wheel across it. 4 straight cuts through the
      middle make 8 perfect slices, and crooked cuts get noticed. Then fold the box shut.
    - **Pass shelf**: boxed pizzas wait under the heat lamps.
-3. **Load the car and drive.** You drive from the cockpit, with your mittens on the wheel, a
-   wobbling Tony bobblehead and a pizza air freshener. Press V for the chase cam. Follow the
-   floating arrow. Crashes smush the pizzas, and pizzas cool down on the road.
+3. **Load the car and drive.** Tony's little delivery van has googly eyes on the hood and a
+   giant pizza slice on the roof. You drive it from the driver's seat:
+   - Your hands are on the wheel, Tony bobbles on the dash, and a pizza air freshener swings.
+   - The **dashboard GPS** shows a live map, the route along real streets, "Turn left in 40 m",
+     and how far you have left.
+   - Hold **Space** to handbrake-drift. Anime speed lines appear when you floor it.
+   - Press V for the chase cam.
+
+   Crashes smush the pizzas, and pizzas cool down on the road.
 4. **Knock** with the box in your hands, and **talk** to the customer. Play along with their
    weirdness, and they pay and tip based on how good, hot, on-time and un-smushed the pizza is.
    Quality comes from what you actually did: dough size, sauce and cheese coverage, spills, toppings,
@@ -74,6 +80,11 @@ calls. More stars means more calls and bigger tips. Your progress (and staff) sa
 | ![Kitchen](docs/screenshots/kitchen.png) | ![Oven](docs/screenshots/oven.png) |
 | ![Cutting](docs/screenshots/cutting.png) | ![Cockpit](docs/screenshots/cockpit.png) |
 
+**The look**: smooth, bright anime-style cel shading with soft rim light and a saturated sky,
+plus simple goofy googly eyes that wobble when the eggs move.
+
+![The delivery van](docs/screenshots/car.png)
+
 **The eggs**: every character shares one model. It's a big low-poly egg standing on its fat end, with long skinny
 tapered arms, big four-fingered cartoon hands, thick straight legs and chunky toes-out shoes. Hats,
 mustaches, aprons and the rest go on top, and the faces animate.
@@ -107,7 +118,7 @@ asks for microphone permission. Say yes.
 | Walk / drive | WASD or arrows | Left stick, RT/LT |
 | Use / pick up / knock (what the crosshair is on) | **E** or left-click | X |
 | Poke (click on nothing) | Left-click | RB |
-| Hop | Space | A |
+| Hop (on foot) / handbrake drift (driving) | Space | A |
 | Get in / out of the car | **F** | L3 |
 | Cockpit / chase camera | **V** | D-pad down |
 | Hold to talk (voice chat) | **hold T** | hold Y |

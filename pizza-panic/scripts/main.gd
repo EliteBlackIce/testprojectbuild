@@ -421,13 +421,16 @@ func _process(delta: float) -> void:
 	if not convo.active and not kitchen.busy and not in_car and player.focus:
 		prompt = player.focus.prompt(player)
 	if in_car and not convo.active:
-		prompt = "[F] Get out   ·   [V] %s" % ("cockpit view" if chase_view else "chase cam") + ("   ·   [SHIFT] Rocket boost" if Game.has_upgrade("boost") else "")
+		prompt = "[F] Get out   ·   [SPACE] Drift   ·   [V] %s" % ("cockpit view" if chase_view else "chase cam") + ("   ·   [SHIFT] Rocket boost" if Game.has_upgrade("boost") else "")
 	hud.set_prompt(prompt)
 	hud.set_crosshair(not in_car and not kitchen.busy and not convo.active)
 	hud.visible = not kitchen.busy
 	hud.set_hint(_next_step())
 	Sfx.set_music_mood(day_cycle.night)
 	_update_arrow(delta)
+	if in_car:
+		var tgt = _arrow_target()
+		car.set_gps(town, tgt, _gps_label())
 
 
 ## Mouse is captured for looking around, and freed for menus, talking and station work.
@@ -476,6 +479,15 @@ func _next_step() -> String:
 	if not Game.day_running:
 		return ""
 	return "Wait for the phone. Meanwhile: talk to Tony, poke Tony, or hire help on the office PC."
+
+
+## What the dashboard GPS says it's driving you to.
+func _gps_label() -> String:
+	for p in car.cargo:
+		var t := Game.ticket(p.data.ticket)
+		if not t.is_empty():
+			return "#%d %s (house %d)" % [t.id, t.customer, (t.house as House).number]
+	return "Back to Tony's"
 
 
 func _on_crash(impact: float) -> void:
@@ -543,6 +555,9 @@ func _arrow_target() -> Variant:
 
 
 func _update_arrow(_delta: float) -> void:
+	if in_car and not chase_view:
+		arrow.visible = false    # the dashboard GPS does the guiding in the cockpit
+		return
 	var target = _arrow_target()
 	var me: Node3D = car if in_car else player
 	if target == null or convo.active:
