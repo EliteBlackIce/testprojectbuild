@@ -116,6 +116,16 @@ your boss Tony Pepperoni, plus dozens of generated weirdos.
 - Orders arrive slower now (3 open at a time to start) and every order is a receipt: HUD cards,
   a notepad during the call, and slips on the kitchen rail.
 
+## Hills and hands
+
+- **The town is built on hills.** One ground mesh (with matching collision) runs under the whole town. Downtown, the
+  plaza, the park, the gas station and Tony's block stay level; the suburbs climb in terraced levels up to about 9 m.
+  Roads, curbs, lane paint, houses, yards, traffic, pedestrians and props all follow the ground. Houses sit on taller
+  foundations on the downhill side, with longer porch steps.
+- **First-person arms** are real two-bone arms from your shoulders (elbow and short sleeve), with named finger grips.
+  Picking something up reaches for it, closes the fingers and lifts it into carry; putting it down opens the hands;
+  throwing winds up and snaps forward before letting go.
+
 ## Feel (driving, kitchen, weather, goals)
 
 - **Driving:** a real power curve (strong off the line, fading near top speed), steering that gets less sharp the faster

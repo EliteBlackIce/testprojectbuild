@@ -396,6 +396,12 @@ func is_holding() -> bool:
 
 
 func hold(item: Node3D) -> void:
+	var came_from := Transform3D.IDENTITY
+	var fly := item.is_inside_tree() and item.get_parent() != hands.hold_socket
+	if fly:
+		came_from = item.global_transform
+		# Reach out to it first (both hands for boxes and pizzas), the item then comes into your hands.
+		hands.reach(item.global_position, "pickup", item is Pizza)
 	if item.get_parent():
 		item.reparent(hands.hold_socket, false)
 	else:
@@ -413,7 +419,18 @@ func hold(item: Node3D) -> void:
 		item.scale = Vector3.ONE * shrink
 		hands.hold_width = clampf(p.footprint() * shrink, 0.22, 0.7)
 		item.position = Vector3(0, -0.05 * p.footprint(), -0.12 * p.footprint())
-	hands.play("grab")
+	if fly:
+		var end_pos := item.position
+		var end_scale := item.scale
+		item.global_transform = came_from
+		var tw := item.create_tween()
+		tw.set_parallel(true)
+		# the item waits for the fingers to close, then swings up into the carry spot with a little overshoot
+		tw.tween_property(item, "position", end_pos, 0.36).set_delay(0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_property(item, "rotation", Vector3.ZERO, 0.36).set_delay(0.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		tw.tween_property(item, "scale", end_scale, 0.36).set_delay(0.2)
+	else:
+		hands.play("grab")
 
 
 ## Hands the held item over (removes it from our hand, caller re-parents it).
@@ -421,6 +438,7 @@ func take_held() -> Node3D:
 	var item := held
 	if item:
 		item.scale = Vector3.ONE
+		hands.play("release")        # hands open and push forward as it leaves them
 	held = null
 	body.carrying = false
 	return item
@@ -465,8 +483,8 @@ func chaos_toggle() -> void:
 		drop_chaos()
 	elif chaos_focus and held == null:
 		chaos_held = chaos_focus
+		hands.reach(chaos_held.global_position, "pickup", false)
 		chaos_held.grab(self)
-		hands.play("grab")
 		Sfx.play("pickup", 1.4, -8.0)
 
 
@@ -475,6 +493,7 @@ func drop_chaos() -> void:
 		return
 	var t := chaos_held
 	chaos_held = null
+	hands.reach(camera.global_position + forward() * 0.55 + Vector3(0, -0.3, 0), "release", false)
 	t.release(self, forward() * 1.5 + velocity)
 
 
@@ -483,6 +502,10 @@ func throw_chaos() -> void:
 		return
 	var t := chaos_held
 	chaos_held = null
-	hands.play("push")
+	hands.reach(hands.hold_socket.global_position, "throw", false)
+	# wind up first; let go at the top of the swing
+	await get_tree().create_timer(0.27).timeout
+	if not is_instance_valid(t):
+		return
 	Sfx.play("whoosh", randf_range(0.9, 1.3), -6.0)
 	t.release(self, forward() * t.throw_speed() + Vector3(0, 2.2, 0) + velocity * 0.5, true)

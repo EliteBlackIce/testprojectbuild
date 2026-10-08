@@ -24,6 +24,7 @@ var harmful_t := 0.0          ## while > 0, anything it touches gets bonked
 var thrower: Node = null
 var spawned := true           ## spawned by the chaos system (so it can be cleaned up)
 var _sound_cd := 0.0
+var _fly_tw: Tween
 var _layers: Array[int] = [8, 1 | 2 | 8]
 
 
@@ -78,13 +79,20 @@ func grab(player: PlayerEgg) -> void:
 	freeze = true
 	collision_layer = 0
 	collision_mask = 0
+	var came_from := global_transform
 	reparent(player.hands.hold_socket, false)
-	position = Vector3(0, 0.02, 0.08)
-	rotation = Vector3.ZERO
-	scale = Vector3.ONE * 0.8
+	global_transform = came_from
+	var tw := create_tween()
+	_fly_tw = tw
+	tw.set_parallel(true)
+	tw.tween_property(self, "position", Vector3(0, 0.02, 0.08), 0.34).set_delay(0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(self, "rotation", Vector3.ZERO, 0.34).set_delay(0.16).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_property(self, "scale", Vector3.ONE * 0.8, 0.34).set_delay(0.16)
 
 
 func release(player: PlayerEgg, impulse: Vector3, thrown := false) -> void:
+	if _fly_tw:
+		_fly_tw.kill()
 	var root := player.get_parent()
 	var xf := global_transform
 	if thrown:

@@ -480,6 +480,20 @@ static func curl_hand(pivots: Array, amount: float, index_out := false, t := 0.0
 			f.rotation.x = -amount * (1.5 + 0.12 * k) + drift
 
 
+## Pose a hand finger by finger: c0 / c1 are the two fingers, ct the thumb (0 flat .. 1 curled).
+## `point` keeps the first finger straight. `loose` lets the fingers drift a little so hands never freeze.
+static func pose_hand(pivots: Array, c0: float, c1: float, ct: float, point := false, t := 0.0, loose := 0.0) -> void:
+	var cs := [c0, c1]
+	for k in 2:
+		var f := pivots[k] as Node3D
+		var drift := sin(t * 1.9 + k * 2.1) * 0.09 * loose
+		var amount: float = cs[k]
+		# curl the finger in two stages (knuckle first), like a real one, by blending a little roll
+		f.rotation.x = 0.0 if (point and k == 0) else -amount * (1.5 + 0.12 * k) + drift
+	var th := pivots[pivots.size() - 1] as Node3D
+	th.rotation.x = -ct * 0.6 + sin(t * 1.9 + 4.0) * 0.054 * loose
+
+
 func _build_face(skin: Color) -> void:
 	# Simple goofy googly eyes on the big round head.
 	var eye_style: String = look.get("eye", "normal")
