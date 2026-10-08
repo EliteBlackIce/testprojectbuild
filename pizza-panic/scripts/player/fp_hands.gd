@@ -46,7 +46,7 @@ func _ready() -> void:
 		var hand := Node3D.new()
 		add_child(hand)
 		# Forearm going back toward you (you never see the elbow)
-		var arm := Toon.mesh(hand, Shapes.limb(0.42, 0.045, 0.04, 9), Vector3(0, 0.0, 0.03), SKIN.darkened(0.04), 0.008)
+		var arm := Toon.mesh(hand, Shapes.limb(0.46, 0.058, 0.044, 20), Vector3(0, 0.0, 0.03), SKIN.darkened(0.04), 0.008)
 		arm.rotation.x = -PI / 2 + 0.5     # back toward you and down, out of the way
 		# The same big four-fingered hand every egg has, fingers pointing ahead, palm down.
 		var wrist := Node3D.new()
@@ -173,12 +173,22 @@ func _process(delta: float) -> void:
 		if _action == "push":
 			want = 0.05
 		_curl[i] = lerpf(_curl[i], want, 1.0 - exp(-14.0 * delta))
-		EggBody.curl_hand(_fingers[i], _curl[i], finger > 0.5)
+		EggBody.curl_hand(_fingers[i], _curl[i], finger > 0.5, _t + i * 2.0, 1.0 - clampf(_curl[i], 0.0, 1.0))
 	if hold_socket:
 		var hb := Vector3(0, -absf(cos(_phase)) * 0.014 * moving - _land * 0.08, 0) + Vector3(-_sway.x, _sway.y, 0) * 0.5
 		_hold_bob = _hold_bob.lerp(hb, 1.0 - exp(-14.0 * delta))
 		hold_socket.position = Vector3(0, -0.5, -0.66) + _hold_bob
 		hold_socket.rotation.z = -_sway.x * 1.5 + sin(_phase) * 0.02 * moving
+
+
+## Action timing with anticipation: a small pull-back first, then the move, then settle.
+## Returns -0.3 at the wind-up, 1.0 at the peak, 0 at the end.
+func _wind(u: float) -> float:
+	if u < 0.2:
+		return -0.3 * smoothstep(0.0, 1.0, u / 0.2)
+	if u < 0.55:
+		return lerpf(-0.3, 1.0, smoothstep(0.0, 1.0, (u - 0.2) / 0.35))
+	return 1.0 - smoothstep(0.0, 1.0, (u - 0.55) / 0.45)
 
 
 ## Returns [position offset, rotation offset, finger extension].

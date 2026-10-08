@@ -14,6 +14,7 @@ const PITCH := BLOCK + ROAD
 ## What goes on each block (col, row). Anything not listed is houses.
 const ZONES := {
 	Vector2i(1, 0): "downtown", Vector2i(2, 0): "downtown", Vector2i(3, 0): "downtown",
+	Vector2i(1, 1): "downtown", Vector2i(2, 1): "plaza", Vector2i(3, 1): "downtown",
 	Vector2i(0, 1): "park",
 	Vector2i(4, 2): "gas",
 	Vector2i(2, 3): "pizzeria",
@@ -145,9 +146,9 @@ func _build_blocks() -> void:
 				Toon.box(self, Vector3(BLOCK - 3.0, 0.07, BLOCK - 3.0), o + Vector3(BLOCK * 0.5, 0.035, BLOCK * 0.5), Color("#86c56f"), 0.0)
 			match z:
 				"downtown":
-					for k in 2:
-						Landmarks.shop(self, o + Vector3(8.0 + k * 14.0, 0, BLOCK - 7.0), 0.0, i * 4 + k, rng)
-						Landmarks.shop(self, o + Vector3(8.0 + k * 14.0, 0, 7.0), PI, i * 4 + k + 2, rng)
+					Downtown.block(self, o, i, j, rng, i == 2 or j == 0)
+				"plaza":
+					Downtown.plaza(self, o, rng)
 				"park":
 					Landmarks.park(self, o, BLOCK, rng)
 				"gas":
@@ -228,9 +229,9 @@ func _build_street_furniture() -> void:
 			if i < COLS and j < ROWS and rng.randf() < 0.6:
 				var sp := p + Vector3(-(ROAD * 0.5 + 0.8), 0, ROAD * 0.5 + 0.8)
 				Toon.cyl(self, 0.05, 0.05, 3.0, sp + Vector3(0, 1.5, 0), Color("#3f6b4f"), 0.006, 5)
-				var sn := Toon.label(self, STREETS_X[i % STREETS_X.size()], sp + Vector3(0, 3.1, 0), 40, Color("#f6f4ef"), false)
-				sn.rotation.y = PI / 2
-				Toon.label(self, STREETS_Z[j % STREETS_Z.size()], sp + Vector3(0, 2.75, 0), 40, Color("#f6f4ef"), false)
+				var sb := Signs.board(self, STREETS_X[i % STREETS_X.size()], sp + Vector3(0, 3.05, 0), Vector2(1.6, 0.34), Color("#1f6b4a"), Color("#f6f4ef"), PI / 2, "none", Color("#f6f4ef"))
+				sb.scale = Vector3.ONE
+				Signs.board(self, STREETS_Z[j % STREETS_Z.size()], sp + Vector3(0, 2.62, 0), Vector2(1.6, 0.34), Color("#1f6b4a"), Color("#f6f4ef"), 0.0, "none", Color("#f6f4ef"))
 	Toon.multimesh(self, Shapes.cylinder(0.1, 0.14, 5.4, 6), Toon.mat(Color("#3d4a4f"), 0.01), posts)
 	Toon.multimesh(self, Shapes.chamfer_box(Vector3(0.7, 0.3, 0.45), 0.3), Toon.mat(Color("#3d4a4f"), 0.01), heads)
 	var g := Toon.multimesh(self, Shapes.box(Vector3(0.5, 0.06, 0.3)), Toon.mat(Color("#d9d2c0"), 0.0), glow_heads)
@@ -395,8 +396,7 @@ func _build_edges() -> void:
 		var r := rng.randf_range(1.05, 1.2)
 		var tp := c + Vector3(cos(a) * (half.x + 8.0) * r, 0, sin(a) * (half.z + 8.0) * r)
 		Landmarks.tree(self, tp, rng)
-	var welcome := Toon.label(self, "WELCOME TO EGGVILLE\npop. a lot of eggs", c + Vector3(0, 4.0, half.z + 6.0), 200, Color("#ffd166"), false)
-	welcome.rotation.y = PI
+	Signs.board(self, "WELCOME TO EGGVILLE\npop. a lot of eggs", c + Vector3(0, 6.0, half.z + 6.0), Vector2(14.0, 4.2), Color("#2a6f4f"), Color("#ffd166"), PI, "posts", Color("#5a3d28"))
 
 
 func _build_clouds() -> void:

@@ -232,6 +232,7 @@ func _apply(action: String, tip: int, order) -> void:
 					o = Menu.random_order(offline.rng, character.get("favorites", []))
 				var t := Game.add_ticket(house, house.display_name(), o)
 				Sfx.play("register")
+				ui.show_order(t.id, house.display_name(), o)
 				Game.say_toast("NEW ORDER #%d: %s for %s" % [t.id, Menu.describe(o), house.display_name()], UiTheme.YELLOW)
 				ui.set_status("Order written down! (Esc to hang up, or keep chatting)")
 				_end_after(4.5)

@@ -66,6 +66,7 @@ var _boots: Array[Node3D] = []
 var _leg_splay: Array[float] = []
 var _shoulders: Array[Node3D] = []   ## [left, right]
 var _elbows: Array[Node3D] = []
+var _acc_local := Vector3.ZERO           ## smoothed body acceleration, arms trail behind it
 var _hands: Array[Node3D] = []
 var _wrists: Array[Node3D] = []           ## twists the hand (palm in / palm forward)
 var _fingers: Array = []                  ## per hand: [finger pivots..., thumb pivot]
@@ -438,15 +439,17 @@ static func build_hand(parent: Node3D, skin: Color, side: float, size := 1.0, ou
 
 
 ## Curl the fingers: 0 = open hand, 1 = fist. Thumb folds in less.
-static func curl_hand(pivots: Array, amount: float, index_out := false) -> void:
+static func curl_hand(pivots: Array, amount: float, index_out := false, t := 0.0, loose := 0.0) -> void:
+	# `loose` > 0 lets each finger drift on its own (relaxed hands are never frozen).
 	for k in pivots.size():
 		var f := pivots[k] as Node3D
+		var drift := sin(t * 1.9 + k * 2.1) * 0.09 * loose
 		if k == pivots.size() - 1:
-			f.rotation.x = -amount * 0.6
+			f.rotation.x = -amount * 0.6 + drift * 0.6
 		elif index_out and k == 0:
 			f.rotation.x = 0.0
 		else:
-			f.rotation.x = -amount * 1.5
+			f.rotation.x = -amount * (1.5 + 0.12 * k) + drift
 
 
 func _build_face(skin: Color) -> void:
@@ -779,6 +782,7 @@ func _process(delta: float) -> void:
 	_prev_vel = _vel
 	var local_vel := global_basis.inverse() * _vel / maxf(_s, 0.01)
 	var local_acc := global_basis.inverse() * accel / maxf(_s, 0.01)
+	_acc_local = _acc_local.lerp(local_acc, 1.0 - exp(-14.0 * delta))
 	var ground_speed := local_vel.length()
 	if velocity_hint == Vector3.INF and measured.length() < 0.05:
 		ground_speed = speed * 1.4
@@ -1135,19 +1139,39 @@ func _apply_pose(pose: Dictionary, delta: float) -> void:
 	var hy := _spring("hy", yaw_t, delta, 120.0, 13.0)
 	var hz := _spring("hz", float(pose.get("head_z", 0.0)) - (lean_z - float(pose.lean_z)) * 0.8 - lean_z * 0.5, delta, 130.0, 12.0)
 	_head.rotation = Vector3(hx, hy, hz)
-	# Arms with follow-through (soft springs = a little overshoot)
+	# Arms: each segment is its own soft spring so the shoulder leads, the elbow follows
+	# a beat later and the hand trails last (overlapping action). On top of the pose:
+	# breathing drift, inertia when the body speeds up, forearm tuck on the forward
+	# swing, wrist flop and loose fingers.
+	var calm := 1.0 if _action == "" and not talking else 0.35
 	for i in 2:
 		var side := -1.0 if i == 0 else 1.0
-		var out := _spring("ao%d" % i, pose.arm_out[i], delta, 150.0, 11.0)
-		var fwd := _spring("af%d" % i, pose.arm_fwd[i], delta, 150.0, 11.0)
-		var bend := _spring("ab%d" % i, pose.arm_bend[i], delta, 170.0, 12.0)
+		var breathe := sin(_t * 2.1 + i * 0.6)
+		var out_t := float(pose.arm_out[i]) + (sin(_t * 1.25 + i * 1.7) * 0.035 + breathe * 0.012) * calm
+		var fwd_t := float(pose.arm_fwd[i]) + sin(_t * 0.85 + i * 2.3) * 0.05 * calm + clampf(_acc_local.z * 0.035, -0.4, 0.4) * calm
+		var bend_t := float(pose.arm_bend[i])
+		if fwd_t < 0.0 and float(pose.arm_out[i]) < 1.0:
+			bend_t += fwd_t * 0.7                 # forearm tucks forward as the arm swings forward
+			out_t += -fwd_t * 0.1                 # and the arm flares out a little
+		bend_t += sin(_t * 1.6 + i) * 0.04 * calm
+		var out := _spring("ao%d" % i, out_t, delta, 150.0, 11.0)
+		var fwd := _spring("af%d" % i, fwd_t, delta, 170.0, 12.0)
+		var bend := _spring("ab%d" % i, bend_t, delta, 105.0, 8.5)
 		_shoulders[i].rotation = Vector3(fwd, 0, out * side)
+		_shoulders[i].position.y = 0.618 + breathe * 0.004 + clampf(float(pose.arm_out[i]) - 1.4, 0.0, 1.0) * 0.02
 		_elbows[i].rotation = Vector3(bend, 0, 0)
 		if i < _wrists.size():
 			var tw: Array = pose.get("twist", [0.9, 0.9])
 			var gr: Array = pose.get("grip", [0.3, 0.3])
 			_wrists[i].rotation.y = _spring("tw%d" % i, float(tw[i]) * side, delta, 140.0, 13.0)
-			curl_hand(_fingers[i], _spring("gr%d" % i, float(gr[i]), delta, 200.0, 15.0))
+			# The hand flops behind the arm's motion.
+			var vf: float = (_spr.get("af%d" % i, [0.0, 0.0]) as Array)[1]
+			var vo: float = (_spr.get("ao%d" % i, [0.0, 0.0]) as Array)[1]
+			var vb: float = (_spr.get("ab%d" % i, [0.0, 0.0]) as Array)[1]
+			_wrists[i].rotation.x = _spring("wx%d" % i, clampf((vf + vb * 0.6) * 0.07, -0.6, 0.6), delta, 120.0, 7.0)
+			_wrists[i].rotation.z = _spring("wz%d" % i, clampf(vo * 0.06, -0.5, 0.5) * side, delta, 120.0, 7.0)
+			var speed_curl := clampf((absf(vf) + absf(vb)) * 0.025, 0.0, 0.25)
+			curl_hand(_fingers[i], _spring("gr%d" % i, float(gr[i]) + speed_curl, delta, 200.0, 15.0), false, _t + i * 2.0, 1.0 - clampf(float(gr[i]), 0.0, 1.0))
 	# Legs + boot lift
 	for i in _legs.size():
 		var swing := _spring("leg%d" % i, pose.leg[i], delta, 260.0, 18.0)

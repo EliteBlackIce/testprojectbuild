@@ -104,6 +104,18 @@ Sir Barksalot the dog, Chad Thunderbro, Conspiracy Carl, Dave the Wizard, Big Ba
 the ghost, Princess Sparkle-chan, Sensei Noodle, Mr. Synergy, Kyle who thinks this is a game),
 your boss Tony Pepperoni, plus dozens of generated weirdos.
 
+## The town
+
+- **Suburbs** with six house styles (craftsman, colonial, cottage, ranch, victorian, modern), each with a
+  deep raised porch (railings, balusters, columns, beadboard ceiling, steps, swing or chairs, potted plants),
+  real windows with sills and shutters, shingled roofs, chimneys, garages and driveways, stepping-stone
+  paths, mowing stripes, mailboxes, fences and little garden extras.
+- **Downtown** with glass towers, brick mid-rises, art-deco landmarks, storefronts with awnings and café
+  patios, and a plaza with a fountain, clock tower and hot dog cart.
+- Every sign is a real framed board with painted lettering (`scripts/art/signs.gd`).
+- Orders arrive slower now (3 open at a time to start) and every order is a receipt: HUD cards,
+  a notepad during the call, and slips on the kitchen rail.
+
 ## Chaos (the slapstick layer)
 
 - **Grab and throw anything.** Loose props lie around the pizzeria: rubber chickens, frying pans,

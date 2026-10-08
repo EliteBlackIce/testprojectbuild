@@ -145,10 +145,14 @@ func _shelf(pos: Vector3, size: Vector3, levels: int, color: Color, rot := 0.0) 
 	return root
 
 
-func _label(text: String, pos: Vector3, size := 40, color := Color("#2b1c18"), rot_y := 0.0, outline := 0) -> Label3D:
+func _label(text: String, pos: Vector3, size := 40, color := Color("#2b1c18"), rot_y := 0.0, outline := 0, plated := true) -> Label3D:
 	var l := Toon.label(self, text, pos, size, color, false)
 	l.rotation.y = rot_y
 	l.outline_size = outline
+	if plated:
+		# Every little wall sign gets a framed plaque so the letters are never just floating.
+		var light := color.get_luminance() > 0.55
+		Signs.backing(l, Color("#33283a") if light else Color("#fff4dc"))
 	return l
 
 
@@ -227,7 +231,7 @@ func _build_walls() -> void:
 		# Door frame
 		Toon.box(self, Vector3(0.18, 3.1, 0.3), Vector3(1.3 * side, 1.55, hz), Color("#7a3b2e"), 0.0)
 	_wall(Vector2(-1.3, hz), Vector2(1.3, hz), outer, H - 2.6, 2.6)
-	_label("TONY'S", Vector3(0, 2.8, hz + 0.16), 70, Color("#ffd166"), 0.0, 14)
+	Signs.board(self, "TONY'S", Vector3(0, 2.85, hz + 0.1), Vector2(2.6, 0.85), Color("#7a1f1a"), Color("#ffd166"), 0.0, "none", Color("#3b2a22"))
 	# Partition (dining | kitchen) with the kitchen door + pass window
 	var kd := (ANCHORS.kitchen_door as Vector3).x
 	_wall(Vector2(-hx, PARTITION_Z), Vector2(kd - 0.8, PARTITION_Z), dining)
@@ -314,8 +318,9 @@ func _build_ceiling_and_roof() -> void:
 	Toon.cyl(_roof, 0.12, 0.12, 2.0, Vector3(0, H + 1.3, 3.0), Color("#555b61"), 0.01, 6)
 	var tw := create_tween().set_loops()
 	tw.tween_property(sign_root, "rotation:y", TAU, 5.0).from(0.0)
-	var name_sign := Toon.label(_roof, "TONY'S PIZZA", Vector3(0, H + 1.2, D * 0.5 + 0.5), 230, Color("#ffd166"), false)
-	name_sign.outline_size = 50
+	Signs.board(_roof, "TONY'S PIZZA", Vector3(0, H + 1.9, D * 0.5 + 0.4), Vector2(11.0, 2.3), Color("#b8321f"), Color("#ffd166"), 0.0, "lit", Color("#4a1a12"))
+	for sx: int in [-1, 1]:
+		Toon.box(_roof, Vector3(0.25, 1.4, 0.25), Vector3(sx * 4.6, H + 0.7, D * 0.5 + 0.3), Color("#3b2a22"), 0.0)
 
 
 # --- dining room ------------------------------------------------------------------------------
@@ -438,10 +443,10 @@ func _build_counter() -> void:
 	var mb := Vector3(-1.5, 2.85, PARTITION_Z + 0.16)
 	Toon.box(self, Vector3(4.2, 1.4, 0.06), mb, Color("#2d3436"), 0.01)
 	Toon.box(self, Vector3(4.3, 1.5, 0.04), mb - Vector3(0, 0, 0.02), Color("#6d4c41"), 0.0)
-	_label("~ TONY'S MENU ~", mb + Vector3(0, 0.5, 0.05), 38, Color("#ffeaa7"), 0.0, 5)
-	_label("SMALL $8   MEDIUM $11   LARGE $14", mb + Vector3(0, 0.15, 0.05), 22, Color("#f6f4ef"), 0.0, 3)
-	_label("toppings +$1 to $3 · sauces: tomato, bbq, white", mb + Vector3(0, -0.15, 0.05), 16, Color("#fab1a0"), 0.0, 2)
-	_label("* no refunds for pizzas thrown at you *", mb + Vector3(0, -0.45, 0.05), 14, Color("#b2bec3"), 0.0, 1)
+	_label("~ TONY'S MENU ~", mb + Vector3(0, 0.5, 0.05), 38, Color("#ffeaa7"), 0.0, 5, false)
+	_label("SMALL $8   MEDIUM $11   LARGE $14", mb + Vector3(0, 0.15, 0.05), 22, Color("#f6f4ef"), 0.0, 3, false)
+	_label("toppings +$1 to $3 · sauces: tomato, bbq, white", mb + Vector3(0, -0.15, 0.05), 16, Color("#fab1a0"), 0.0, 2, false)
+	_label("* no refunds for pizzas thrown at you *", mb + Vector3(0, -0.45, 0.05), 14, Color("#b2bec3"), 0.0, 1, false)
 
 
 # --- kitchen --------------------------------------------------------------------------------------
@@ -575,9 +580,7 @@ func _build_oven(pos: Vector3, index: int) -> void:
 		Toon.cyl(root, 0.66, 0.66, 0.08, Vector3(0, 0.95, 0.66), Color("#8e4424"), 0.012, 14).rotation.x = PI / 2
 		Toon.cyl(root, 0.52, 0.52, 0.06, Vector3(0, 0.95, 0.71), Color("#1d1517"), 0.0, 14).rotation.x = PI / 2
 		Toon.block(root, Vector3(1.4, 0.08, 0.5), Vector3(0, 0.88, 0.95), Color("#9a8f86"), 0.03, 0.01)
-		var lbl := _label("TONY'S\nOVEN", Vector3(0, 1.75, 0.62), 26, Color("#ffd166"), 0.0, 6)
-		lbl.reparent(root, false)
-		lbl.position = Vector3(0, 2.0, 0.5)
+		Signs.board(root, "TONY'S\nOVEN", Vector3(0, 2.05, 0.5), Vector2(1.5, 0.6), Color("#7a1f1a"), Color("#ffd166"), 0.0, "none", Color("#3b2a22"))
 	else:
 		Toon.block(root, Vector3(2.0, 1.6, 1.5), Vector3(0, 0, -0.2), Color("#c7ced4"), 0.06, 0.015)
 		Toon.box(root, Vector3(1.6, 0.35, 0.04), Vector3(0, 1.0, 0.56), Color("#1d1517"), 0.0)
@@ -818,13 +821,25 @@ func _refresh_ticket_rail() -> void:
 		var t: Dictionary = open[i]
 		var slip := Node3D.new()
 		slip.set_meta("slip", true)
-		slip.position = Vector3(-1.5 + i * 0.6, -0.22, 0.03)
+		slip.position = Vector3(-1.5 + i * 0.6, -0.3, 0.03)
+		slip.rotation.z = sin(float(t.id) * 2.3) * 0.04
 		ticket_rail.add_child(slip)
-		Toon.box(slip, Vector3(0.5, 0.42, 0.01), Vector3.ZERO, Color("#fffdf5"), 0.0)
-		var txt := Toon.label(slip, "#%d %s\n%s\n%s" % [t.id, str(t.customer).split(" ")[0], Menu.describe(t.order), str(t.status).to_upper()], Vector3(0, 0, 0.01), 13, Color("#2b1c18"), false)
+		Toon.box(slip, Vector3(0.52, 0.62, 0.01), Vector3.ZERO, Color("#fffdf5"), 0.0)
+		Toon.box(slip, Vector3(0.52, 0.05, 0.012), Vector3(0, 0.285, 0.002), Color("#e8c9a0"), 0.0)
+		var o: Dictionary = t.order
+		var lines: PackedStringArray = ["#%d %s" % [t.id, str(t.customer).split(" ")[0]], "%s %s" % [str(o.get("size", "medium")).to_upper(), str(o.get("sauce", "tomato"))]]
+		var tops: Array = o.get("toppings", [])
+		if tops.is_empty():
+			lines.append("+ cheese only")
+		var counted := {}
+		for tp in tops:
+			counted[tp] = int(counted.get(tp, 0)) + 1
+		for tp in counted:
+			lines.append("+ %s%s" % [Menu.TOPPINGS[tp].label.to_lower(), (" x%d" % counted[tp]) if counted[tp] > 1 else ""])
+		var txt := Toon.label(slip, "\n".join(lines), Vector3(0, 0.0, 0.01), 12, Color("#2b1c18"), false)
 		txt.outline_size = 0
-		txt.autowrap_mode = TextServer.AUTOWRAP_WORD
-		txt.width = 46.0
+		txt.pixel_size = 0.0034
+		txt.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 
 
 func _process(_delta: float) -> void:

@@ -575,10 +575,10 @@ func _refresh_ui() -> void:
 			var n := int(counts.get(kind, 0))
 			lines.append(_check(n >= Pizza.PIECES_PER_PORTION, "%s  %d/%d" % [Menu.TOPPINGS[kind].label, mini(n, Pizza.PIECES_PER_PORTION), Pizza.PIECES_PER_PORTION]))
 		if tops.is_empty():
-			lines.append("[color=#8a8a8a](no toppings, just cheese)[/color]")
+			lines.append("[color=#9d92b8](no toppings, just cheese)[/color]")
 		for kind: String in counts:
 			if kind not in tops:
-				lines.append("[color=#e63946]%s (NOT ordered!)[/color]" % Menu.TOPPINGS[kind].label)
+				lines.append("[color=#ff5d73]%s (NOT ordered!)[/color]" % Menu.TOPPINGS[kind].label)
 		ui.set_ticket(t, "\n".join(lines), not _new_tickets().is_empty())
 		var size_name := "dough ball"
 		for s: String in Menu.SIZE_ORDER:
@@ -612,7 +612,7 @@ func _refresh_ui() -> void:
 
 
 func _check(ok: bool, text: String) -> String:
-	return ("[color=#2a9d8f][b]%s  - ok[/b][/color]" % text) if ok else text
+	return ("[color=#2fe3b2][b]%s  - ok[/b][/color]" % text) if ok else text
 
 
 # --- the work cursor (a mitten holding the current tool) ------------------------------------------------

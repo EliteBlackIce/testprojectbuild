@@ -9,23 +9,20 @@ var value := 0.0:
 
 
 func _init() -> void:
-	custom_minimum_size = Vector2(170, 34)
+	custom_minimum_size = Vector2(142, 26)
 
 
 func _draw() -> void:
 	for i in 5:
-		var c := Vector2(17 + i * 34, 17)
-		var pts := _star(c, 15.0, 6.5)
-		draw_colored_polygon(pts, Color("#e8dccb"))
+		var c := Vector2(13 + i * 28, 13)
+		var pts := _star(c, 12.0, 5.4)
+		draw_colored_polygon(pts, Color(1, 1, 1, 0.16))
 		var fill := clampf(value - i, 0.0, 1.0)
 		if fill > 0.0:
 			var clipped := Geometry2D.intersect_polygons(pts, PackedVector2Array([
-				Vector2(c.x - 16, 0), Vector2(c.x - 16 + 32 * fill, 0), Vector2(c.x - 16 + 32 * fill, 34), Vector2(c.x - 16, 34)]))
+				Vector2(c.x - 13, 0), Vector2(c.x - 13 + 26 * fill, 0), Vector2(c.x - 13 + 26 * fill, 26), Vector2(c.x - 13, 26)]))
 			for poly in clipped:
-				draw_colored_polygon(poly, Color("#f2b134"))
-		var outline := pts.duplicate()
-		outline.append(pts[0])
-		draw_polyline(outline, UiTheme.INK, 2.5, true)
+				draw_colored_polygon(poly, UiTheme.YELLOW)
 
 
 static func _star(c: Vector2, r_out: float, r_in: float) -> PackedVector2Array:

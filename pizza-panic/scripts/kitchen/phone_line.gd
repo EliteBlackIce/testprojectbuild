@@ -6,12 +6,12 @@ extends Node
 signal ringing_changed(caller: House)
 
 const RING_TIME := 22.0
-const MAX_OPEN_TICKETS := 6
+const BASE_OPEN_TICKETS := 3
 
 var town: Town
 var caller: House = null
 var ring_left := 0.0
-var _next_call := 6.0
+var _next_call := 14.0
 var _ring_sound := 0.0
 var rng := RandomNumberGenerator.new()
 
@@ -23,8 +23,13 @@ func _ready() -> void:
 func reset() -> void:
 	caller = null
 	ring_left = 0.0
-	_next_call = 5.0
+	_next_call = 14.0
 	ringing_changed.emit(null)
+
+
+## Never more waiting orders than you can sensibly handle: 3 to start, +1 per two hired eggs.
+func max_open() -> int:
+	return mini(BASE_OPEN_TICKETS + Game.staff.size() / 2 + Game.level("cargo") / 2, 6)
 
 
 func is_ringing() -> bool:
@@ -46,7 +51,7 @@ func _process(delta: float) -> void:
 			Sfx.play("hangup")
 			ringing_changed.emit(null)
 		return
-	if Game.is_last_call() or Game.open_tickets().size() >= MAX_OPEN_TICKETS:
+	if Game.is_last_call() or Game.open_tickets().size() >= max_open():
 		return
 	_next_call -= delta
 	if _next_call <= 0.0:

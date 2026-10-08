@@ -37,14 +37,13 @@ func _ready() -> void:
 	top.offset_left = -430
 	top.offset_right = 430
 	top.offset_top = 16
-	top.add_theme_stylebox_override("panel", UiTheme.box(UiTheme.CREAM, 4, 18, 12))
 	_root.add_child(top)
 	var tv := VBoxContainer.new()
 	top.add_child(tv)
-	_title = UiTheme.label("", 30, UiTheme.RED)
+	_title = UiTheme.label("", UiTheme.HEADING, UiTheme.YELLOW)
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tv.add_child(_title)
-	_instr = UiTheme.label("", 20)
+	_instr = UiTheme.label("", 17, UiTheme.MUTED)
 	_instr.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_instr.autowrap_mode = TextServer.AUTOWRAP_WORD
 	tv.add_child(_instr)
@@ -53,24 +52,25 @@ func _ready() -> void:
 	var card := PanelContainer.new()
 	card.position = Vector2(20, 130)
 	card.custom_minimum_size = Vector2(290, 0)
-	card.add_theme_stylebox_override("panel", UiTheme.box(Color("#fffdf5"), 4, 6, 14))
 	_root.add_child(card)
 	var cv := VBoxContainer.new()
 	card.add_child(cv)
-	_card_title = UiTheme.label("", 26, UiTheme.RED)
+	_card_title = UiTheme.label("", 22, UiTheme.YELLOW)
 	cv.add_child(_card_title)
 	_card_body = RichTextLabel.new()
 	_card_body.bbcode_enabled = true
 	_card_body.fit_content = true
 	_card_body.scroll_active = false
 	_card_body.custom_minimum_size = Vector2(260, 0)
-	_card_body.add_theme_font_size_override("normal_font_size", 20)
-	_card_body.add_theme_color_override("default_color", UiTheme.INK)
+	_card_body.add_theme_font_size_override("normal_font_size", 18)
+	_card_body.add_theme_color_override("default_color", UiTheme.TEXT)
 	cv.add_child(_card_body)
 	var next := Button.new()
 	next.text = "Other ticket [Tab]"
 	next.pressed.connect(func(): next_ticket_pressed.emit())
 	next.name = "NextTicket"
+	next.theme_type_variation = "Ghost"
+	next.add_theme_font_size_override("font_size", 16)
 	cv.add_child(next)
 
 	# Meters (right)
@@ -79,7 +79,6 @@ func _ready() -> void:
 	mp.offset_left = -300
 	mp.offset_right = -20
 	mp.offset_top = 130
-	mp.add_theme_stylebox_override("panel", UiTheme.box(UiTheme.CREAM, 4, 18, 14))
 	_root.add_child(mp)
 	_meters = VBoxContainer.new()
 	_meters.add_theme_constant_override("separation", 6)
@@ -104,12 +103,13 @@ func _ready() -> void:
 	row.add_theme_constant_override("separation", 16)
 	bottom.add_child(row)
 	var leave := Button.new()
-	leave.text = "Step away [Esc]"
+	leave.text = "Step away  (Esc)"
+	leave.theme_type_variation = "Ghost"
 	leave.pressed.connect(func(): leave_pressed.emit())
 	row.add_child(leave)
 	_done = Button.new()
-	_done.text = "DONE [E]"
-	_done.add_theme_font_size_override("font_size", 28)
+	_done.text = "Done  (E)"
+	_done.add_theme_font_size_override("font_size", 26)
 	_done.pressed.connect(func(): done_pressed.emit())
 	row.add_child(_done)
 
@@ -164,14 +164,27 @@ func set_tools(tools: Array) -> void:
 		b.text = ("%d  %s" % [i + 1, t[1]]) if i < 9 else str(t[1])
 		b.add_theme_font_size_override("font_size", 16)
 		var col: Color = t[2]
-		b.add_theme_stylebox_override("normal", UiTheme.box(col.lerp(Color.WHITE, 0.55), 3, 12, 8))
-		b.add_theme_stylebox_override("hover", UiTheme.box(col.lerp(Color.WHITE, 0.3), 3, 12, 8))
-		b.add_theme_stylebox_override("pressed", UiTheme.box(col, 5, 12, 8))
+		b.set_meta("col", col)
+		b.add_theme_stylebox_override("normal", _chip_box(col, false, false))
+		b.add_theme_stylebox_override("hover", _chip_box(col, false, true))
+		b.add_theme_stylebox_override("pressed", _chip_box(col, true, false))
+		b.add_theme_color_override("font_color", UiTheme.TEXT)
+		b.add_theme_color_override("font_hover_color", UiTheme.TEXT)
+		b.add_theme_color_override("font_pressed_color", UiTheme.INK)
 		b.pressed.connect(_on_tool.bind(str(t[0])))
 		_tools.add_child(b)
 		_tool_ids.append(str(t[0]))
 		_tool_buttons.append(b)
 	_highlight()
+
+
+## A dark tool chip with a colored underline; filled with the color when selected.
+func _chip_box(col: Color, on: bool, hover: bool) -> StyleBoxFlat:
+	var fill := col.lerp(Color.WHITE, 0.15) if on else (Color(0.26, 0.2, 0.38, 0.97) if hover else Color(0.16, 0.12, 0.25, 0.94))
+	var st := UiTheme.flat(fill, 10, 12, 7, col, 0)
+	st.border_width_bottom = 4
+	st.border_color = col
+	return st
 
 
 func select_index(i: int) -> void:
@@ -195,18 +208,19 @@ func _highlight() -> void:
 	for i in _tool_buttons.size():
 		var b := _tool_buttons[i]
 		var on := _tool_ids[i] == _selected
-		b.scale = Vector2.ONE * (1.12 if on else 1.0)
-		b.pivot_offset = b.size * 0.5
-		b.add_theme_color_override("font_color", UiTheme.RED if on else UiTheme.INK)
+		var col: Color = b.get_meta("col")
+		b.add_theme_stylebox_override("normal", _chip_box(col, on, false))
+		b.add_theme_color_override("font_color", UiTheme.INK if on else UiTheme.TEXT)
+		b.add_theme_color_override("font_hover_color", UiTheme.INK if on else UiTheme.TEXT)
 
 
 ## meters: Array of [label, value 0..1, color, text]
 func set_meters(meters: Array) -> void:
 	while _meters.get_child_count() < meters.size() * 2:
-		var l := UiTheme.label("", 18)
+		var l := UiTheme.label("", 16, UiTheme.MUTED)
 		_meters.add_child(l)
 		var bar := ProgressBar.new()
-		bar.custom_minimum_size = Vector2(240, 18)
+		bar.custom_minimum_size = Vector2(240, 12)
 		bar.show_percentage = false
 		bar.max_value = 1.0
 		_meters.add_child(bar)

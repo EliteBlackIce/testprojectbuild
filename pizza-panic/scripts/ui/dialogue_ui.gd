@@ -22,6 +22,8 @@ var _meter: ProgressBar
 var _hint: Label
 var _typing_tween: Tween
 var _listening := false
+var _note: PanelContainer
+var _note_label: Label
 
 
 func _ready() -> void:
@@ -38,7 +40,7 @@ func _ready() -> void:
 	_box.offset_right = 620
 	_box.offset_top = -330
 	_box.offset_bottom = -24
-	_box.add_theme_stylebox_override("panel", UiTheme.box(UiTheme.CREAM, 6, 26, 22))
+	_box.add_theme_stylebox_override("panel", UiTheme.panel(Color(0.105, 0.075, 0.17, 0.94), 22, 22))
 	_root.add_child(_box)
 
 	var v := VBoxContainer.new()
@@ -48,18 +50,19 @@ func _ready() -> void:
 	var name_row := HBoxContainer.new()
 	v.add_child(name_row)
 	var plate := PanelContainer.new()
-	plate.add_theme_stylebox_override("panel", UiTheme.box(UiTheme.RED, 4, 14, 12))
+	plate.add_theme_stylebox_override("panel", UiTheme.flat(UiTheme.PINK, 12, 16, 4))
 	name_row.add_child(plate)
-	_name = UiTheme.label("NAME", 30, Color.WHITE, 8)
+	_name = UiTheme.label("NAME", UiTheme.HEADING, UiTheme.INK)
 	plate.add_child(_name)
-	_title = UiTheme.label("", 20, Color(UiTheme.INK, 0.7))
+	_title = UiTheme.label("", 18, UiTheme.MUTED)
 	_title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	name_row.add_child(_title)
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_row.add_child(spacer)
 	var leave := Button.new()
-	leave.text = "Leave (Esc)"
+	leave.text = "Leave  (Esc)"
+	leave.theme_type_variation = "Ghost"
 	leave.pressed.connect(func(): leave_pressed.emit())
 	name_row.add_child(leave)
 
@@ -67,16 +70,16 @@ func _ready() -> void:
 	_text.bbcode_enabled = true
 	_text.fit_content = true
 	_text.custom_minimum_size = Vector2(0, 90)
-	_text.add_theme_font_size_override("normal_font_size", 32)
-	_text.add_theme_color_override("default_color", UiTheme.INK)
+	_text.add_theme_font_size_override("normal_font_size", 30)
+	_text.add_theme_color_override("default_color", UiTheme.TEXT)
 	_text.scroll_active = false
 	v.add_child(_text)
 
-	_you = UiTheme.label("", 22, Color("#3a86ff"))
+	_you = UiTheme.label("", 20, UiTheme.BLUE)
 	_you.autowrap_mode = TextServer.AUTOWRAP_WORD
 	v.add_child(_you)
 
-	_status = UiTheme.label("", 20, Color("#8338ec"))
+	_status = UiTheme.label("", 17, UiTheme.PURPLE)
 	v.add_child(_status)
 
 	var row := HBoxContainer.new()
@@ -104,14 +107,27 @@ func _ready() -> void:
 	send.pressed.connect(func(): _on_submit(_input.text))
 	row.add_child(send)
 
-	_hint = UiTheme.label("", 16, Color(UiTheme.INK, 0.6))
+	_hint = UiTheme.label("", 15, UiTheme.MUTED)
 	v.add_child(_hint)
+	# Notepad: the order, written down the moment they place it
+	_note = PanelContainer.new()
+	_note.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	_note.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_note.offset_left = 330
+	_note.offset_right = 620
+	_note.offset_bottom = -344
+	_note.add_theme_stylebox_override("panel", UiTheme.flat(Color("#fff4dc"), 10, 16, 12, Color("#3b2a22"), 2))
+	_root.add_child(_note)
+	_note_label = UiTheme.label("", 18, Color("#2b1c18"))
+	_note.add_child(_note_label)
+	_note.visible = false
 	visible = false
 
 
 func open(npc_name: String, npc_title: String, voice_ok: bool, phone := false) -> void:
 	visible = true
-	_box.add_theme_stylebox_override("panel", UiTheme.box(Color("#e6fff6") if phone else UiTheme.CREAM, 6, 26, 22))
+	_note.visible = false
+	_box.add_theme_stylebox_override("panel", UiTheme.panel(Color(0.07, 0.17, 0.17, 0.95) if phone else Color(0.105, 0.075, 0.17, 0.94), 22, 22))
 	_name.text = npc_name
 	_title.text = "  " + npc_title
 	_text.text = ""
@@ -157,6 +173,18 @@ func show_player_line(text: String) -> void:
 	_you.text = "You: \"%s\"" % text
 
 
+## The order, written down on a notepad next to the conversation.
+func show_order(id: int, who: String, order: Dictionary) -> void:
+	var lines: PackedStringArray = ["ORDER #%d  (%s)" % [id, who], "%s, %s sauce" % [str(Menu.SIZES[order.get("size", "medium")].label), Menu.SAUCES[order.get("sauce", "tomato")].label]]
+	var tops: Array = order.get("toppings", [])
+	if tops.is_empty():
+		lines.append("- plain cheese")
+	for tp in tops:
+		lines.append("- " + str(Menu.TOPPINGS[tp].label))
+	_note_label.text = "\n".join(lines)
+	_note.visible = true
+
+
 func set_status(text: String) -> void:
 	_status.text = text
 
@@ -183,4 +211,4 @@ func _process(_delta: float) -> void:
 static func _format(text: String) -> String:
 	var safe := text.replace("[", "(").replace("]", ")")
 	var rx := RegEx.create_from_string("\\*([^*]+)\\*")
-	return rx.sub(safe, "[i][color=#8338ec]$1[/color][/i]", true)
+	return rx.sub(safe, "[i][color=#b69bff]$1[/color][/i]", true)

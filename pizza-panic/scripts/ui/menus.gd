@@ -13,7 +13,7 @@ var _pause: Control
 var _settings: Control
 var _results: Control
 var _shop: Control
-var _results_body: Label
+var _results_rows: VBoxContainer
 var _logo: Label
 var _continue_btn: Button
 var _return_to: Control
@@ -78,9 +78,31 @@ func show_results(s: Dictionary) -> void:
 	_hide_all()
 	_results.visible = true
 	var rep_delta: float = s.rep_end - s.rep_start
-	_results_body.text = "Pizzas delivered: %d  (perfect: %d)\nBotched / stolen / never delivered: %d\nMissed phone calls: %d\n\nMoney made: $%d  (tips: $%d)\nIngredients: -$%d\nStaff wages: -$%d  (they made %d pizzas)\nReputation: %.1f stars (%s%.1f)\n\nBank account: $%d\n\nRANK: %s" % [
-		s.delivered, s.perfect, s.failed, s.missed_calls, s.earned, s.tips, s.costs, int(s.get("wages", 0)), int(s.get("staff_made", 0)), s.rep_end,
-		"+" if rep_delta >= 0 else "", rep_delta, s.money, s.rank]
+	for c in _results_rows.get_children():
+		c.queue_free()
+	_results_rows.add_child(UiTheme.caption("Day summary"))
+	_result_row("Pizzas delivered", "%d   (%d perfect)" % [s.delivered, s.perfect])
+	_result_row("Botched, stolen or lost", str(s.failed), UiTheme.PINK if int(s.failed) > 0 else UiTheme.TEXT)
+	_result_row("Missed phone calls", str(s.missed_calls), UiTheme.PINK if int(s.missed_calls) > 0 else UiTheme.TEXT)
+	_results_rows.add_child(HSeparator.new())
+	_result_row("Money made", "$%d   (tips $%d)" % [s.earned, s.tips], UiTheme.TEAL)
+	_result_row("Ingredients", "-$%d" % s.costs, UiTheme.MUTED)
+	_result_row("Staff wages", "-$%d   (they made %d pizzas)" % [int(s.get("wages", 0)), int(s.get("staff_made", 0))], UiTheme.MUTED)
+	_result_row("Reputation", "%.1f stars   (%s%.1f)" % [s.rep_end, "+" if rep_delta >= 0 else "", rep_delta], UiTheme.YELLOW)
+	_results_rows.add_child(HSeparator.new())
+	_result_row("Bank account", "$%d" % s.money, UiTheme.TEAL, 26)
+	_result_row("Rank", str(s.rank), UiTheme.YELLOW, 26)
+
+
+func _result_row(left: String, right: String, color := UiTheme.TEXT, size := 19) -> void:
+	var row := HBoxContainer.new()
+	var l := UiTheme.label(left, size, UiTheme.MUTED if size < 24 else UiTheme.TEXT)
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(l)
+	var r := UiTheme.label(right, size, color)
+	r.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	row.add_child(r)
+	_results_rows.add_child(row)
 
 
 func open_shop(from_results := false) -> void:
@@ -139,10 +161,12 @@ func _center_column(parent: Control, width := 560) -> VBoxContainer:
 	return v
 
 
-func _button(parent: Control, text: String, cb: Callable) -> Button:
+func _button(parent: Control, text: String, cb: Callable, primary := true) -> Button:
 	var b := Button.new()
 	b.text = text
-	b.custom_minimum_size.y = 60
+	if not primary:
+		b.theme_type_variation = "Ghost"
+	b.custom_minimum_size.y = 54
 	b.pressed.connect(_on_button.bind(cb))
 	parent.add_child(b)
 	return b
@@ -156,47 +180,48 @@ func _on_button(cb: Callable) -> void:
 func _build_title() -> void:
 	_title = _screen(false)
 	var v := _center_column(_title, 680)
-	_logo = UiTheme.label("PIZZA PANIC!", 124, UiTheme.YELLOW, 28)
+	_logo = UiTheme.label("PIZZA PANIC!", 120, UiTheme.YELLOW, 26)
+	_logo.add_theme_font_override("font", Toon.goofy_font())
 	_logo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_logo.pivot_offset = Vector2(340, 70)
 	v.add_child(_logo)
-	var sub := UiTheme.label("you are an egg. you deliver pizza. the customers are worse.", 28, Color.WHITE, 10)
+	var sub := UiTheme.label("you are an egg. you deliver pizza. the customers are worse.", UiTheme.LABEL, Color.WHITE, 8)
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(sub)
 	v.add_child(Control.new())
-	_continue_btn = _button(v, "CONTINUE", func(): start_requested.emit(false))
-	_continue_btn.add_theme_font_size_override("font_size", 34)
-	_button(v, "NEW GAME", func(): start_requested.emit(true)).add_theme_font_size_override("font_size", 30)
-	_button(v, "Settings / AI Voice Setup", func(): _open_settings(_title))
-	_button(v, "Quit", func(): get_tree().quit())
+	_continue_btn = _button(v, "Continue", func(): start_requested.emit(false))
+	_button(v, "New game", func(): start_requested.emit(true), false)
+	_button(v, "Settings and AI voice setup", func(): _open_settings(_title), false)
+	_button(v, "Quit", func(): get_tree().quit(), false)
 
 
 func _build_pause() -> void:
 	_pause = _screen()
 	var v := _center_column(_pause)
-	var t := UiTheme.label("PAUSED", 80, UiTheme.YELLOW, 20)
+	var t := UiTheme.label("Paused", UiTheme.DISPLAY, UiTheme.YELLOW)
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(t)
 	_button(v, "Resume", func(): resume_requested.emit())
-	_button(v, "Upgrades", func(): open_shop(false))
-	_button(v, "Settings", func(): _open_settings(_pause))
-	_button(v, "Save & Quit to Title", func(): title_requested.emit())
+	_button(v, "Upgrades and hiring", func(): open_shop(false), false)
+	_button(v, "Settings", func(): _open_settings(_pause), false)
+	_button(v, "Save and quit to title", func(): title_requested.emit(), false)
 
 
 func _build_results() -> void:
 	_results = _screen()
 	var v := _center_column(_results, 700)
-	var t := UiTheme.label("CLOSING TIME!", 84, UiTheme.YELLOW, 22)
+	var t := UiTheme.label("Closing time!", UiTheme.DISPLAY, UiTheme.YELLOW)
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(t)
 	var panel := PanelContainer.new()
 	v.add_child(panel)
-	_results_body = UiTheme.label("", 26)
-	_results_body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	panel.add_child(_results_body)
-	_button(v, "Spend money on upgrades", func(): open_shop(true))
+	_results_rows = VBoxContainer.new()
+	_results_rows.add_theme_constant_override("separation", 6)
+	_results_rows.custom_minimum_size.x = 620
+	panel.add_child(_results_rows)
 	_button(v, "Start the next day", func(): next_day_requested.emit())
-	_button(v, "Save & Quit to Title", func(): title_requested.emit())
+	_button(v, "Spend money on upgrades", func(): open_shop(true), false)
+	_button(v, "Save and quit to title", func(): title_requested.emit(), false)
 
 
 func _build_shop() -> void:
@@ -211,11 +236,11 @@ func _build_shop() -> void:
 	panel.add_child(outer)
 	var head := HBoxContainer.new()
 	outer.add_child(head)
-	head.add_child(UiTheme.label("TONY'S PC  ·  UPGRADES & HIRING", 40, UiTheme.RED))
+	head.add_child(UiTheme.label("Tony's PC: upgrades and hiring", UiTheme.HEADING + 6, UiTheme.YELLOW))
 	var sp := Control.new()
 	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(sp)
-	_shop_money = UiTheme.label("", 36, Color("#2a9d8f"))
+	_shop_money = UiTheme.label("", 34, UiTheme.TEAL)
 	head.add_child(_shop_money)
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(1000, 640)
@@ -237,9 +262,9 @@ func _refresh_shop() -> void:
 		var u: Dictionary = Upgrades.LIST[id]
 		if u.cat != cat:
 			cat = u.cat
-			_shop_list.add_child(UiTheme.label(cat.to_upper(), 30, UiTheme.RED))
+			_shop_list.add_child(UiTheme.caption(cat, UiTheme.YELLOW))
 		var row := PanelContainer.new()
-		row.add_theme_stylebox_override("panel", UiTheme.box(Color("#fffdf5"), 3, 12, 12))
+		row.add_theme_stylebox_override("panel", UiTheme.card())
 		var h := HBoxContainer.new()
 		h.add_theme_constant_override("separation", 14)
 		row.add_child(h)
@@ -248,8 +273,8 @@ func _refresh_shop() -> void:
 		h.add_child(info)
 		var lv := Game.level(id)
 		var max_lv := int(u.levels)
-		info.add_child(UiTheme.label("%s  %s" % [u.name, "(level %d/%d)" % [lv, max_lv]], 24))
-		var d := UiTheme.label(u.desc, 17, Color(UiTheme.INK, 0.75))
+		info.add_child(UiTheme.label("%s   level %d/%d" % [u.name, lv, max_lv], 20))
+		var d := UiTheme.label(u.desc, 15, UiTheme.MUTED)
 		d.autowrap_mode = TextServer.AUTOWRAP_WORD
 		d.custom_minimum_size.x = 700
 		info.add_child(d)
@@ -270,15 +295,15 @@ func _refresh_shop() -> void:
 
 ## Hire eggs to cook and answer the phone. Wages are paid at closing time.
 func _staff_rows() -> void:
-	_shop_list.add_child(UiTheme.label("HIRE STAFF  (wages today: $%d/day)" % Game.wages_total(), 30, UiTheme.RED))
-	var hint := UiTheme.label("Cooks make whole pizzas by themselves and put them on the pass shelf. Phone eggs take orders. Wages come out at closing time.", 17, Color(UiTheme.INK, 0.75))
+	_shop_list.add_child(UiTheme.caption("Hire staff  ·  wages today: $%d" % Game.wages_total(), UiTheme.YELLOW))
+	var hint := UiTheme.label("Cooks make whole pizzas by themselves and put them on the pass shelf. Phone eggs take orders. Wages come out at closing time.", 15, UiTheme.MUTED)
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD
 	hint.custom_minimum_size.x = 900
 	_shop_list.add_child(hint)
 	for id: String in StaffData.CANDIDATES:
 		var c: Dictionary = StaffData.CANDIDATES[id]
 		var row := PanelContainer.new()
-		row.add_theme_stylebox_override("panel", UiTheme.box(Color("#f1fff7") if Game.is_hired(id) else Color("#fffdf5"), 3, 12, 12))
+		row.add_theme_stylebox_override("panel", UiTheme.card(UiTheme.TEAL if Game.is_hired(id) else Color(0, 0, 0, 0)))
 		var h := HBoxContainer.new()
 		h.add_theme_constant_override("separation", 14)
 		row.add_child(h)
@@ -287,8 +312,8 @@ func _staff_rows() -> void:
 		h.add_child(info)
 		var role := "Cook" if c.role == "cook" else "Phones"
 		var skill := Game.staff_skill(id) if Game.is_hired(id) else float(c.skill)
-		info.add_child(UiTheme.label("%s  ·  %s  ·  skill %d%%  ·  $%d/day%s" % [c.name, role, int(skill * 100), c.wage, "  ·  HIRED" if Game.is_hired(id) else ""], 22))
-		var d := UiTheme.label(str(c.pitch), 17, Color(UiTheme.INK, 0.75))
+		info.add_child(UiTheme.label("%s  ·  %s  ·  skill %d%%  ·  $%d/day%s" % [c.name, role, int(skill * 100), c.wage, "  ·  hired" if Game.is_hired(id) else ""], 20))
+		var d := UiTheme.label(str(c.pitch), 15, UiTheme.MUTED)
 		d.autowrap_mode = TextServer.AUTOWRAP_WORD
 		d.custom_minimum_size.x = 640
 		info.add_child(d)
@@ -367,7 +392,7 @@ func _build_settings() -> void:
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	v.add_theme_constant_override("separation", 10)
 	scroll.add_child(v)
-	v.add_child(UiTheme.label("SETTINGS", 48, UiTheme.RED))
+	v.add_child(UiTheme.label("Settings", UiTheme.DISPLAY - 8, UiTheme.YELLOW))
 	v.add_child(_small("Customer brains: Claude (Anthropic). Your voice -> text and their voices: OpenAI and/or ElevenLabs.\nNo keys? Offline mode still works: you type, they answer from a script."))
 	_mode = _option(v, "AI mode", MODE_NAMES)
 	_anthropic = _field(v, "Anthropic API key (customer brains)", "sk-ant-...", true)
@@ -386,27 +411,27 @@ func _build_settings() -> void:
 	_hints.text = "Show 'what to do next' hints"
 	v.add_child(_hints)
 	var warn := _small("Keys are saved in plain text on this computer (user://settings.cfg). Never put your keys in a build you share.")
-	warn.add_theme_color_override("font_color", UiTheme.RED)
+	warn.add_theme_color_override("font_color", UiTheme.PINK)
 	v.add_child(warn)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	v.add_child(row)
 	_button(row, "Save", _save_settings).size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_button(row, "Test AI", _test_ai).size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_button(row, "Back", _close_settings).size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_button(row, "Test AI", _test_ai, false).size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_button(row, "Back", _close_settings, false).size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_test_status = _small("")
 	v.add_child(_test_status)
 
 
 func _small(text: String) -> Label:
-	var l := UiTheme.label(text, 18)
+	var l := UiTheme.label(text, 16, UiTheme.MUTED)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD
 	l.custom_minimum_size.x = 840
 	return l
 
 
 func _field(parent: Control, label_text: String, placeholder: String, secret: bool) -> LineEdit:
-	parent.add_child(UiTheme.label(label_text, 20))
+	parent.add_child(UiTheme.label(label_text, 17))
 	var e := LineEdit.new()
 	e.placeholder_text = placeholder
 	e.secret = secret
@@ -416,7 +441,7 @@ func _field(parent: Control, label_text: String, placeholder: String, secret: bo
 
 
 func _option(parent: Control, label_text: String, names: Array) -> OptionButton:
-	parent.add_child(UiTheme.label(label_text, 20))
+	parent.add_child(UiTheme.label(label_text, 17))
 	var o := OptionButton.new()
 	for n in names:
 		o.add_item(n)
@@ -425,7 +450,7 @@ func _option(parent: Control, label_text: String, names: Array) -> OptionButton:
 
 
 func _slider(parent: Control, label_text: String) -> HSlider:
-	parent.add_child(UiTheme.label(label_text, 20))
+	parent.add_child(UiTheme.label(label_text, 17))
 	var s := HSlider.new()
 	s.min_value = 0.0
 	s.max_value = 1.0

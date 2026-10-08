@@ -289,7 +289,7 @@ func current_hat() -> String:
 
 ## Calls per in-game hour; more with reputation and the neon sign.
 func call_rate() -> float:
-	return 1.4 + reputation * 0.35 + level("neon_sign") * 0.5 + minf(day - 1, 6) * 0.1
+	return 0.75 + reputation * 0.15 + level("neon_sign") * 0.25 + minf(day - 1, 6) * 0.05
 
 
 func rank_for_day(s: Dictionary) -> String:

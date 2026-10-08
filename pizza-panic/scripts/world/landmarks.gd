@@ -72,7 +72,7 @@ static func gas_station(parent: Node3D, pos: Vector3, rot: float) -> void:
 	# Canopy on pillars
 	Toon.box(root, Vector3(12, 0.6, 7), Vector3(0, 5.0, 4.5), Color("#f6f4ef"), 0.02)
 	Toon.box(root, Vector3(12.1, 0.3, 7.1), Vector3(0, 4.6, 4.5), Color("#e74c3c"), 0.0)
-	Toon.label(root, "SHELL-OUT GAS", Vector3(0, 5.0, 8.05), 110, Color("#c0392b"), false)
+	Signs.board(root, "SHELL-OUT GAS", Vector3(0, 4.62, 8.1), Vector2(10.5, 1.2), Color("#fff4dc"), Color("#c0392b"), 0.0, "none", Color("#8a2a1f"))
 	for x in [-4.0, 4.0]:
 		Toon.cyl(root, 0.25, 0.25, 4.6, Vector3(x, 2.3, 4.5), Color("#dfe6e9"), 0.01, 6)
 		Toon.solid_box(root, Vector3(0.6, 4.6, 0.6), Vector3(x, 2.3, 4.5))
@@ -83,11 +83,11 @@ static func gas_station(parent: Node3D, pos: Vector3, rot: float) -> void:
 	Toon.block(root, Vector3(10, 4.0, 6), Vector3(0, 0, -4.5), Color("#ffeaa7"), 0.04, 0.025)
 	Toon.solid_box(root, Vector3(10, 4.0, 6), Vector3(0, 2.0, -4.5))
 	Toon.box(root, Vector3(6, 2.2, 0.08), Vector3(-1, 1.5, -1.47), Color("#9cc9d9"), 0.0).add_to_group("night_window")
-	Toon.label(root, "MINI MART · EGGS SOLD HERE (??)", Vector3(0, 3.3, -1.4), 50, Color("#2d3436"), false)
+	Signs.board(root, "MINI MART · EGGS SOLD HERE (??)", Vector3(0, 3.3, -1.42), Vector2(8.2, 0.9), Color("#2d3436"), Color("#ffeaa7"), 0.0, "lit")
 	# Tall price sign
 	Toon.cyl(root, 0.15, 0.15, 7.0, Vector3(8, 3.5, 7.5), Color("#555b61"), 0.01, 6)
 	Toon.box(root, Vector3(2.4, 2.4, 0.3), Vector3(8, 7.4, 7.5), Color("#f6f4ef"), 0.015)
-	Toon.label(root, "GAS\n$9.99", Vector3(8, 7.4, 7.7), 70, Color("#c0392b"), false)
+	Signs.board(root, "GAS\n$9.99", Vector3(8, 7.4, 7.68), Vector2(2.1, 2.1), Color("#fff4dc"), Color("#c0392b"), 0.0, "none", Color("#555b61"))
 
 
 static func park(parent: Node3D, origin: Vector3, size: float, rng: RandomNumberGenerator) -> void:
@@ -144,7 +144,7 @@ static func park(parent: Node3D, origin: Vector3, size: float, rng: RandomNumber
 		if p.distance_to(pond) < 8.0 or p.distance_to(f) < 4.0 or absf(p.x - (c + 7.0)) < 2.0 or absf(p.z - (c - 6.0)) < 2.0 or p.distance_to(pg) < 4.0 or p.distance_to(sw) < 3.0:
 			continue
 		tree(root, p, rng)
-	Toon.label(root, "YOLK PARK", Vector3(c + 7.0, 3.0, size - 1.0), 120, Color("#2d6a4f"))
+	Signs.board(root, "YOLK PARK", Vector3(c + 7.0, 2.4, size - 1.0), Vector2(5.0, 1.1), Color("#2d6a4f"), Color("#fff4dc"), 0.0, "posts", Color("#5a3d28"))
 
 
 static func tree(parent: Node3D, p: Vector3, rng: RandomNumberGenerator) -> void:
@@ -173,7 +173,7 @@ static func water_tower(parent: Node3D, pos: Vector3) -> void:
 			var leg := Toon.cyl(parent, 0.2, 0.25, 14.0, pos + Vector3(x * 2.2, 7.0, z * 2.2), Color("#9aa3ab"), 0.012, 5)
 			leg.rotation = Vector3(z * 0.06, 0, -x * 0.06)
 	Toon.mesh(parent, Shapes.egg(6.5, 3.8, 14, 8), pos + Vector3(0, 12.5, 0), Color("#f1e6d0"), 0.05)
-	Toon.label(parent, "EGGVILLE", pos + Vector3(0, 16.5, 3.9), 220, Color("#c0392b"), false)
+	Signs.board(parent, "EGGVILLE", pos + Vector3(0, 12.5, 3.75), Vector2(6.2, 1.6), Color("#fff4dc"), Color("#c0392b"), 0.0, "none", Color("#8a2a1f"))
 
 
 ## Rolling low-poly hills ringing the town, plus far mountains for depth.
