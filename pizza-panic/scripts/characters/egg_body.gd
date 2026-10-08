@@ -97,10 +97,11 @@ func build(l: Dictionary) -> void:
 	look = l
 	add_to_group("eggs")
 	_s = float(look.get("size", 1.0))
-	var stretch := float(look.get("stretch", 1.0))
+	# Everyone keeps the concept-art silhouette: only gentle taller/wider variations.
+	var stretch := clampf(float(look.get("stretch", 1.0)), 0.94, 1.08)
 	_h = 1.45 * stretch
-	_r = 0.5 / sqrt(stretch) * float(look.get("round", 1.0))
-	_belly = float(look.get("belly", 0.1))
+	_r = 0.5 / sqrt(stretch) * clampf(float(look.get("round", 1.0)), 0.95, 1.1)
+	_belly = minf(float(look.get("belly", 0.1)), 0.25) * 0.35
 	scale = Vector3.ONE * _s
 	var skin := Color(look.get("skin", "#e8b77a"))
 	var ghost: bool = look.get("ghost", false)

@@ -115,17 +115,31 @@ static func egg(height := 1.3, radius := 0.55, segments := 12, rings := 9) -> Ar
 ## The character egg: a real egg profile (fat round bottom, narrower top),
 ## a little belly bulge in front and a flatter back, so it's not perfectly
 ## symmetrical. Origin at the bottom. Still faceted, just more facets.
-## Egg silhouette: radius (0..1.05 of R) at height yn (0 bottom .. 1 top).
-## Widest a bit below the middle, a blunt rounded bottom and a softer, narrower top,
-## like a real egg standing on its fat end.
+## The body silhouette, traced from the concept art: radius (0..1.1 of R) at height
+## yn (0 bottom .. 1 top). A soft bean/oval rather than a pointy egg: round top,
+## nearly straight sides through the middle, and a wide, blunt bottom.
+const EGG_TABLE := [
+	[0.0, 0.0], [0.012, 0.36], [0.03, 0.55], [0.055, 0.66], [0.083, 0.73], [0.108, 0.756],
+	[0.134, 0.79], [0.159, 0.832], [0.185, 0.866], [0.21, 0.89], [0.236, 0.916], [0.261, 0.937],
+	[0.287, 0.958], [0.312, 0.975], [0.363, 0.985], [0.414, 1.0], [0.465, 0.99], [0.516, 0.987],
+	[0.541, 0.979], [0.6, 0.955], [0.66, 0.92], [0.72, 0.878], [0.745, 0.845], [0.771, 0.81],
+	[0.796, 0.78], [0.822, 0.75], [0.847, 0.71], [0.873, 0.66], [0.898, 0.61], [0.924, 0.56],
+	[0.949, 0.49], [0.975, 0.37], [0.99, 0.24], [1.0, 0.0],
+]
+
+
 static func egg_profile(yn: float) -> float:
-	const WIDEST := 0.44
-	var u := (yn - WIDEST) / (WIDEST if yn < WIDEST else 1.0 - WIDEST)
-	var p := 2.3 if yn < WIDEST else 2.2
-	return 1.13 * pow(maxf(0.0, 1.0 - pow(absf(u), p)), 1.0 / p)
+	yn = clampf(yn, 0.0, 1.0)
+	for i in EGG_TABLE.size() - 1:
+		var a: Array = EGG_TABLE[i]
+		var b: Array = EGG_TABLE[i + 1]
+		if yn <= float(b[0]):
+			var t := (yn - float(a[0])) / maxf(float(b[0]) - float(a[0]), 0.0001)
+			return 1.1 * lerpf(float(a[1]), float(b[1]), t)
+	return 0.0
 
 
-static func body_egg(height := 1.45, radius := 0.5, belly := 0.1, segments := 18, rings := 14) -> ArrayMesh:
+static func body_egg(height := 1.45, radius := 0.5, belly := 0.1, segments := 20, rings := 18) -> ArrayMesh:
 	var key := "begg|%s|%s|%s|%d|%d" % [height, radius, belly, segments, rings]
 	if _cache.has(key):
 		return _cache[key]
