@@ -20,6 +20,10 @@ const SECONDS_PER_MINUTE := 1.0
 const PROMISE_MINUTES := 75.0
 
 var money := 40
+var weather := "clear"           ## clear / overcast / rain / fog (set by DayCycle each morning)
+var goal: Dictionary = {}          ## today's goal: {kind, target, reward, label, done}
+var streak := 0                 ## consecutive good on-time deliveries (each one adds bonus tip)
+var best_streak := 0
 var bonks := 0                 ## eggs bonked today (just for bragging)
 var day := 1
 var reputation := 2.5             ## 0..5 stars
@@ -58,8 +62,55 @@ func start_day() -> void:
 	tickets.clear()
 	today = {"earned": 0, "tips": 0, "costs": 0, "delivered": 0, "failed": 0, "missed_calls": 0,
 		"rep_start": reputation, "perfect": 0, "wages": 0, "staff_made": 0}
+	best_streak = 0
+	streak = 0
+	_make_goal()
 	tickets_changed.emit()
 	day_started.emit(day)
+
+
+## A fresh target every morning; harder as the days go by. Hit it for a cash bonus.
+func _make_goal() -> void:
+	var scale := 1.0 + minf(day - 1, 10) * 0.25
+	var kind: String = ["deliver", "earn", "perfect", "streak"][randi() % 4]
+	match kind:
+		"deliver":
+			var n := int(round(3 * scale)) + 1
+			goal = {"kind": kind, "target": n, "reward": 10 + n * 5, "label": "Deliver %d pizzas" % n}
+		"earn":
+			var m := int(round(60 * scale / 5.0)) * 5
+			goal = {"kind": kind, "target": m, "reward": 15 + m / 6, "label": "Earn $%d today" % m}
+		"perfect":
+			var n2 := int(round(2 * scale))
+			goal = {"kind": kind, "target": n2, "reward": 15 + n2 * 8, "label": "Deliver %d perfect pizzas" % n2}
+		_:
+			var n3 := mini(3 + int(day / 3), 7)
+			goal = {"kind": kind, "target": n3, "reward": 20 + n3 * 8, "label": "Get a %d-pizza streak" % n3}
+	goal["done"] = false
+
+
+func goal_progress() -> int:
+	match String(goal.get("kind", "")):
+		"deliver":
+			return int(today.delivered)
+		"earn":
+			return int(today.earned)
+		"perfect":
+			return int(today.perfect)
+		"streak":
+			return best_streak
+	return 0
+
+
+func _check_goal() -> void:
+	if goal.is_empty() or goal.done:
+		return
+	if goal_progress() >= int(goal.target):
+		goal.done = true
+		money += int(goal.reward)
+		today.earned += int(goal.reward)
+		money_changed.emit(money, int(goal.reward))
+		toast.emit("GOAL COMPLETE: %s! +$%d" % [goal.label, goal.reward], Color("#2fe3b2"))
 
 
 func end_day() -> void:
@@ -82,6 +133,8 @@ func end_day() -> void:
 	summary["rep_end"] = reputation
 	summary["money"] = money
 	summary["rank"] = rank_for_day(summary)
+	summary["goal"] = goal.duplicate()
+	summary["best_streak"] = best_streak
 	lifetime.days += 1
 	day += 1
 	save_game()
@@ -166,6 +219,15 @@ func complete_delivery(id: int, pizza: Dictionary, npc_tip: int) -> Dictionary:
 		price = int(price * 0.5)
 	var tip_mult: float = 0.4 + q.total * 1.2 + (reputation - 2.5) * 0.08
 	var tip := clampi(int(round(npc_tip * tip_mult + (3.0 if q.total > 0.85 and not late else 0.0))), 0, 40)
+	if q.total > 0.6 and not late:
+		streak += 1
+		best_streak = maxi(best_streak, streak)
+	else:
+		streak = 0
+	var streak_bonus := mini(maxi(streak - 1, 0), 5) * 2
+	if streak_bonus > 0:
+		tip += streak_bonus
+		toast.emit("%d in a row! +$%d streak bonus" % [streak, streak_bonus], Color("#ffd166"))
 	var earned := price + tip
 	t.status = "delivered"
 	money += earned
@@ -181,6 +243,7 @@ func complete_delivery(id: int, pizza: Dictionary, npc_tip: int) -> Dictionary:
 	reputation = clampf(reputation + rep_delta, 0.0, 5.0)
 	money_changed.emit(money, earned)
 	tickets_changed.emit()
+	_check_goal()
 	return {"price": price, "tip": tip, "earned": earned, "late": late, "quality": q, "rep": rep_delta}
 
 
@@ -190,6 +253,7 @@ func fail_ticket(id: int, reason: String) -> void:
 		return
 	t.status = "failed"
 	today.failed += 1
+	streak = 0
 	reputation = maxf(0.0, reputation - 0.3)
 	tickets_changed.emit()
 	toast.emit(reason, Color("#ff5d73"))

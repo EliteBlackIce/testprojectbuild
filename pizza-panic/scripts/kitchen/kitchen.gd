@@ -471,6 +471,49 @@ func _drop_topping() -> void:
 	board_pizza.place_topping(kind, _cursor_local + Vector2(randf_range(-1, 1), randf_range(-1, 1)) * 0.01)
 	Sfx.play("poke", randf_range(1.4, 1.8), -12.0)
 	_squash_cursor()
+	_jiggle(board_pizza, 0.5)
+
+
+## A little burst of particles (flour, steam, sparkles) that cleans itself up.
+func puff(world_pos: Vector3, color: Color, count := 8, speed := 0.8, size := 0.05, life := 0.6, up := 1.0) -> void:
+	var pt := CPUParticles3D.new()
+	pt.one_shot = true
+	pt.explosiveness = 0.9
+	pt.amount = count
+	pt.lifetime = life
+	pt.direction = Vector3(0, 1, 0)
+	pt.spread = 70.0
+	pt.initial_velocity_min = speed * 0.5
+	pt.initial_velocity_max = speed
+	pt.gravity = Vector3(0, -2.0 * (1.0 - up) - 0.3 * up, 0)
+	var sm := SphereMesh.new()
+	sm.radius = size
+	sm.height = size * 2.0
+	sm.radial_segments = 6
+	sm.rings = 3
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = color
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	sm.material = mat
+	pt.mesh = sm
+	var grad := Gradient.new()
+	grad.set_color(0, Color(1, 1, 1, 0.9))
+	grad.set_color(1, Color(1, 1, 1, 0.0))
+	pt.color_ramp = grad
+	pizzeria.add_child(pt)
+	pt.global_position = world_pos
+	pt.emitting = true
+	get_tree().create_timer(life + 0.3).timeout.connect(pt.queue_free)
+
+
+## The whole pizza jiggles when you do something to it.
+func _jiggle(p: Pizza, strength := 1.0) -> void:
+	if p == null:
+		return
+	var tw := p.create_tween()
+	p.scale = Vector3(1.0 + 0.05 * strength, 1.0 - 0.1 * strength, 1.0 + 0.05 * strength)
+	tw.tween_property(p, "scale", Vector3.ONE, 0.35).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
 
 
 func _squash_cursor() -> void:
@@ -511,8 +554,10 @@ func _work_process(delta: float) -> void:
 				p.set_stretch(p.radius() + (want - p.radius()) * (1.0 - exp(-rate * delta)))
 				_cursor_tool.rotation.y += delta * 6.0
 				if _sound_cd <= 0.0:
-					_sound_cd = 0.35
-					Sfx.play("squish", randf_range(1.2, 1.5), -14.0)
+					_sound_cd = 0.3
+					Sfx.play("squish", 0.9 + p.radius() * 1.4 + randf_range(-0.05, 0.05), -12.0)
+					puff(p.to_global(Vector3(_cursor_local.x, 0.08, _cursor_local.y)), Color("#fff6e0"), 5, 0.5, 0.035, 0.5)
+					_jiggle(p, 0.35)
 			if p.is_torn():
 				_mouse_down = false
 				_tear()
@@ -533,6 +578,7 @@ func _work_process(delta: float) -> void:
 					if _sound_cd <= 0.0:
 						_sound_cd = 0.12
 						Sfx.play("sprinkle", randf_range(0.8, 1.3), -10.0)
+						puff(p.to_global(Vector3(_cursor_local.x, 0.2, _cursor_local.y)), Color("#ffe08a"), 3, 0.25, 0.015, 0.35, 0.0)
 		elif tool.begins_with("top:"):
 			if _paint_cd <= -0.18:
 				_paint_cd = 0.0
@@ -803,6 +849,7 @@ func take_from_oven(i: int) -> Pizza:
 		p.data.heat = 100.0
 		(o.label as Label3D).text = ""
 		Sfx.play("pickup")
+		puff((o.root as Node3D).global_position + Vector3(0, 1.1, 0.9), Color("#ffffff"), 14, 1.2, 0.07, 0.9)
 	return p
 
 
@@ -833,6 +880,10 @@ func _process(delta: float) -> void:
 		if not Game.in_dialogue:
 			p.set_bake(float(p.data.bake) + delta / bake_time)
 		var b := float(p.data.bake)
+		if b >= 0.88 and not p.data.get("dinged", false):
+			p.data["dinged"] = true
+			Sfx.play("ding", 1.0, -3.0)
+			puff((o.root as Node3D).global_position + Vector3(0, 1.1, 0.9), Color("#fff2c8"), 10, 0.9, 0.05, 0.7)
 		if b < 0.6:
 			label.text = "baking..."
 			label.modulate = Color.WHITE

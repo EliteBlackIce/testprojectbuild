@@ -491,7 +491,7 @@ func _build_kitchen() -> void:
 	_solid(Vector3(0.7, 1.8, 0.8), mixer + Vector3(0, 0.9, 0))
 	for k in 2:
 		Toon.block(self, Vector3(0.55, 0.7, 0.55), dough + Vector3(0.05, 0, 1.0 + k * 0.62), Color("#f6f4ef"), 0.1, 0.01)
-		_label("FLOUR" if k == 0 else "SEMOLINA", dough + Vector3(0.34, 0.45, 1.0 + k * 0.62), 16, Color("#2b1c18"), PI / 2)
+		_label("FLOUR" if k == 0 else "SEMOLINA", dough + Vector3(0.34, 0.45, 0.85 + k * 0.95), 11, Color("#2b1c18"), PI / 2)
 	_solid(Vector3(0.6, 0.7, 1.3), dough + Vector3(0.05, 0.35, 1.3))
 	# Ovens on the back wall under a big exhaust hood
 	for i in 2:

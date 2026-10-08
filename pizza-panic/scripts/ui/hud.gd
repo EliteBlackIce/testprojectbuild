@@ -23,6 +23,8 @@ var _carry_box: PanelContainer
 var _help: PanelContainer
 var _help_timer := 0.0
 var _seen := {}
+var _goal_label: Label
+var _streak_label: Label
 var _carry: Label
 var _boost: ProgressBar
 var _mode_badge: Label
@@ -75,6 +77,12 @@ func _ready() -> void:
 	_hint = UiTheme.label("", 17)
 	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD
 	hv.add_child(_hint)
+	_goal_label = UiTheme.label("", 15, UiTheme.TEAL)
+	_goal_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+	hv.add_child(UiTheme.caption("Today's goal", UiTheme.TEAL))
+	hv.add_child(_goal_label)
+	_streak_label = UiTheme.label("", 15, UiTheme.YELLOW)
+	hv.add_child(_streak_label)
 
 	# Right: tickets
 	_tickets_panel = PanelContainer.new()
@@ -386,6 +394,11 @@ func _process(delta: float) -> void:
 		_help_timer -= delta
 		if _help_timer <= 0.0:
 			_show_help(false)
+	if not Game.goal.is_empty():
+		var done: bool = Game.goal.done
+		_goal_label.text = "%s  %s" % [Game.goal.label, "(done!)" if done else "%d/%d  ·  +$%d" % [mini(Game.goal_progress(), int(Game.goal.target)), int(Game.goal.target), int(Game.goal.reward)]]
+		_goal_label.add_theme_color_override("font_color", UiTheme.MUTED if done else UiTheme.TEAL)
+	_streak_label.text = "Streak: %d" % Game.streak if Game.streak >= 2 else ""
 	_clock.text = "Day %d  ·  %s%s" % [Game.day, Game.clock_text(), "  ·  last call!" if Game.is_last_call() and Game.day_running else ""]
 	var full := int(floor(Game.reputation))
 	_stars.value = Game.reputation

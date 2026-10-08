@@ -116,6 +116,16 @@ your boss Tony Pepperoni, plus dozens of generated weirdos.
 - Orders arrive slower now (3 open at a time to start) and every order is a receipt: HUD cards,
   a notepad during the call, and slips on the kitchen rail.
 
+## Feel (driving, kitchen, weather, goals)
+
+- **Driving:** a real power curve (strong off the line, fading near top speed), steering that gets less sharp the faster
+  you go, weight transfer (nose dips braking, squats accelerating, body rolls in corners), a four-gear engine with
+  shifts, tyre squeal and drift smoke, and a camera kick on crashes. The wheel turns about its own axis with your hands on it.
+- **Kitchen:** flour puffs and a dough jiggle when you stretch, toppings make the pizza wobble, a bell and steam when the
+  oven hits perfect, a steam burst when you pull a pizza out.
+- **Weather:** each morning is clear, overcast, rainy (slippery roads, thunder) or foggy.
+- **Goals:** a new goal every day with a cash reward, and a delivery streak that adds a growing tip bonus.
+
 ## Animation
 
 - **Ragdoll falls.** Any real hit (thrown props, cars, goats, grease, explosions) turns the egg into a verlet

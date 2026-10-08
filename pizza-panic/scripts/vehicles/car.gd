@@ -77,7 +77,7 @@ func max_speed() -> float:
 
 
 func grip() -> float:
-	return 6.5 + Game.level("tires") * 2.2
+	return (6.5 + Game.level("tires") * 2.2) * (0.72 if Game.weather == "rain" else 1.0)
 
 
 func crash_softness() -> float:

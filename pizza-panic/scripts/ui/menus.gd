@@ -89,6 +89,8 @@ func show_results(s: Dictionary) -> void:
 	_result_row("Ingredients", "-$%d" % s.costs, UiTheme.MUTED)
 	_result_row("Staff wages", "-$%d   (they made %d pizzas)" % [int(s.get("wages", 0)), int(s.get("staff_made", 0))], UiTheme.MUTED)
 	_result_row("Reputation", "%.1f stars   (%s%.1f)" % [s.rep_end, "+" if rep_delta >= 0 else "", rep_delta], UiTheme.YELLOW)
+	if s.has("goal") and not (s.goal as Dictionary).is_empty():
+		_result_row("Goal: %s" % s.goal.label, "done" if s.goal.done else "missed", UiTheme.TEAL if s.goal.done else UiTheme.MUTED)
 	_results_rows.add_child(HSeparator.new())
 	_result_row("Bank account", "$%d" % s.money, UiTheme.TEAL, 26)
 	_result_row("Rank", str(s.rank), UiTheme.YELLOW, 26)

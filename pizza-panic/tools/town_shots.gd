@@ -31,6 +31,11 @@ func _ready() -> void:
 	add_child(cam)
 	cam.current = true
 	var t: Town = main.town
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("weather="):
+			main.day_cycle.set_weather(a.substr(8))
+			main.day_cycle._w_mix = main.day_cycle.WEATHER[a.substr(8)].duplicate()
+	await _frames(30)
 	var mid := t.center()
 	await _look(mid + Vector3(0, 175, 120), mid, "t0_aerial")
 	var dt := t.block_origin(2, 0) + Vector3(15, 0, 15)
