@@ -285,7 +285,7 @@ func _glass_mat() -> StandardMaterial3D:
 
 func _build_ceiling_and_roof() -> void:
 	# Inside ceiling (what you see looking up) + ceiling tiles grid in the dining room
-	Toon.box(self, Vector3(W, 0.1, D), Vector3(0, H + 0.05, 0), Color("#e8e2d6"), 0.0)
+	Toon.box(self, Vector3(W, 0.1, D), Vector3(0, H + 0.05, 0), Color("#bdb09f"), 0.0)
 	var grid: Array[Transform3D] = []
 	var x := -W * 0.5 + 1.2
 	while x < W * 0.5:
@@ -438,10 +438,10 @@ func _build_counter() -> void:
 	var mb := Vector3(-1.5, 2.85, PARTITION_Z + 0.16)
 	Toon.box(self, Vector3(4.2, 1.4, 0.06), mb, Color("#2d3436"), 0.01)
 	Toon.box(self, Vector3(4.3, 1.5, 0.04), mb - Vector3(0, 0, 0.02), Color("#6d4c41"), 0.0)
-	_label("~ TONY'S MENU ~", mb + Vector3(0, 0.5, 0.05), 46, Color("#ffeaa7"), 0.0, 6)
-	_label("SMALL  $8     MEDIUM  $11     LARGE  $14", mb + Vector3(0, 0.15, 0.05), 30, Color("#f6f4ef"), 0.0, 4)
-	_label("toppings +$1 to $3  ·  sauces: tomato, bbq, white", mb + Vector3(0, -0.15, 0.05), 24, Color("#fab1a0"), 0.0, 4)
-	_label("* no refunds for pizzas thrown at you *", mb + Vector3(0, -0.45, 0.05), 18, Color("#b2bec3"), 0.0, 2)
+	_label("~ TONY'S MENU ~", mb + Vector3(0, 0.5, 0.05), 38, Color("#ffeaa7"), 0.0, 5)
+	_label("SMALL $8   MEDIUM $11   LARGE $14", mb + Vector3(0, 0.15, 0.05), 22, Color("#f6f4ef"), 0.0, 3)
+	_label("toppings +$1 to $3 · sauces: tomato, bbq, white", mb + Vector3(0, -0.15, 0.05), 16, Color("#fab1a0"), 0.0, 2)
+	_label("* no refunds for pizzas thrown at you *", mb + Vector3(0, -0.45, 0.05), 14, Color("#b2bec3"), 0.0, 1)
 
 
 # --- kitchen --------------------------------------------------------------------------------------
@@ -654,8 +654,18 @@ func _build_office() -> void:
 	var sb := ANCHORS.staff_board as Vector3
 	Toon.box(self, Vector3(0.05, 1.0, 1.5), sb, Color("#b98b5e"), 0.006)
 	_label("STAFF", sb + Vector3(-0.04, 0.4, 0), 30, Color("#2b1c18"), -PI / 2)
-	var staff_lbl := _label("", sb + Vector3(-0.04, -0.05, 0), 20, Color("#2b1c18"), -PI / 2)
+	var staff_lbl := _label("", sb + Vector3(-0.04, -0.12, 0), 18, Color("#2b1c18"), -PI / 2)
 	staff_lbl.name = "StaffList"
+	staff_lbl.text = "(just you)\n\nHire help on\nthe PC!"
+	# Office wall art: a motivational poster, a framed egg, and a plant by the couch
+	var hx2 := W * 0.5
+	Toon.box(self, Vector3(0.04, 0.9, 0.65), Vector3(hx2 - 0.14, 1.9, 1.7), Color("#2d3436"), 0.006)
+	Toon.box(self, Vector3(0.05, 0.8, 0.55), Vector3(hx2 - 0.16, 1.9, 1.7), Color("#ffd166"), 0.0)
+	_label("HUSTLE\nLIKE AN\nEGG", Vector3(hx2 - 0.2, 1.9, 1.7), 14, Color("#c0392b"), -PI / 2)
+	Toon.box(self, Vector3(0.04, 0.5, 0.5), Vector3(hx2 - 0.14, 1.9, 0.6), Color("#6d4c41"), 0.006)
+	Toon.ball(self, 0.15, Vector3(hx2 - 0.2, 1.88, 0.6), Color("#f2d0a9"), 0.006, 10).scale = Vector3(0.4, 0.8, 0.6)
+	Toon.cyl(self, 0.2, 0.14, 0.35, Vector3(6.1, 0.17, -0.2), Color("#c0392b"), 0.01, 10)
+	Toon.mesh(self, Shapes.blob(0.33, 5, 0.2), Vector3(6.1, 0.62, -0.2), Color("#3fae5a"), 0.012)
 	# Lockers, safe, filing cabinet, little couch
 	for k in 4:
 		Toon.block(self, Vector3(0.45, 1.9, 0.5), Vector3(5.2 + k * 0.48, 0, -3.45), [Color("#2e86de"), Color("#3a86ff"), Color("#2e86de"), Color("#3a86ff")][k], 0.04, 0.008)
