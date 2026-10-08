@@ -625,7 +625,7 @@ func _build_cursor() -> void:
 	wrist.position = Vector3(0.02, 0.08, 0.12)
 	wrist.rotation = Vector3(PI / 2 - 0.5, 0.25, 0.0)
 	_cursor.add_child(wrist)
-	_cursor_fingers = EggBody.build_hand(wrist, FpHands.SKIN, -1.0, 0.75, 0.007)[1]
+	_cursor_fingers = EggBody.build_hand(wrist, FpHands.SKIN, -1.0, 0.95, 0.007)[1]
 	_cursor_tool = Node3D.new()
 	_cursor.add_child(_cursor_tool)
 	_cursor.visible = false

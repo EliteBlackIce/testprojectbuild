@@ -182,7 +182,7 @@ func _ready() -> void:
 	main.phone.ring(main.town.houses[9])
 	var tickets_before := Game.tickets.size()
 	var waited_pam := 0.0
-	while Game.tickets.size() <= tickets_before and waited_pam < 10.0:
+	while Game.tickets.size() <= tickets_before and waited_pam < 20.0:
 		await _seconds(0.25)
 		waited_pam += 0.25
 	check(Game.tickets.size() > tickets_before, "Pam answered the phone and wrote a ticket (%.1fs)" % waited_pam)

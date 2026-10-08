@@ -3,7 +3,7 @@ extends Node3D
 ## on a plain grey backdrop, to compare against concept art.
 ##   godot --path . res://tools/model_sheet.tscn -- out=/tmp/sheet
 
-const LOOK := {"skin": "#d9a066", "boots": "#d9a066", "legs": "#d9a066"}
+const LOOK := {"skin": "#fdc04e", "shoes": "#fdc04e", "pants": "#fdc04e"}
 
 
 func _ready() -> void:

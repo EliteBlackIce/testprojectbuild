@@ -26,6 +26,16 @@ const ACTIONS := {
 	"facepalm": 1.4, "slam": 0.9, "work": 1.2,
 }
 
+## Body proportions, traced from the reference art (reference pixels -> meters).
+const S := 0.0018
+const HEAD_R := 0.283
+const HIPS_Y := 0.64          ## height of the hips for a normal adult
+const NECK_Y := 0.6           ## torso-local height of the neck
+## Torso silhouette [row in reference px, radius in reference px], bottom -> top.
+const TORSO_TABLE := [[776, 0], [772, 42], [765, 70], [753, 98], [741, 112], [729, 121], [705, 135], [681, 143],
+	[657, 147], [633, 148], [609, 148], [585, 145], [561, 142], [537, 137], [513, 131], [489, 125], [465, 120],
+	[440, 114], [420, 106], [400, 94], [388, 60], [383, 0]]
+
 var look: Dictionary = {}
 var speed := 0.0              ## 0 idle, 1 walk, 2 run (used if velocity_hint isn't set)
 var velocity_hint := Vector3.INF  ## world velocity; more accurate than speed (lean, stride)
@@ -43,10 +53,10 @@ var head_top: Node3D          ## top of the head (labels, hats)
 
 # --- rig ---
 var _s := 1.0
-var _h := 1.45
-var _r := 0.5
-var _belly := 0.1
-var _leg_len := 0.3
+var _tw := 1.0                ## torso width multiplier
+var _leg_len := HIPS_Y
+var _head: Node3D
+var _body_root: Node3D        ## torso meshes (a little flatter front-to-back)
 var _rig: Node3D              ## everything; rotated when tumbling
 var _hips: Node3D
 var _torso: Node3D
@@ -100,44 +110,44 @@ func build(l: Dictionary) -> void:
 	look = l
 	add_to_group("eggs")
 	_s = float(look.get("size", 1.0))
-	# Everyone keeps the concept-art silhouette: only gentle taller/wider variations.
-	var stretch := clampf(float(look.get("stretch", 1.0)), 0.94, 1.08)
-	_h = 1.45 * stretch
-	_r = 0.5 / sqrt(stretch) * clampf(float(look.get("round", 1.0)), 0.95, 1.1)
-	_belly = minf(float(look.get("belly", 0.1)), 0.25) * 0.35
+	var baby: bool = look.get("baby", false)
+	var ghost: bool = look.get("ghost", false)
+	# Body variations stay gentle so everyone keeps the same friendly silhouette.
+	_tw = snappedf(1.06 * clampf(float(look.get("round", 1.0)), 0.9, 1.3) * (1.0 + minf(float(look.get("belly", 0.0)), 0.3) * 0.7), 0.02)
+	_leg_len = 0.25 if ghost else (0.34 if baby else HIPS_Y * clampf(float(look.get("stretch", 1.0)), 0.9, 1.15))
 	scale = Vector3.ONE * _s
 	var skin := Color(look.get("skin", "#e8b77a"))
-	var ghost: bool = look.get("ghost", false)
-	_leg_len = 0.0 if ghost else (0.3 if look.get("baby", false) else 0.66)
 
 	_rig = Node3D.new()
 	_rig.name = "Rig"
 	add_child(_rig)
 	_hips = Node3D.new()
+	_hips.name = "Hips"
 	_hips.position = Vector3(0, _leg_len, 0)
 	_rig.add_child(_hips)
 	if not ghost:
-		_build_legs(Color(look.get("legs", skin.darkened(0.06))), Color(look.get("boots", "#6b4a35")))
-
-	_hips.name = "Hips"
+		_build_legs(skin)
 	_torso = Node3D.new()
 	_torso.name = "Torso"
 	_hips.add_child(_torso)
-	var body := Toon.mesh(_torso, Shapes.body_egg(_h, _r, _belly), Vector3(0, -0.08, 0), skin, 0.018)
-	body.name = "Egg"
-	if ghost:
-		# Wavy sheet hem instead of legs
-		for i in 9:
-			var a := TAU * i / 9.0
-			Toon.ball(_torso, 0.12, Vector3(cos(a) * _r * 1.05, -0.02, sin(a) * _r * 1.05), skin, 0.01, 8)
+	_body_root = Node3D.new()
+	_body_root.scale = Vector3(1, 1, 0.92)
+	_torso.add_child(_body_root)
+	_build_torso(skin)
 
+	_head = Node3D.new()
+	_head.name = "Head"
+	_head.position = Vector3(0, NECK_Y, 0)
+	_torso.add_child(_head)
+	Toon.ball(_head, HEAD_R, Vector3(0, HEAD_R, 0), skin, 0.012, 56).name = "Skull"
 	head_top = Node3D.new()
-	head_top.position = Vector3(0, _h - 0.1, 0)
-	_torso.add_child(head_top)
+	head_top.position = Vector3(0, HEAD_R * 2.0 - 0.1, 0)
+	_head.add_child(head_top)
 	_hat = Node3D.new()
 	head_top.add_child(_hat)
 
 	_build_face(skin)
+	_build_hair(skin)
 	_build_arms(skin)
 	_build_extras(skin)
 	_build_hat()
@@ -146,92 +156,249 @@ func build(l: Dictionary) -> void:
 	head_top.add_child(_dizzy)
 	for i in 3:
 		var a := TAU * i / 3.0
-		Toon.ball(_dizzy, 0.06, Vector3(cos(a) * 0.35, 0, sin(a) * 0.35), Color("#ffd166"), 0.0, 5)
+		Toon.ball(_dizzy, 0.06, Vector3(cos(a) * 0.35, 0, sin(a) * 0.35), Color("#ffd166"), 0.0, 10)
 	_dizzy.visible = false
 	_last_pos = global_position if is_inside_tree() else Vector3.ZERO
-	# Anime look: soft, smooth shading over the whole character.
+	# Soft, smooth shading over the whole character (no facets anywhere).
 	for n in find_children("*", "MeshInstance3D", true, false):
 		var mi := n as MeshInstance3D
 		if mi.mesh and not (mi.material_override is StandardMaterial3D):
 			mi.mesh = Shapes.smoothed(mi.mesh)
 
 
-# --- geometry helpers ------------------------------------------------------------------------
+# --- body shape (traced from the reference art) ---------------------------------------------------
 
-## Radius of the egg at height y (0..h above its bottom). Matches Shapes.body_egg.
-func _egg_r(y: float) -> float:
-	return _r * Shapes.egg_profile(clampf(y / _h, 0.0, 1.0))
-
-
-## A point on the egg's front surface (x sideways, y height above the egg bottom).
-func _surface(x: float, y: float, inset := 0.0) -> Vector3:
-	var r := _egg_r(y)
-	var yn := y / _h
-	var z := sqrt(maxf(r * r - x * x, 0.0))
-	z *= 1.0 + _belly * pow(sin(PI * clampf(yn * 1.6, 0.0, 1.0)), 2.0)
-	return Vector3(x, y - 0.08, z - inset)
-
-
-## Put a face part on the curved surface, turned to match it.
-func _on_surface(node: Node3D, x: float, y: float, inset := 0.0) -> void:
-	var p := _surface(x, y, inset)
-	node.position = p
-	node.rotation.y = atan2(x, p.z) * 0.95
-	# Tilt with the egg's slope (top of the egg leans back).
-	var above := _surface(x, y + 0.05)
-	node.rotation.x = -atan2(above.z - p.z, 0.05) * 0.8
+## Torso radius in meters at a torso-local height (before the width multiplier).
+func _tr(y_local: float) -> float:
+	var py := 1133.0 - (y_local + HIPS_Y) / S
+	var t := TORSO_TABLE
+	if py >= float((t[0] as Array)[0]):
+		return 0.0
+	for i in t.size() - 1:
+		var a: Array = t[i]
+		var b: Array = t[i + 1]
+		if py <= float(a[0]) and py >= float(b[0]):
+			var u := (float(a[0]) - py) / (float(a[0]) - float(b[0]))
+			var p0 := float((t[maxi(i - 1, 0)] as Array)[1])
+			var p3 := float((t[mini(i + 2, t.size() - 1)] as Array)[1])
+			return maxf(0.0, cubic_interpolate(float(a[1]), float(b[1]), p0, p3, u)) * S
+	return 0.0
 
 
-# --- construction ------------------------------------------------------------------------------
+## A lathe profile following the torso from y0 to y1, pushed out by `off`.
+func _profile(y0: float, y1: float, off := 0.0, steps := 40) -> PackedVector2Array:
+	var p := PackedVector2Array()
+	for i in steps + 1:
+		var y := lerpf(y0, y1, float(i) / steps)
+		p.append(Vector2(maxf(_tr(y) * _tw + off, 0.0), y))
+	return p
 
-func _build_legs(leg_color: Color, boot_color: Color) -> void:
-	# Two thick, straight legs coming out of the bottom of the egg, splayed a touch,
-	# planted in big chunky shoes with the toes turned out.
-	var spread := 0.31 * _r / 0.5
+
+func _torso_mesh(y0: float, y1: float, off: float, color: Color, outline := 0.0) -> MeshInstance3D:
+	return Toon.mesh(_body_root, Shapes.lathe(_profile(y0, y1, off), 48, 0.0), Vector3.ZERO, color, outline)
+
+
+func _build_torso(skin: Color) -> void:
+	var ghost: bool = look.get("ghost", false)
+	var baby: bool = look.get("baby", false)
+	var shirt := Color(look.get("shirt", skin))
+	var base := _torso_mesh(0.0, 0.7, 0.0, shirt, 0.012)
+	base.name = "Body"
+	var pants_c := Color(look.get("pants", look.get("legs", "#3d5a80")))
+	if look.has("shirt") and not ghost:
+		# Waistband/hips in the pants color so shirt and trousers read as separate pieces.
+		if not look.has("dress") and not look.has("robe") and not look.has("overalls"):
+			_torso_mesh(0.0, 0.17, 0.006, pants_c)
+			if look.has("belt"):
+				_torso_mesh(0.15, 0.2, 0.012, Color(look.belt))
+	if look.has("overalls"):
+		_torso_mesh(0.0, 0.34, 0.008, Color(look.overalls))
+		for side: int in [-1, 1]:
+			var strap := Toon.mesh(_body_root, Shapes.rounded_box(Vector3(0.05, 0.4, 0.03), 0.012), Vector3(0.1 * side, 0.5, _tr(0.5) * _tw + 0.004), Color(look.overalls), 0.0)
+			strap.rotation.z = -0.12 * side
+	if look.has("stripe"):
+		for k in 3:
+			var y := 0.2 + k * 0.14
+			_torso_mesh(y, y + 0.045, 0.006, Color(look.stripe))
+	if look.has("collar"):
+		_torso_mesh(0.5, 0.6, 0.012, Color(look.collar))
+	if look.has("vest"):
+		var vest := Color(look.vest)
+		_front_patch(0.2, 0.09, 0.56, 0.012, vest, false)
+		_front_patch(0.2, 0.09, 0.56, 0.012, vest, true, 0.0)
+	if look.has("dress"):
+		_skirt(Color(look.dress), 0.4, 0.5)
+	if look.has("robe"):
+		_skirt(Color(look.robe), 1.02, 0.5, 0.38)
+		_torso_mesh(0.0, 0.64, 0.01, Color(look.robe))
+	if look.has("skirt"):
+		_skirt(Color(look.skirt), 0.34, 0.36)
+	if baby:
+		# Diaper
+		_torso_mesh(0.0, 0.22, 0.03, Color("#f6f4ef"))
+	if ghost:
+		_skirt(Color(look.get("shirt", "#f3f3f6")), _leg_len + 0.02, 0.5, 0.58)
+	if look.has("logo"):
+		var logo := Node3D.new()
+		logo.position = Vector3(0.0, 0.44, _tr(0.44) * _tw + 0.004)
+		_body_root.add_child(logo)
+		var disc := Toon.mesh(logo, Shapes.rounded_box(Vector3(0.15, 0.15, 0.02), 0.01, 24, 12), Vector3.ZERO, Color(look.logo), 0.0)
+		disc.scale = Vector3(1, 1, 1)
+		var txt := Toon.label(logo, str(look.get("logo_text", "T")), Vector3(0, 0, 0.012), 36, Color("#ffd166"), false)
+		txt.outline_size = 0
+		txt.pixel_size = 0.0022
+	if look.has("buttons"):
+		for k in 4:
+			var y := 0.14 + k * 0.1
+			Toon.ball(_body_root, 0.012, Vector3(0, y, _tr(y) * _tw + 0.004), Color(look.buttons), 0.0, 10)
+	if look.has("pocket"):
+		var pk := Toon.mesh(_body_root, Shapes.rounded_box(Vector3(0.07, 0.06, 0.012), 0.008), Vector3(0.1, 0.38, _tr(0.38) * _tw + 0.003), Color(look.pocket), 0.0)
+		pk.rotation.z = -0.05
+
+
+## A flared skirt/robe hanging from the waist down by `length`, ending `hem` wide.
+func _skirt(color: Color, length: float, waist_y: float, hem := 0.0) -> void:
+	var p := PackedVector2Array()
+	var steps := 24
+	var hem_r := hem if hem > 0.0 else 0.2 + length * 0.55
+	for i in steps + 1:
+		var u := float(i) / steps
+		var y := waist_y - length * u
+		var r := lerpf(_tr(minf(waist_y, 0.62)) * _tw + 0.012, hem_r * _tw, pow(u, 1.5))
+		p.insert(0, Vector2(r, y))
+	var m := Toon.mesh(_body_root, Shapes.lathe(p, 48, 0.0), Vector3.ZERO, color, 0.008)
+	m.name = "Skirt"
+	# a rounded hem ring so the bottom edge isn't a sharp rim
+	var hem_y := waist_y - length
+	var ring := MeshInstance3D.new()
+	var tm := TorusMesh.new()
+	tm.inner_radius = hem_r * _tw - 0.018
+	tm.outer_radius = hem_r * _tw + 0.018
+	tm.rings = 48
+	tm.ring_segments = 12
+	ring.mesh = tm
+	ring.material_override = Toon.mat(color, 0.0)
+	ring.position = Vector3(0, hem_y, 0)
+	_body_root.add_child(ring)
+
+
+## A curved cloth patch on the front (or back) of the torso: apron, vest panels, cape.
+func _front_patch(y0: float, half_w: float, y1: float, lift: float, color: Color, back := false, outline := 0.006) -> MeshInstance3D:
+	var cols := 14
+	var rows := 12
+	var out_v := PackedVector3Array()
+	var out_n := PackedVector3Array()
+	var grid: Array = []
+	for i in rows + 1:
+		var y := lerpf(y0, y1, float(i) / rows)
+		var r := _tr(y) * _tw
+		var hw := minf(half_w, r * 0.97)
+		var row: Array = []
+		for j in cols + 1:
+			var x := lerpf(-hw, hw, float(j) / cols)
+			var z := sqrt(maxf(r * r - x * x, 0.0)) + lift
+			row.append(Vector3(x, y, -z if back else z))
+		grid.append(row)
+	for i in rows:
+		for j in cols:
+			var q := [grid[i][j], grid[i + 1][j], grid[i + 1][j + 1], grid[i][j + 1]]
+			for tri in [[0, 1, 2], [0, 2, 3]]:
+				for k in tri:
+					var v: Vector3 = q[k]
+					out_v.append(v)
+					out_n.append(Vector3(v.x, 0.0, v.z / 0.85).normalized())
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = out_v
+	arrays[Mesh.ARRAY_NORMAL] = out_n
+	var m := ArrayMesh.new()
+	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return Toon.mesh(_body_root, Shapes.faceted(m), Vector3.ZERO, color, outline)
+
+
+# --- head placement ----------------------------------------------------------------------------------
+
+## A node stuck to the front of the head at (x sideways, y up) from the head's center,
+## facing outward. Features are children of this anchor.
+func _anchor(x: float, y: float, inset := 0.0) -> Node3D:
+	var z := sqrt(maxf(HEAD_R * HEAD_R - x * x - y * y, 0.0001))
+	var n := Vector3(x, y, z).normalized()
+	var a := Node3D.new()
+	a.position = Vector3(0, HEAD_R, 0) + n * (HEAD_R - inset)
+	a.basis = Basis.looking_at(-n, Vector3.UP)
+	_head.add_child(a)
+	return a
+
+
+# --- construction --------------------------------------------------------------------------------------
+
+func _build_legs(skin: Color) -> void:
+	# Two long, thin, slightly splayed legs and big smooth oval shoes.
+	var pants := Color(look.get("pants", look.get("legs", skin)))
+	var shorts: bool = look.get("shorts", false)
+	var dressed := look.has("dress") or look.has("skirt") or look.has("robe")
+	var shoe_c := Color(look.get("shoes", look.get("boots", "#6b4a35")))
+	var lg := _leg_len / HIPS_Y
+	var length := 0.47 * lg
 	for side: int in [-1, 1]:
 		var pivot := Node3D.new()
-		pivot.position = Vector3(spread * side, 0.1, 0.0)
+		pivot.position = Vector3(0.124 * side * minf(_tw, 1.2), 0.0, 0.0)
 		pivot.name = "Leg_L" if side == -1 else "Leg_R"
 		_hips.add_child(pivot)
-		_leg_splay.append(0.07 * side)
-		var thick := 0.132 if not look.get("baby", false) else 0.1
-		Toon.mesh(pivot, Shapes.limb(_leg_len + 0.02, thick, thick * 0.9, 16), Vector3.ZERO, leg_color, 0.01)
+		_leg_splay.append(0.1 * side)
+		var leg_skin := Color(look.get("socks", skin)) if (shorts or dressed) else pants
+		Toon.mesh(pivot, Shapes.limb(length, 0.052, 0.062, 20), Vector3.ZERO, leg_skin if not (shorts or dressed) else skin, 0.01)
+		if shorts:
+			Toon.mesh(pivot, Shapes.limb(length * 0.4, 0.058, 0.066, 20), Vector3.ZERO, pants, 0.0)
+		if look.has("socks"):
+			var sk := Toon.mesh(pivot, Shapes.limb(length * 0.3, 0.063, 0.063, 20), Vector3(0, -length * 0.7, 0), Color(look.socks), 0.0)
+			sk.name = "Sock"
 		var boot := Node3D.new()
-		boot.position = Vector3(0, -_leg_len - 0.1, 0)
+		boot.position = Vector3(0, -_leg_len, 0)
 		boot.name = "Foot_L" if side == -1 else "Foot_R"
+		boot.rotation.y = 0.42 * side
 		pivot.add_child(boot)
-		var shoe := Toon.mesh(boot, Shapes.shoe(0.38, 0.25, 0.6), Vector3.ZERO, boot_color, 0.014)
-		shoe.rotation.y = 0.5 * side        # toes point out, duck-footed
-		var sole := Toon.mesh(boot, Shapes.shoe(0.395, 0.05, 0.62), Vector3(0, -0.005, -0.005), boot_color.darkened(0.4), 0.0)
-		sole.rotation.y = 0.5 * side
+		var sf := clampf(lg + 0.25, 0.65, 1.1)
+		var shoe := Toon.mesh(boot, Shapes.shoe(0.31 * sf, 0.22 * sf, 0.42 * sf), Vector3(0, 0, 0), shoe_c, 0.012)
+		shoe.name = "Shoe"
+		if look.has("shoe_trim"):
+			Toon.mesh(boot, Shapes.shoe(0.315 * sf, 0.05, 0.425 * sf), Vector3(0, 0, 0), Color(look.shoe_trim), 0.0)
 		_legs.append(pivot)
 		_boots.append(boot)
 
 
 func _build_arms(skin: Color) -> void:
-	# Long, skinny, tapered arms that stick out of the sides of the egg, with big
-	# four-fingered cartoon hands on the end.
-	var shoulder_y := _h * 0.63
-	var arm_color := Color(look.get("sleeves", skin))
+	# Long, thin arms from the shoulders, with little three-fingered mitten hands.
+	var sleeves: String = str(look.get("sleeves", "short" if look.has("shirt") else "none"))
+	var sleeve_c := Color(look.get("sleeve_color", look.get("shirt", skin)))
 	var baby: bool = look.get("baby", false)
-	var upper := 0.3 if baby else 0.44
-	var fore := 0.26 if baby else 0.38
+	var upper := 0.28 if baby else 0.355
+	var fore := 0.28 if baby else 0.355
 	for side: int in [-1, 1]:
 		var shoulder := Node3D.new()
-		shoulder.position = Vector3((_egg_r(shoulder_y) - 0.07) * side, shoulder_y - 0.08, 0.0)
+		shoulder.position = Vector3(0.165 * minf(_tw, 1.2) * side, 0.618, 0.0)
 		shoulder.name = "Shoulder_L" if side == -1 else "Shoulder_R"
 		_torso.add_child(shoulder)
-		Toon.mesh(shoulder, Shapes.limb(upper + 0.04, 0.112, 0.074, 16), Vector3.ZERO, arm_color, 0.01)
+		Toon.mesh(shoulder, Shapes.limb(upper + 0.04, 0.056, 0.05, 20), Vector3.ZERO, skin, 0.01)
 		var elbow := Node3D.new()
 		elbow.position = Vector3(0, -upper, 0)
 		elbow.name = "Elbow_L" if side == -1 else "Elbow_R"
 		shoulder.add_child(elbow)
-		Toon.mesh(elbow, Shapes.limb(fore + 0.03, 0.073, 0.056, 16), Vector3.ZERO, skin, 0.01)
+		Toon.mesh(elbow, Shapes.limb(fore + 0.03, 0.05, 0.046, 20), Vector3.ZERO, skin, 0.01)
+		match sleeves:
+			"short":
+				Toon.mesh(shoulder, Shapes.limb(upper * 0.5, 0.064, 0.062, 20), Vector3.ZERO, sleeve_c, 0.0)
+			"long":
+				Toon.mesh(shoulder, Shapes.limb(upper + 0.05, 0.063, 0.058, 20), Vector3.ZERO, sleeve_c, 0.0)
+				Toon.mesh(elbow, Shapes.limb(fore - 0.02, 0.058, 0.055, 20), Vector3(0, 0.03, 0), sleeve_c, 0.0)
+				if look.has("cuffs"):
+					Toon.mesh(elbow, Shapes.limb(0.05, 0.06, 0.06, 20), Vector3(0, -fore + 0.04, 0), Color(look.cuffs), 0.0)
 		var wrist := Node3D.new()
 		wrist.position = Vector3(0, -fore, 0)
 		wrist.name = "Wrist_L" if side == -1 else "Wrist_R"
 		elbow.add_child(wrist)
-		var built := build_hand(wrist, skin, float(side), 0.9 if baby else 1.15, 0.009)
+		var glove := Color(look.get("gloves", skin))
+		var built := build_hand(wrist, glove, float(side), 1.1 if baby else 1.3, 0.009)
 		_shoulders.append(shoulder)
 		_elbows.append(elbow)
 		_wrists.append(wrist)
@@ -243,31 +410,29 @@ func _build_arms(skin: Color) -> void:
 			(built[0] as Node3D).add_child(hand_socket)
 
 
-## A big cartoon hand: chunky palm, three fat fingers and a thumb, all low-poly.
-## Built hanging down -Y from the wrist; the palm faces +Z. Returns [root, pivots]
-## where pivots are the three fingers then the thumb (rotate them on X to curl).
-## Shared by every egg, your first-person hands, the steering wheel and the kitchen cursor.
+## A cartoon mitten hand with a thumb and two stubby fingers, built hanging down -Y from
+## the wrist, palm facing +Z. Returns [root, pivots] (finger, finger, thumb: rotate X to curl).
+## Shared by every character, your first-person hands, the steering wheel and the kitchen cursor.
 static func build_hand(parent: Node3D, skin: Color, side: float, size := 1.0, outline := 0.008) -> Array:
 	var root := Node3D.new()
 	root.scale = Vector3.ONE * size
 	parent.add_child(root)
-	var palm := Toon.ball(root, 0.078, Vector3(0, -0.065, 0), skin, outline, 20)
-	palm.scale = Vector3(1.12, 1.0, 0.6)
+	var palm := Toon.ball(root, 0.058, Vector3(0, -0.05, 0), skin, outline, 28)
+	palm.scale = Vector3(1.08, 1.0, 0.78)
 	var pivots: Array[Node3D] = []
-	var xs := [-0.05, 0.0, 0.05]
-	var lengths := [0.14, 0.16, 0.14]
-	for k in 3:
+	for k in 2:
 		var f := Node3D.new()
-		f.position = Vector3(float(xs[k]) * side, -0.12, 0.0)
-		f.rotation.z = float(xs[k]) * side * 3.2      # fanned out a little
+		var x := -0.026 + 0.052 * k
+		f.position = Vector3(x * side, -0.09, 0.0)
+		f.rotation.z = x * side * 4.5
 		root.add_child(f)
-		Toon.mesh(f, Shapes.limb(lengths[k], 0.029, 0.024, 16), Vector3.ZERO, skin, outline)
+		Toon.mesh(f, Shapes.limb(0.085, 0.031, 0.027, 20), Vector3.ZERO, skin, outline)
 		pivots.append(f)
 	var thumb := Node3D.new()
-	thumb.position = Vector3(0.06 * side, -0.05, 0.012)
-	thumb.rotation = Vector3(0.0, 0.0, 1.0 * side)
+	thumb.position = Vector3(0.05 * side, -0.045, 0.01)
+	thumb.rotation = Vector3(0.0, 0.0, 0.95 * side)
 	root.add_child(thumb)
-	Toon.mesh(thumb, Shapes.limb(0.11, 0.03, 0.025, 16), Vector3.ZERO, skin, outline)
+	Toon.mesh(thumb, Shapes.limb(0.07, 0.03, 0.026, 20), Vector3.ZERO, skin, outline)
 	pivots.append(thumb)
 	return [root, pivots]
 
@@ -285,198 +450,192 @@ static func curl_hand(pivots: Array, amount: float, index_out := false) -> void:
 
 
 func _build_face(skin: Color) -> void:
-	# Simple goofy googly eyes: big round whites, a plain black dot that wobbles
-	# around (see _animate_face), one tiny shine. A little mismatched on purpose.
+	# Simple goofy googly eyes on the big round head.
 	var eye_style: String = look.get("eye", "normal")
-	var eye_y := _h * 0.63
-	var eye_x := 0.15
-	var w := 0.17
-	var h := 0.19
+	var w := 0.125
+	var h := 0.145
 	match eye_style:
 		"big":
-			w = 0.21
-			h = 0.23
+			w = 0.15
+			h = 0.17
 		"tiny":
-			w = 0.1
-			h = 0.11
+			w = 0.08
+			h = 0.09
 		"sleepy":
-			h = 0.12
+			h = 0.09
+	var eye_y := 0.035
+	var brow_c := Color(look.get("brows", "#2b1c18"))
 	for side: int in [-1, 1]:
-		var goof := 1.0 if side == -1 else 1.08     # one eye a bit bigger
+		var goof := 1.0 if side == -1 else 1.07     # one eye a bit bigger
 		var ew := w * goof
 		var eh := h * goof
+		var anchor := _anchor(0.1 * side, eye_y + (0.006 if side == 1 else 0.0))
 		var eye := Node3D.new()
-		_torso.add_child(eye)
-		_on_surface(eye, eye_x * side, eye_y + (0.008 if side == 1 else 0.0))
-		var white := Toon.ball(eye, 0.5, Vector3(0, 0, -0.01), Color("#fffdf8"), 0.014, 16)
-		white.scale = Vector3(ew, eh, 0.08)
+		anchor.add_child(eye)
+		var white := Toon.ball(eye, 0.5, Vector3(0, 0, -0.012), Color("#fffdf8"), 0.012, 28)
+		white.scale = Vector3(ew, eh, 0.06)
 		var pupil := Node3D.new()
 		pupil.position = Vector3(0.0, 0, 0.018)
 		eye.add_child(pupil)
-		var dot := Toon.ball(pupil, 0.5, Vector3(0, 0, 0.012), Color("#1a1020"), 0.0, 14)
-		dot.scale = Vector3(ew * 0.42, ew * 0.42, 0.03)
+		var dot := Toon.ball(pupil, 0.5, Vector3(0, 0, 0.008), Color("#1a1020"), 0.0, 20)
+		dot.scale = Vector3(ew * 0.44, ew * 0.44, 0.03)
 		var shine := MeshInstance3D.new()
-		shine.mesh = Shapes.ball(0.5, 8, 4)
+		shine.mesh = Shapes.ball(0.5, 12, 6)
 		shine.material_override = Toon.glow(Color.WHITE, 1.0)
 		shine.scale = Vector3(ew * 0.12, ew * 0.12, 0.02)
-		shine.position = Vector3(ew * 0.07, ew * 0.07, 0.03)
+		shine.position = Vector3(ew * 0.07, ew * 0.07, 0.026)
 		pupil.add_child(shine)
 		_eyes.append(eye)
 		_pupils.append(pupil)
+		var banchor := _anchor(0.1 * side, eye_y + eh * 0.5 + 0.052)
 		var brow := Node3D.new()
-		_torso.add_child(brow)
-		_on_surface(brow, eye_x * side, eye_y + h * 0.5 + 0.06)
-		Toon.block(brow, Vector3(0.16, 0.032, 0.04), Vector3(0, -0.016, 0), Color(look.get("brows", "#2b1c18")), 0.45, 0.0)
+		banchor.add_child(brow)
+		Toon.mesh(brow, Shapes.rounded_box(Vector3(0.1, 0.022, 0.024), 0.011, 20, 10), Vector3.ZERO, brow_c, 0.0)
 		_brows.append(brow)
 		_brow_base.append(brow.position.y)
-	# Soft anime blush on everyone (stronger if the look asks for it)
-	for side: int in [-1, 1]:
-		var b := Node3D.new()
-		_torso.add_child(b)
-		_on_surface(b, 0.27 * side, eye_y - 0.19)
-		var tint := Color("#ff8fa3") if look.get("blush", false) else skin.lerp(Color("#ff9aa8"), 0.35)
-		Toon.ball(b, 0.05, Vector3.ZERO, tint, 0.0, 10).scale = Vector3(1.5, 0.6, 0.25)
-	var mouth_root := Node3D.new()
-	_torso.add_child(mouth_root)
-	_on_surface(mouth_root, 0.0, eye_y - 0.27)
-	_mouth = Toon.mesh(mouth_root, Shapes.chamfer_box(Vector3(0.1, 0.03, 0.04), 0.45), Vector3(0, -0.015, 0), Color("#7a2a33"), 0.0)
+		# soft blush
+		var cheek := _anchor(0.185 * side, -0.065, -0.002)
+		var tint := Color("#ff8fa3") if look.get("blush", false) else skin.lerp(Color("#ff9aa8"), 0.4)
+		var bl := Toon.ball(cheek, 0.5, Vector3.ZERO, tint, 0.0, 16)
+		bl.scale = Vector3(0.075, 0.045, 0.012)
+	var manchor := _anchor(0.0, -0.115)
+	var mpivot := Node3D.new()
+	mpivot.scale = Vector3(0.085, 0.028, 0.03)
+	manchor.add_child(mpivot)
+	_mouth = Toon.mesh(mpivot, Shapes.ball(0.5, 20, 10), Vector3(0, 0, 0), Color("#7a2a33"), 0.0)
 	if look.get("snout", false):
-		var sn := Node3D.new()
-		_torso.add_child(sn)
-		_on_surface(sn, 0.0, eye_y - 0.19)
-		Toon.ball(sn, 0.11, Vector3(0, 0, 0.05), skin.lightened(0.15), 0.01, 10)
-		Toon.ball(sn, 0.045, Vector3(0, 0.04, 0.15), Color("#1d1517"), 0.0, 8)
+		var sn := _anchor(0.0, -0.06)
+		Toon.ball(sn, 0.085, Vector3(0, 0, 0.04), skin.lightened(0.15), 0.01, 24).scale = Vector3(1.2, 0.9, 1.0)
+		Toon.ball(sn, 0.036, Vector3(0, 0.03, 0.11), Color("#1d1517"), 0.0, 16)
 	if look.get("mustache", false):
-		var col := Color(look.get("hair_color", "#2b1c18"))
+		var mc := Color(look.get("hair_color", "#2b1c18"))
 		for side: int in [-1, 1]:
-			var m := Node3D.new()
-			_torso.add_child(m)
-			_on_surface(m, 0.075 * side, eye_y - 0.22)
-			var slab := Toon.mesh(m, Shapes.chamfer_box(Vector3(0.17, 0.075, 0.07), 0.4), Vector3(0, -0.037, 0), col, 0.008)
-			slab.rotation.z = -0.3 * side
+			var m := _anchor(0.05 * side, -0.082, -0.004)
+			var slab := Toon.mesh(m, Shapes.rounded_box(Vector3(0.1, 0.045, 0.04), 0.02, 20, 10), Vector3.ZERO, mc, 0.006)
+			slab.rotation.z = -0.35 * side
 	if look.get("beard", false):
-		var bd := Node3D.new()
-		_torso.add_child(bd)
-		_on_surface(bd, 0.0, eye_y - 0.34)
-		var beard := Toon.mesh(bd, Shapes.blob(0.2, 3, 0.1), Vector3(0, -0.04, -0.06), Color(look.get("hair_color", "#d9d4cc")), 0.012)
-		beard.scale = Vector3(1.4, 1.25, 0.7)
+		var bd := _anchor(0.0, -0.17, -0.02)
+		var beard := Toon.ball(bd, 0.5, Vector3(0, -0.02, 0), Color(look.get("hair_color", "#d9d4cc")), 0.01, 28)
+		beard.scale = Vector3(0.3, 0.26, 0.2)
 	if look.get("glasses", false):
 		for side: int in [-1, 1]:
-			var g := Node3D.new()
-			_torso.add_child(g)
-			_on_surface(g, eye_x * side, eye_y)
+			var g := _anchor(0.1 * side, eye_y)
 			var frame := MeshInstance3D.new()
 			var tm := TorusMesh.new()
-			tm.inner_radius = 0.125
-			tm.outer_radius = 0.15
-			tm.rings = 10
-			tm.ring_segments = 4
-			frame.mesh = Shapes.faceted(tm)
-			frame.material_override = Toon.mat(Color("#2b1c18"), 0.0)
+			tm.inner_radius = 0.087
+			tm.outer_radius = 0.1
+			tm.rings = 32
+			tm.ring_segments = 10
+			frame.mesh = tm
+			frame.material_override = Toon.mat(Color(look.get("glasses_color", "#2b1c18")), 0.0)
 			frame.rotation.x = PI / 2
-			frame.position = Vector3(0, 0.0, 0.05)
+			frame.position = Vector3(0, 0, 0.04)
 			g.add_child(frame)
+		var bridge := _anchor(0.0, eye_y + 0.01)
+		Toon.mesh(bridge, Shapes.rounded_box(Vector3(0.07, 0.014, 0.014), 0.006), Vector3(0, 0, 0.045), Color(look.get("glasses_color", "#2b1c18")), 0.0)
+
+
+## Hair: a smooth cap on the back/top of the head, plus twin tails / puffs / a bun.
+func _build_hair(skin: Color) -> void:
+	var style: String = str(look.get("hair_style", "cap" if look.has("hair") else "none"))
+	if style == "none":
+		return
+	var col := Color(look.get("hair", look.get("hair_color", "#4a3328")))
+	var cap := Toon.mesh(_head, Shapes.dome(HEAD_R * 1.045, 80), Vector3(0, HEAD_R, 0), col, 0.01)
+	cap.rotation.x = -0.5
+	match style:
+		"twintails":
+			for side: int in [-1, 1]:
+				Toon.ball(_head, 0.085, Vector3(0.25 * side, HEAD_R + 0.12, -0.04), col, 0.008, 24)
+				var tail := Toon.mesh(_head, Shapes.limb(0.55, 0.07, 0.025, 20), Vector3(0.3 * side, HEAD_R + 0.08, -0.05), col, 0.008)
+				tail.rotation.z = 0.2 * side
+		"puffs":
+			for side: int in [-1, 1]:
+				Toon.ball(_head, 0.11, Vector3(0.24 * side, HEAD_R + 0.16, -0.02), col, 0.008, 28)
+		"long":
+			var back := Toon.mesh(_head, Shapes.limb(0.5, 0.2, 0.12, 24), Vector3(0, HEAD_R + 0.1, -0.15), col, 0.008)
+			back.scale = Vector3(1.0, 1.0, 0.45)
 
 
 func _build_extras(skin: Color) -> void:
 	var tie = look.get("tie", null)
 	if tie != null:
 		var t := Node3D.new()
-		_torso.add_child(t)
-		_on_surface(t, 0.0, _h * 0.32)
-		Toon.box(t, Vector3(0.1, 0.07, 0.04), Vector3(0, 0.03, 0), Color(tie), 0.008)
-		var tail := Toon.block(t, Vector3(0.09, 0.26, 0.03), Vector3(0, -0.24, 0), Color(tie), 0.3, 0.008)
-		tail.rotation.x = 0.15
+		t.position = Vector3(0, 0.52, _tr(0.52) * _tw + 0.005)
+		_body_root.add_child(t)
+		Toon.ball(t, 0.035, Vector3(0, 0.0, 0.0), Color(tie), 0.006, 14)
+		var tail := Toon.mesh(t, Shapes.rounded_box(Vector3(0.07, 0.24, 0.025), 0.012), Vector3(0, -0.15, 0.003), Color(tie), 0.006)
+		tail.rotation.x = 0.1
 	var apron = look.get("apron", null)
 	if apron != null:
-		# Hugs the belly: a patch of the egg's own surface, pushed out a hair.
-		Toon.mesh(_torso, _surface_patch(_r * 0.62, _h * 0.04, _h * 0.33, 0.018, false), Vector3.ZERO, Color(apron), 0.006)
-		Toon.mesh(_torso, _surface_patch(_r * 0.7, _h * 0.32, _h * 0.36, 0.026, false), Vector3.ZERO, Color(apron).darkened(0.12), 0.0)
+		_front_patch(0.03, 0.17, 0.4, 0.016, Color(apron), false)
+		_front_patch(0.39, 0.12, 0.5, 0.02, Color(apron).darkened(0.08), false)
+		for side: int in [-1, 1]:
+			var strap := Toon.mesh(_body_root, Shapes.rounded_box(Vector3(0.03, 0.2, 0.012), 0.006), Vector3(0.1 * side, 0.55, _tr(0.55) * _tw + 0.012), Color(apron), 0.0)
+			strap.rotation.z = -0.25 * side
 	var bow = look.get("bow", null)
 	if bow != null:
 		var bw := Node3D.new()
-		_torso.add_child(bw)
-		_on_surface(bw, 0.0, _h * 0.42)
+		bw.position = Vector3(0, 0.55, _tr(0.55) * _tw + 0.01)
+		_body_root.add_child(bw)
 		for side: int in [-1, 1]:
-			Toon.ball(bw, 0.07, Vector3(0.07 * side, 0, 0.02), Color(bow), 0.008, 8).scale = Vector3(1.2, 0.8, 0.6)
+			Toon.ball(bw, 0.06, Vector3(0.06 * side, 0, 0), Color(bow), 0.006, 16).scale = Vector3(1.2, 0.8, 0.6)
+		Toon.ball(bw, 0.03, Vector3.ZERO, Color(bow).darkened(0.2), 0.0, 12)
+	if look.has("scarf"):
+		var sc := MeshInstance3D.new()
+		var tm := TorusMesh.new()
+		tm.inner_radius = 0.17
+		tm.outer_radius = 0.225
+		tm.rings = 40
+		tm.ring_segments = 14
+		sc.mesh = tm
+		sc.material_override = Toon.mat(Color(look.scarf), 0.006)
+		sc.position = Vector3(0, 0.6, 0)
+		_torso.add_child(sc)
+		var tail2 := Toon.mesh(_torso, Shapes.rounded_box(Vector3(0.08, 0.3, 0.025), 0.012), Vector3(0.1, 0.42, 0.2), Color(look.scarf), 0.006)
+		tail2.rotation.z = 0.1
 	if look.get("ears", false):
+		var ec := Color(look.get("hair_color", skin.darkened(0.25)))
 		for side: int in [-1, 1]:
-			var ear := Toon.mesh(_torso, Shapes.body_egg(0.38, 0.1, 0.0, 8, 6), Vector3(_r * 0.78 * side, _h * 0.86, -0.02), Color(look.get("hair_color", skin.darkened(0.25))), 0.01)
-			ear.rotation.z = (PI - 0.45) * side
-			ear.rotation.x = 0.2
+			var ear := Toon.mesh(_head, Shapes.rounded_box(Vector3(0.1, 0.2, 0.05), 0.024, 24, 12), Vector3(0.2 * side, HEAD_R + 0.2, -0.02), ec, 0.008)
+			ear.rotation.z = -0.55 * side
 			ear.name = "Ear"
 	if look.get("tail", false):
 		_tail = Node3D.new()
-		_tail.position = Vector3(0, _h * 0.22, -_r * 0.9)
+		_tail.position = Vector3(0, 0.12, -0.26)
 		_torso.add_child(_tail)
-		var tl := Toon.mesh(_tail, Shapes.limb(0.34, 0.035, 0.06, 6), Vector3.ZERO, skin, 0.01)
+		var tl := Toon.mesh(_tail, Shapes.limb(0.34, 0.035, 0.055, 16), Vector3.ZERO, skin, 0.008)
 		tl.rotation.x = PI - 0.7
-	if look.get("baby", false):
-		Toon.mesh(_torso, Shapes.body_egg(0.45, _r * 1.06, 0.0, 14, 5), Vector3(0, -0.1, 0), Color("#f6f4ef"), 0.015)
-	var hair = look.get("hair", null)
-	if hair != null:
-		for side: int in [-1, 1]:
-			Toon.mesh(_torso, Shapes.blob(0.15, 7 + side, 0.15), Vector3(_r * 0.85 * side, _h * 0.78, -0.08), Color(hair), 0.01)
 	var cape = look.get("cape", null)
 	if cape != null:
-		Toon.mesh(_torso, _surface_patch(_r * 0.85, _h * 0.02, _h * 0.7, 0.03, true), Vector3.ZERO, Color(cape), 0.008)
-
-
-## A curved piece of cloth that follows the egg's surface (aprons, capes).
-## half_w = half width at the front, y0..y1 = height range, lift = gap off the shell.
-func _surface_patch(half_w: float, y0: float, y1: float, lift: float, back: bool) -> ArrayMesh:
-	var cols := 8
-	var rows := 6
-	var grid: Array = []
-	for i in rows + 1:
-		var y := lerpf(y0, y1, float(i) / rows)
-		var r := _egg_r(y)
-		var hw := minf(half_w, r * 0.98)
-		var row: Array = []
-		for j in cols + 1:
-			var x := lerpf(-hw, hw, float(j) / cols)
-			var p := _surface(x, y, -lift)
-			if back:
-				p.z = -sqrt(maxf(r * r - x * x, 0.0)) * 0.94 - lift
-			row.append(p)
-		grid.append(row)
-	var out_v := PackedVector3Array()
-	var out_n := PackedVector3Array()
-	for i in rows:
-		for j in cols:
-			var quad := [grid[i][j], grid[i + 1][j], grid[i + 1][j + 1], grid[i][j + 1]]
-			for tri in [[0, 1, 2], [0, 2, 3]]:
-				for k in tri:
-					var v: Vector3 = quad[k]
-					out_v.append(v)
-					out_n.append(Vector3(v.x, 0.0, v.z).normalized())
-	var arrays := []
-	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = out_v
-	arrays[Mesh.ARRAY_NORMAL] = out_n
-	var m := ArrayMesh.new()
-	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	return Shapes.faceted(m)
+		var cp := _front_patch(0.0, 0.3, 0.6, 0.03, Color(cape), true)
+		cp.name = "Cape"
+		var clasp := Toon.ball(_torso, 0.03, Vector3(0, 0.6, 0.2), Color("#ffd166"), 0.0, 10)
+		clasp.name = "Clasp"
+	if look.has("star_robe"):
+		for pp: Vector3 in [Vector3(0.1, 0.35, 0.0), Vector3(-0.12, 0.2, 0.0), Vector3(0.0, 0.12, 0.0), Vector3(0.08, -0.1, 0.0), Vector3(-0.1, -0.2, 0.0)]:
+			var r := _tr(maxf(pp.y, 0.05)) * _tw + 0.014
+			Toon.ball(_body_root, 0.022, Vector3(pp.x, pp.y, r if pp.y > 0.0 else 0.38), Color("#ffd166"), 0.0, 8)
 
 
 func _build_hat() -> void:
 	var hat: String = look.get("hat", "none")
 	var col := Color(look.get("hat_color", "#c0392b"))
 	var top := _hat
-	var hr := _egg_r(_h * 0.88) + 0.04   # hat radius that fits this egg
+	var hr := HEAD_R * 0.98 + 0.012   # hat radius that fits the head
 	match hat:
 		"cap":
-			var crown := Toon.mesh(top, Shapes.lathe(PackedVector2Array([Vector2(hr, 0), Vector2(hr * 0.97, 0.13), Vector2(hr * 0.7, 0.26), Vector2(0, 0.29)]), 12, 0.5), Vector3(0, -0.12, 0), Color(look.get("hat_front", "#e8dccb")), 0.012)
+			var crown := Toon.mesh(top, Shapes.lathe(PackedVector2Array([Vector2(hr, 0), Vector2(hr * 0.99, 0.09), Vector2(hr * 0.93, 0.17), Vector2(hr * 0.78, 0.24), Vector2(hr * 0.5, 0.285), Vector2(0, 0.3)]), 40, 0.5), Vector3(0, -0.12, 0), Color(look.get("hat_front", "#e8dccb")), 0.012)
 			crown.rotation.x = -0.1
-			Toon.mesh(top, Shapes.lathe(PackedVector2Array([Vector2(hr + 0.01, 0), Vector2(hr + 0.01, 0.07), Vector2(0, 0.07)]), 12, 0.5), Vector3(0, -0.13, 0), col, 0.012)
+			Toon.mesh(top, Shapes.lathe(PackedVector2Array([Vector2(hr + 0.01, 0), Vector2(hr + 0.01, 0.07), Vector2(0, 0.07)]), 40, 0.5), Vector3(0, -0.13, 0), col, 0.012)
 			var brim := Toon.mesh(top, Shapes.chamfer_box(Vector3(hr * 1.2, 0.04, 0.32), 0.4), Vector3(0, -0.11, hr * 0.85), col, 0.01)
 			brim.rotation.x = 0.14
 		"chef":
-			Toon.cyl(top, hr * 0.85, hr * 0.8, 0.3, Vector3(0, 0.05, 0), Color.WHITE, 0.012, 12)
+			Toon.cyl(top, hr * 0.85, hr * 0.8, 0.3, Vector3(0, 0.05, 0), Color.WHITE, 0.012, 32)
 			Toon.mesh(top, Shapes.blob(hr * 0.95, 11, 0.12), Vector3(0, 0.32, 0), Color.WHITE, 0.012).scale = Vector3(1.1, 0.75, 1.1)
 		"wizard":
-			Toon.cyl(top, hr * 1.5, hr * 1.5, 0.04, Vector3(0, -0.04, 0), col, 0.012, 12)
-			var cone := Toon.cyl(top, 0.0, hr * 0.9, 0.85, Vector3(0.05, 0.38, 0), col, 0.012, 9)
+			Toon.cyl(top, hr * 1.5, hr * 1.5, 0.04, Vector3(0, -0.04, 0), col, 0.012, 32)
+			var cone := Toon.cyl(top, 0.0, hr * 0.9, 0.85, Vector3(0.05, 0.38, 0), col, 0.012, 28)
 			cone.rotation.z = -0.22
 			Toon.ball(top, 0.06, Vector3(0.0, 0.25, hr * 0.75), Color("#ffd166"), 0.0, 6)
 			Toon.ball(top, 0.04, Vector3(0.1, 0.45, hr * 0.5), Color("#ffd166"), 0.0, 6)
@@ -505,7 +664,7 @@ func _build_hat() -> void:
 			Toon.cyl(top, hr * 0.72, hr * 0.72, 0.42, Vector3(0, 0.18, 0), Color("#1d1517"), 0.012, 12)
 			Toon.cyl(top, hr * 0.73, hr * 0.73, 0.06, Vector3(0, 0.02, 0), col, 0.0, 12)
 		"headband":
-			Toon.cyl(top, _egg_r(_h * 0.8) + 0.01, _egg_r(_h * 0.76) + 0.015, 0.07, Vector3(0, -_h * 0.16, 0), col, 0.008, 14)
+			Toon.cyl(top, HEAD_R * 0.93, HEAD_R * 0.95, 0.07, Vector3(0, -0.07, 0), col, 0.008, 40)
 		"headset":
 			var arc := MeshInstance3D.new()
 			var tm := TorusMesh.new()
@@ -516,10 +675,10 @@ func _build_hat() -> void:
 			arc.mesh = Shapes.faceted(tm)
 			arc.material_override = Toon.mat(Color("#2d3436"), 0.0)
 			arc.rotation.z = PI / 2
-			arc.position = Vector3(0, -0.2, 0)
+			arc.position = Vector3(0, -0.183, 0)
 			top.add_child(arc)
 			for side: int in [-1, 1]:
-				var cup := Toon.cyl(top, 0.11, 0.11, 0.09, Vector3(hr * 1.02 * side, -0.26, 0), col, 0.008, 9)
+				var cup := Toon.cyl(top, 0.1, 0.1, 0.07, Vector3((HEAD_R + 0.025) * side, -0.183, 0), col, 0.008, 20)
 				cup.rotation.z = PI / 2
 		"bun":
 			Toon.mesh(top, Shapes.blob(0.17, 5, 0.1), Vector3(0, 0.07, -0.1), Color(look.get("hair_color", "#d9d4cc")), 0.01)
@@ -793,6 +952,26 @@ func _apply_emotion(pose: Dictionary) -> void:
 
 func _apply_action(pose: Dictionary, a: String, u: float, w: float) -> void:
 	var t := u * _action_dur
+	# Head motion that goes with the action (the head is its own part now)
+	match a:
+		"nod":
+			pose["head_x"] = sin(u * TAU * 2.0) * 0.4 * w
+		"shake_head":
+			pose["head_y"] = sin(u * TAU * 3.0) * 0.5 * w
+		"look_around":
+			pose["head_y"] = sin(u * TAU) * 0.7 * w
+		"yawn":
+			pose["head_x"] = -0.4 * w
+		"laugh":
+			pose["head_x"] = -0.25 * w + sin(_t * 22.0) * 0.05 * w
+		"facepalm":
+			pose["head_x"] = 0.35 * w
+		"scratch":
+			pose["head_z"] = 0.25 * w
+		"celebrate", "dance":
+			pose["head_z"] = sin(_t * 8.0) * 0.18 * w
+		"shrug":
+			pose["head_z"] = 0.22 * w
 	match a:
 		"wave":
 			pose.arm_out[1] = lerpf(pose.arm_out[1], 2.6, w)
@@ -938,6 +1117,23 @@ func _apply_pose(pose: Dictionary, delta: float) -> void:
 	_torso.rotation = Vector3(lean_x, _spring("yaw", pose.yaw, delta, 90.0, 12.0), lean_z)
 	var sq := clampf(squash, 0.7, 1.35)
 	_torso.scale = Vector3(1.0 / sqrt(sq), sq, 1.0 / sqrt(sq))
+	# The head is its own part: it turns toward whoever it's looking at, nods while
+	# talking and lags a little behind the body (secondary motion).
+	var yaw_t := float(pose.get("head_y", 0.0))
+	var pitch_t := float(pose.get("head_x", 0.0))
+	if look_target and is_instance_valid(look_target):
+		var lv := global_basis.inverse() * (look_target.global_position - global_position)
+		yaw_t += clampf(atan2(lv.x, maxf(lv.z, 0.05)), -0.7, 0.7)
+		pitch_t += clampf(-(lv.y - 1.2) * 0.12, -0.3, 0.3)
+	if talking:
+		pitch_t += sin(_t * 9.0) * 0.06
+		yaw_t += sin(_t * 3.1) * 0.08
+	if _emotion in ["sad", "scared"]:
+		pitch_t += 0.18
+	var hx := _spring("hx", pitch_t - (lean_x - float(pose.lean_x)) * 0.9, delta, 140.0, 13.0)
+	var hy := _spring("hy", yaw_t, delta, 120.0, 13.0)
+	var hz := _spring("hz", float(pose.get("head_z", 0.0)) - (lean_z - float(pose.lean_z)) * 0.8 - lean_z * 0.5, delta, 130.0, 12.0)
+	_head.rotation = Vector3(hx, hy, hz)
 	# Arms with follow-through (soft springs = a little overshoot)
 	for i in 2:
 		var side := -1.0 if i == 0 else 1.0
@@ -957,7 +1153,7 @@ func _apply_pose(pose: Dictionary, delta: float) -> void:
 		_legs[i].rotation.x = swing
 		_legs[i].rotation.z = _leg_splay[i]
 		_boots[i].rotation.z = -_leg_splay[i]
-		_boots[i].position.y = -_leg_len - 0.02 + float(pose.lift[i])
+		_boots[i].position.y = -_leg_len + float(pose.lift[i])
 		_boots[i].rotation.x = -swing * 0.6
 	# Hat lags behind the head (springy wobble)
 	if _hat:
@@ -979,7 +1175,7 @@ func _apply_pose(pose: Dictionary, delta: float) -> void:
 		hand_socket.global_basis = Basis(Vector3.UP, global_rotation.y).scaled(Vector3.ONE * _s)
 		if carrying:
 			var target := head_top.global_position + Vector3(0, 0.45 * _s, 0) if carry_style == "overhead" \
-				else _torso.global_position + global_basis * Vector3(0, _h * 0.42, _r * 1.25) * 1.0
+				else _torso.global_position + global_basis * Vector3(0, 0.38, 0.5) * 1.0
 			hand_socket.global_position = hand_socket.global_position.lerp(target, 0.85)
 
 
@@ -992,7 +1188,7 @@ func _animate_tumble(delta: float) -> void:
 		var axis := Vector3.UP.cross(_tumble_dir).normalized()
 		var local_axis := (global_basis.inverse() * axis).normalized()
 		_rig.basis = Basis(local_axis, deg_to_rad(80.0) + rock)
-		_rig.position = Vector3(0, _r * 0.55, 0)
+		_rig.position = Vector3(0, 0.3, 0)
 		for i in 2:
 			_shoulders[i].rotation = Vector3(sin(_t * 20.0 + i) * 1.0, 0, (2.0 + sin(_t * 25.0) * 0.5) * (-1.0 if i == 0 else 1.0))
 		for l in _legs:
@@ -1008,7 +1204,7 @@ func _animate_tumble(delta: float) -> void:
 		var axis2 := Vector3.UP.cross(_tumble_dir).normalized()
 		var local_axis2 := (global_basis.inverse() * axis2).normalized()
 		_rig.basis = Basis(local_axis2, lerpf(deg_to_rad(80.0), 0.0, ease(g, 0.4)) + wobble)
-		_rig.position = Vector3(0, lerpf(_r * 0.55, 0.0, g), 0)
+		_rig.position = Vector3(0, lerpf(0.3, 0.0, g), 0)
 		if _getup <= 0.0:
 			_rig.basis = Basis()
 			_rig.position = Vector3.ZERO
@@ -1038,15 +1234,15 @@ func _animate_face(delta: float, pose: Dictionary) -> void:
 		mh = 1.0 + absf(sin(_t * 17.0)) * 4.0
 	_mouth.scale = _mouth.scale.lerp(Vector3(float(pose.get("mouth_w", 1.0)), mh, 1.0), 0.4)
 	# Pupils: look at the target if we have one, else wander.
-	var look_off := Vector2(sin(_t * 0.7) * 0.01, cos(_t * 0.5) * 0.006)
+	var look_off := Vector2(sin(_t * 0.7) * 0.004, cos(_t * 0.5) * 0.003)
 	if look_target and is_instance_valid(look_target):
 		var local := global_basis.inverse() * (look_target.global_position - global_position)
-		look_off = Vector2(clampf(local.x * 0.02, -0.025, 0.025), clampf((local.y - 1.0) * 0.01, -0.015, 0.015))
+		look_off = Vector2(clampf(local.x * 0.012, -0.012, 0.012), clampf((local.y - 1.0) * 0.006, -0.008, 0.008))
 	# Googly wobble: pupils lag behind and bounce when the egg moves or hops.
 	_googly_v += (-_googly * 120.0 - _googly_v * 6.0) * delta
 	_googly_v += Vector2(-_vel.x, absf(_land_squash) * 4.0 - _hop * 2.0) * delta * 0.4
 	_googly += _googly_v * delta
-	_googly = _googly.limit_length(0.035)
+	_googly = _googly.limit_length(0.014)
 	if not _googly.is_finite():
 		_googly = Vector2.ZERO
 		_googly_v = Vector2.ZERO

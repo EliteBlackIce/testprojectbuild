@@ -8,7 +8,7 @@ extends Node3D
 ## phone (handset at your ear), talk (gesturing), hidden.
 ## One-shots: poke, grab, knock, push, wave, shrug, clap, flail, thumbs.
 
-const SKIN := Color("#d9a066")
+const SKIN := Color("#e0a869")
 const REST_L := Vector3(-0.25, -0.26, -0.5)
 const REST_R := Vector3(0.25, -0.26, -0.5)
 
@@ -52,7 +52,7 @@ func _ready() -> void:
 		var wrist := Node3D.new()
 		wrist.rotation = Vector3(PI / 2 + 0.3, -0.3 * side, 0.5 * side)
 		hand.add_child(wrist)
-		var built := EggBody.build_hand(wrist, SKIN, -float(side), 0.62, 0.006)
+		var built := EggBody.build_hand(wrist, SKIN, -float(side), 0.95, 0.006)
 		_fingers.append(built[1])
 		_hands.append(hand)
 	# Phone handset for calls (left hand)

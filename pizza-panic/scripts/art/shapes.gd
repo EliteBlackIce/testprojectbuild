@@ -281,15 +281,17 @@ static func boot(width := 0.3, height := 0.2, length := 0.44) -> ArrayMesh:
 	return m
 
 
-## Chunky cartoon shoe, toe pointing +Z, origin under the ankle. Tall rounded heel,
-## lower and slightly wider toe, flat sole: the classic "egg guy" clodhopper.
-static func shoe(width := 0.3, height := 0.2, length := 0.46) -> ArrayMesh:
-	var key := "shoe|%s|%s|%s" % [width, height, length]
+## Big oval cartoon shoe, toe pointing +Z, origin under the ankle (bottom of the sole).
+## A flattened, perfectly smooth blob: round everywhere, flat on the ground.
+static func shoe(width := 0.3, height := 0.22, length := 0.42) -> ArrayMesh:
+	var key := "shoe2|%s|%s|%s" % [width, height, length]
 	if _cache.has(key):
 		return _cache[key]
-	var prof := PackedVector2Array([Vector2(0, 0), Vector2(0.94, 0), Vector2(1.0, 0.1), Vector2(1.0, 0.55),
-		Vector2(0.88, 0.88), Vector2(0.55, 1.0), Vector2(0, 1.0)])
-	var base := lathe(prof, 20, 0.5)
+	var prof := PackedVector2Array([Vector2(0, 0), Vector2(0.62, 0), Vector2(0.9, 0.012)])
+	for k in range(1, 15):
+		var a := PI * 0.5 * float(k) / 14.0
+		prof.append(Vector2(cos(a) * 0.995 + 0.005, 0.03 + sin(a) * 0.97))
+	var base := lathe(prof, 40, 0.5)
 	var arrays := base.surface_get_arrays(0)
 	var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
 	var out_v := PackedVector3Array()
@@ -297,14 +299,26 @@ static func shoe(width := 0.3, height := 0.2, length := 0.46) -> ArrayMesh:
 	for i in verts.size():
 		var v := verts[i]
 		var zn := clampf(v.z, -1.0, 1.0)            # -1 heel .. +1 toe
-		var toe := smoothstep(-0.2, 0.9, zn)
-		v.y *= lerpf(1.0, 0.58, toe)                 # slopes down to the toe
-		v.x *= lerpf(0.86, 1.06, (zn + 1.0) * 0.5)   # toe a bit wider than the heel
-		v = Vector3(v.x * width * 0.5, v.y * height, v.z * length * 0.5 + length * 0.17)
+		var toe := smoothstep(-0.1, 1.0, zn)
+		v.y *= lerpf(1.0, 0.62, toe)                 # slopes down to the toe
+		v = Vector3(v.x * width * 0.5, v.y * height, v.z * length * 0.5 + length * 0.2)
 		out_v.append(v)
-		# Outward hint so faceted() keeps every face pointing out.
-		out_n.append((v - Vector3(0, height * 0.4, length * 0.17)).normalized())
+		out_n.append((v - Vector3(0, height * 0.35, length * 0.2)).normalized())
 	var m := faceted(_commit(out_v, out_n))
+	_cache[key] = m
+	return m
+
+
+## A cap of a sphere (hair, helmets): from the top pole down to `deg` degrees.
+static func dome(radius: float, deg: float, segments := 40, rings := 20) -> ArrayMesh:
+	var key := "dome|%s|%s|%d|%d" % [radius, deg, segments, rings]
+	if _cache.has(key):
+		return _cache[key]
+	var p := PackedVector2Array()
+	for i in rings + 1:
+		var a := deg_to_rad(deg) * (1.0 - float(i) / rings)
+		p.append(Vector2(sin(a) * radius, cos(a) * radius))
+	var m := lathe(p, segments, 0.0)
 	_cache[key] = m
 	return m
 

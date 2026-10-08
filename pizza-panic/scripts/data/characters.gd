@@ -13,8 +13,10 @@ extends RefCounted
 ## residents from ROSTER.
 
 const PLAYER_LOOK := {
-	"skin": "#d9a066", "hat": "cap", "hat_color": "#4a3328", "hat_front": "#e8dccb",
-	"mustache": true, "grumpy": true, "boots": "#5a4030",
+	"skin": "#e0a869", "hat": "cap", "hat_color": "#e63946", "hat_front": "#fff4e0",
+	"mustache": true, "hair_color": "#3b2a1c", "grumpy": true,
+	"shirt": "#e63946", "sleeves": "short", "logo": "#fff4e0", "logo_text": "T",
+	"pants": "#3b5b92", "belt": "#3a3340", "shoes": "#f6f4ef", "shoe_trim": "#e63946",
 }
 
 const TONY := {
@@ -31,7 +33,7 @@ const TONY := {
 	"idle": ["Why are you talkin' to me? Make pizza!", "Every second you stand here a meatball cries.", "You're fired! ...Kidding. Unless?"],
 	"voice": {"openai": "ash", "eleven": "pNInz6obpgDQGcFmaJgB", "babble": 150.0, "speed": 1.25,
 		"style": "Frantic, stressed-out pizza shop boss. Fast, loud, sweaty, over-the-top, like a cartoon."},
-	"look": {"skin": "#f2d0a9", "hat": "chef", "mustache": true, "apron": "#ffffff", "size": 1.12, "stretch": 0.88, "hair_color": "#2b1c18"},
+	"look": {"skin": "#f2d0a9", "hat": "chef", "hat_color": "#ffffff", "mustache": true, "hair_color": "#2b1c18", "shirt": "#ffffff", "sleeves": "long", "cuffs": "#ece4d4", "buttons": "#b8bcc6", "apron": "#ffffff", "pants": "#3a3a45", "shoes": "#2d2d34", "size": 1.1, "round": 1.08, "belly": 0.1},
 }
 
 const ROSTER := [
@@ -46,7 +48,7 @@ const ROSTER := [
 		"idle": ["Do you play tuba?", "My whole life is tubas, man.", "Brass. Is. Class."],
 		"voice": {"openai": "echo", "eleven": "TxGEqnHWrfWFTfGW9XjX", "babble": 130.0, "speed": 0.9,
 			"style": "Slow, dopey, warm, gently confused guy. Deep goofy voice."},
-		"look": {"skin": "#e3b585", "beard": true, "hair_color": "#7a4b24", "size": 1.05, "stretch": 0.9, "boots": "#3d5a80"},
+		"look": {"skin": "#e3b585", "beard": true, "hair_color": "#7a4b24", "shirt": "#8b1e3f", "sleeves": "long", "cuffs": "#ffd166", "collar": "#ffd166", "buttons": "#ffd166", "pants": "#2d2d34", "shoes": "#3d5a80", "size": 1.05, "round": 1.1},
 	},
 	{
 		"id": "edna", "name": "Grandma Edna", "title": "Thinks You're Kevin",
@@ -60,7 +62,7 @@ const ROSTER := [
 		"idle": ["Did you eat? You look skinny.", "Kevin, the TV is making noises again.", "In my day pizza cost a nickel and a handshake."],
 		"voice": {"openai": "sage", "eleven": "XB0fDUnXU5powFXDhCwa", "babble": 300.0, "speed": 0.75,
 			"style": "Very old, sweet, wobbly grandma voice. Slow and warm, a little forgetful."},
-		"look": {"skin": "#f7e1c8", "hat": "bun", "hair_color": "#e3ded8", "glasses": true, "eye": "tiny", "blush": true, "size": 0.85, "boots": "#8e5a9e"},
+		"look": {"skin": "#f7e1c8", "hat": "bun", "hair_color": "#e3ded8", "glasses": true, "eye": "tiny", "blush": true, "shirt": "#d8c3f0", "sleeves": "long", "dress": "#b57edc", "buttons": "#ffffff", "socks": "#f6f4ef", "shoes": "#8e5a9e", "size": 0.85},
 	},
 	{
 		"id": "barksalot", "name": "Sir Barksalot", "title": "A Dog (Ordered Pizza)",
@@ -74,7 +76,7 @@ const ROSTER := [
 		"idle": ["Woof.", "Bark?", "*sniffs the pizza aggressively*", "Arf! Arf!"],
 		"voice": {"openai": "verse", "eleven": "N2lVS1w4EtoT3dr4eOWO", "babble": 340.0, "speed": 1.5,
 			"style": "An overexcited dog that can barely talk. Panting, yappy, hyper, lots of barking sounds."},
-		"look": {"eye_color": "#c9701a", "skin": "#e9b44c", "ears": true, "snout": true, "tail": true, "eye": "big", "hair_color": "#a8652a", "size": 0.8, "boots": "#a8652a", "bow": "#d62828"},
+		"look": {"skin": "#e9b44c", "ears": true, "snout": true, "tail": true, "eye": "big", "hair_color": "#a8652a", "scarf": "#d62828", "shoes": "#a8652a", "size": 0.8},
 	},
 	{
 		"id": "chad", "name": "Chad Thunderbro", "title": "Gym Bro",
@@ -87,7 +89,7 @@ const ROSTER := [
 		"idle": ["Protein, bro.", "Do you even deliver, bro?", "This pizza have creatine on it?"],
 		"voice": {"openai": "onyx", "eleven": "VR6AewLTigWG4xSOukaG", "babble": 120.0, "speed": 1.1,
 			"style": "Loud dumb gym bro. Pumped up, hyped, says bro a lot, deep and enthusiastic."},
-		"look": {"skin": "#c68642", "hat": "headband", "hat_color": "#ff006e", "size": 1.25, "stretch": 0.85, "eye": "tiny", "boots": "#222222", "grumpy": true},
+		"look": {"skin": "#c68642", "hat": "headband", "hat_color": "#ff006e", "eye": "tiny", "grumpy": true, "shirt": "#1fd16f", "sleeves": "none", "shorts": true, "pants": "#2b2b36", "socks": "#f6f4ef", "shoes": "#222222", "shoe_trim": "#ff006e", "belt": "#ff006e", "size": 1.2, "round": 1.2},
 	},
 	{
 		"id": "carl", "name": "Conspiracy Carl", "title": "Knows The Truth",
@@ -100,7 +102,7 @@ const ROSTER := [
 		"idle": ["The moon is a hologram.", "Don't look at the cheese directly.", "They're listening. Through the oregano."],
 		"voice": {"openai": "fable", "eleven": "IKne3meq5aSn9XLyUdCD", "babble": 200.0, "speed": 1.35,
 			"style": "Paranoid conspiracy guy. Fast, twitchy whisper-yelling, suspicious, dramatic pauses."},
-		"look": {"eye_color": "#3fae5a", "skin": "#d8b48a", "hat": "tinfoil", "eye": "big", "boots": "#6b705c", "stretch": 1.1},
+		"look": {"skin": "#d8b48a", "hat": "tinfoil", "eye": "big", "glasses": true, "shirt": "#556b2f", "sleeves": "long", "pocket": "#475925", "pants": "#3d3d3d", "shoes": "#6b705c"},
 	},
 	{
 		"id": "dave", "name": "Dave the Wizard", "title": "Level 900 Wizard",
@@ -113,7 +115,7 @@ const ROSTER := [
 		"idle": ["My staff is also a back scratcher.", "I cast... order more garlic knots.", "I am level 900. In Wizard."],
 		"voice": {"openai": "ballad", "eleven": "onwK4e9ZLuTAKqWW03F9", "babble": 110.0, "speed": 0.8,
 			"style": "Over-dramatic old wizard. Booming, theatrical, Shakespearean, way too serious."},
-		"look": {"eye_color": "#8e5bd8", "skin": "#c8a27a", "hat": "wizard", "hat_color": "#3a0ca3", "beard": true, "hair_color": "#f0f0f0", "eye": "sleepy", "cape": "#3a0ca3"},
+		"look": {"skin": "#c8a27a", "hat": "wizard", "hat_color": "#3a0ca3", "beard": true, "hair_color": "#f0f0f0", "eye": "sleepy", "shirt": "#3a0ca3", "robe": "#3a0ca3", "sleeves": "long", "cuffs": "#ffd166", "star_robe": true, "cape": "#2a0a82", "shoes": "#6b4a35"},
 	},
 	{
 		"id": "bob", "name": "Big Baby Bob", "title": "A Baby. CEO Energy.",
@@ -127,7 +129,7 @@ const ROSTER := [
 		"idle": ["Bob want pizza.", "Waaah.", "*stares into your soul*", "Let's circle back. Goo."],
 		"voice": {"openai": "shimmer", "eleven": "pFZP5JQG7iQjIQuC4Bku", "babble": 420.0, "speed": 1.2,
 			"style": "A baby who talks. High pitched, babbling, cute, but sometimes switches to a serious business voice."},
-		"look": {"eye_color": "#4a9be8", "skin": "#ffd7ba", "baby": true, "hat": "bow", "hat_color": "#ff8fab", "eye": "big", "blush": true, "size": 0.62, "stretch": 0.9},
+		"look": {"skin": "#ffd7ba", "baby": true, "hat": "bow", "hat_color": "#ff8fab", "eye": "big", "blush": true, "shirt": "#bde0fe", "sleeves": "short", "buttons": "#ffffff", "shoes": "#ffffff", "size": 0.62},
 	},
 	{
 		"id": "ghost", "name": "Boo-ford", "title": "Haunts This House",
@@ -140,7 +142,7 @@ const ROSTER := [
 		"idle": ["I can't actually eat this. I'm a ghost.", "Oooooooo.", "I died ordering pizza. Long story."],
 		"voice": {"openai": "alloy", "eleven": "MF3mGyEYCl7XYWbV9V5O", "babble": 160.0, "speed": 0.7,
 			"style": "A theatrical ghost. Wobbly, echoey, wailing ooooOOOO sounds, very dramatic and a bit needy."},
-		"look": {"eye_color": "#5fd3ff", "skin": "#f3f3f6", "ghost": true, "eye": "big", "blush": true},
+		"look": {"skin": "#f3f3f6", "ghost": true, "eye": "big", "blush": true, "shirt": "#f3f3f6", "sleeves": "none"},
 	},
 	{
 		"id": "sparkle", "name": "Princess Sparkle-chan", "title": "Magical Girl (Self-Declared)",
@@ -153,7 +155,7 @@ const ROSTER := [
 		"idle": ["My power level is rising!", "Nya~! I mean. Hmph.", "This isn't even my final form!"],
 		"voice": {"openai": "coral", "eleven": "EXAVITQu4vr4xnSDxMaL", "babble": 380.0, "speed": 1.2,
 			"style": "A hyper dramatic anime magical girl. High energy, squeaky, shouting attack names, very theatrical."},
-		"look": {"eye_color": "#e0479e", "skin": "#ffe3ea", "hat": "crown", "eye": "big", "blush": true, "hair": "#c77dff", "cape": "#ff8fab", "size": 0.9, "boots": "#ff8fab"},
+		"look": {"skin": "#ffe3ea", "hat": "crown", "eye": "big", "blush": true, "hair": "#c77dff", "hair_style": "twintails", "shirt": "#fff0f5", "sleeves": "short", "sleeve_color": "#ffb3c8", "dress": "#ff8fab", "bow": "#c77dff", "cape": "#ffb3c8", "socks": "#ffffff", "shoes": "#ff8fab", "shoe_trim": "#ffd166", "size": 0.9},
 	},
 	{
 		"id": "sensei", "name": "Sensei Noodle", "title": "Ancient Master",
@@ -165,7 +167,7 @@ const ROSTER := [
 		"idle": ["The crust is the journey, grasshopper.", "Only a fool rushes cheese.", "Hmmmmm."],
 		"voice": {"openai": "fable", "eleven": "yoZ06aMxZJJ28mfd3POQ", "babble": 190.0, "speed": 0.7,
 			"style": "A tiny ancient wise master. Slow, calm, mysterious, with long dramatic pauses."},
-		"look": {"skin": "#f1d3a1", "beard": true, "mustache": true, "hair_color": "#ffffff", "eye": "sleepy", "size": 0.7, "boots": "#c0392b"},
+		"look": {"skin": "#f1d3a1", "beard": true, "mustache": true, "hair_color": "#ffffff", "eye": "sleepy", "shirt": "#f6f1e8", "sleeves": "long", "cuffs": "#f6f1e8", "pants": "#f6f1e8", "belt": "#2b1c18", "shoes": "#c0392b", "size": 0.7},
 	},
 	{
 		"id": "business", "name": "Mr. Synergy", "title": "Thought Leader",
@@ -178,7 +180,7 @@ const ROSTER := [
 		"idle": ["Let's put a pin in that.", "Per my last email...", "This pizza really moves the needle."],
 		"voice": {"openai": "verse", "eleven": "nPczCjzI2devNBz1zQrb", "babble": 170.0, "speed": 1.15,
 			"style": "Smooth, smug corporate salesman. Upbeat, slick, fake enthusiasm."},
-		"look": {"skin": "#f0c9a0", "tie": "#c0392b", "glasses": true, "hat": "tophat", "hat_color": "#7f8c8d", "boots": "#2d3436", "stretch": 1.12},
+		"look": {"skin": "#f0c9a0", "tie": "#c0392b", "glasses": true, "hat": "tophat", "hat_color": "#7f8c8d", "shirt": "#2d3a52", "sleeves": "long", "cuffs": "#ffffff", "collar": "#ffffff", "pocket": "#ffffff", "pants": "#2d3a52", "belt": "#1d1517", "shoes": "#2d3436", "stretch": 1.12},
 	},
 	{
 		"id": "kyle", "name": "Kyle", "title": "Knows This Is A Game",
@@ -191,7 +193,7 @@ const ROSTER := [
 		"idle": ["Bro you have like four voice lines.", "Hold on, I'm gonna try to clip through the door.", "Is there a skip button?"],
 		"voice": {"openai": "echo", "eleven": "ErXwobaYiN019PkySvjV", "babble": 240.0, "speed": 1.3,
 			"style": "Nasal teenage gamer. Fast talking, easily amazed, says 'bro' and 'lowkey'."},
-		"look": {"eye_color": "#21c48a", "skin": "#8d5524", "hat": "headset", "hat_color": "#06d6a0", "eye": "big", "boots": "#073b4c", "stretch": 1.05},
+		"look": {"skin": "#8d5524", "hat": "headset", "hat_color": "#06d6a0", "eye": "big", "shirt": "#118ab2", "sleeves": "long", "logo": "#06d6a0", "logo_text": "K", "pants": "#3a3a55", "shoes": "#073b4c", "stretch": 1.05},
 	},
 ]
 
@@ -233,22 +235,58 @@ static func random_resident(rng: RandomNumberGenerator) -> Dictionary:
 ## Random background egg for pedestrians.
 static func random_pedestrian_look(rng: RandomNumberGenerator) -> Dictionary:
 	var skins := ["#e8b77a", "#f2d0a9", "#c68642", "#8d5524", "#f7e1c8", "#d9a066", "#b7e4c7", "#a0c4ff", "#ffc6ff", "#fdffb6"]
-	var hats := ["none", "none", "cap", "beanie", "cowboy", "bow", "headband", "tophat"]
-	var cols := ["#c0392b", "#2e86de", "#27ae60", "#8e44ad", "#f39c12", "#16a085", "#e84393"]
-	return {
+	var hats := ["none", "none", "none", "cap", "beanie", "cowboy", "bow", "headband", "tophat"]
+	var cols := ["#c0392b", "#2e86de", "#27ae60", "#8e44ad", "#f39c12", "#16a085", "#e84393", "#e17055", "#00b8d9", "#fdcb6e"]
+	var pants := ["#3b5b92", "#2d3436", "#6c5b3a", "#7f8c8d", "#4a3b6b", "#556b2f", "#8b5e3c"]
+	var shoes := ["#5a4030", "#2d3436", "#f6f4ef", "#8e5a9e", "#3d5a80", "#c0392b"]
+	var hair := ["#2b1c18", "#6b3e26", "#c9a45c", "#e0e0e0", "#c0392b", "#3b2a1c"]
+	var look := {
 		"skin": skins[rng.randi() % skins.size()],
 		"hat": hats[rng.randi() % hats.size()],
 		"hat_color": cols[rng.randi() % cols.size()],
 		"hat_front": "#f1e6d8",
-		"mustache": rng.randf() < 0.3,
+		"mustache": rng.randf() < 0.25,
 		"glasses": rng.randf() < 0.2,
 		"blush": rng.randf() < 0.3,
 		"eye": ["normal", "normal", "big", "tiny", "sleepy"][rng.randi() % 5],
-		"size": rng.randf_range(0.8, 1.1),
-		"stretch": rng.randf_range(0.88, 1.12),
-		"boots": ["#5a4030", "#2d3436", "#7f8c8d", "#8e5a9e", "#3d5a80"][rng.randi() % 5],
-		"tie": cols[rng.randi() % cols.size()] if rng.randf() < 0.15 else null,
+		"size": rng.randf_range(0.8, 1.08),
+		"round": rng.randf_range(0.94, 1.18),
+		"stretch": rng.randf_range(0.92, 1.1),
+		"hair_color": hair[rng.randi() % hair.size()],
+		"shirt": cols[rng.randi() % cols.size()],
+		"sleeves": ["short", "short", "long", "none"][rng.randi() % 4],
+		"pants": pants[rng.randi() % pants.size()],
+		"shoes": shoes[rng.randi() % shoes.size()],
 	}
+	if rng.randf() < 0.55 and look.hat == "none":
+		look["hair"] = look.hair_color
+		look["hair_style"] = ["cap", "cap", "puffs", "long"][rng.randi() % 4]
+	var roll := rng.randf()
+	if roll < 0.14:
+		look["dress"] = cols[rng.randi() % cols.size()]
+		look["socks"] = "#f6f4ef"
+	elif roll < 0.22:
+		look["skirt"] = cols[rng.randi() % cols.size()]
+	elif roll < 0.34:
+		look["shorts"] = true
+		look["socks"] = "#f6f4ef" if rng.randf() < 0.5 else look.shoes
+	elif roll < 0.42:
+		look["overalls"] = pants[rng.randi() % pants.size()]
+	if rng.randf() < 0.18:
+		look["stripe"] = "#ffffff"
+	if rng.randf() < 0.1:
+		look["logo"] = "#fff4e0"
+		look["logo_text"] = ["*", "#1", "EGG", "<3"][rng.randi() % 4]
+	if rng.randf() < 0.25:
+		look["belt"] = "#3a3340"
+	if rng.randf() < 0.15:
+		look["tie"] = cols[rng.randi() % cols.size()]
+		look["collar"] = "#ffffff"
+	if rng.randf() < 0.08:
+		look["scarf"] = cols[rng.randi() % cols.size()]
+	if rng.randf() < 0.08:
+		look["vest"] = cols[rng.randi() % cols.size()]
+	return look
 
 
 # --- extra procedurally generated customers --------------------------------------------

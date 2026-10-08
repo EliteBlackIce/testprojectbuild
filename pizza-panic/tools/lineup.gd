@@ -7,6 +7,8 @@ func _looks() -> Array:
 	var out: Array = [Characters.PLAYER_LOOK, Characters.TONY.look]
 	for c in Characters.ROSTER:
 		out.append(c.look)
+	for id: String in StaffData.CANDIDATES:
+		out.append(StaffData.CANDIDATES[id].look)
 	return out
 
 
@@ -35,10 +37,10 @@ func _ready() -> void:
 		var e := EggBody.new()
 		add_child(e)
 		e.build(looks[i])
-		var row := 0 if i < 7 else 1
-		var col := i if i < 7 else i - 7
-		var count := 7 if row == 0 else looks.size() - 7
-		e.position = Vector3((col - (count - 1) * 0.5) * 2.05 + row * 1.0, 0, -row * 2.6)
+		var row := i / 7
+		var col := i % 7
+		var count := 7 if (row + 1) * 7 <= looks.size() else looks.size() - row * 7
+		e.position = Vector3((col - (count - 1) * 0.5) * 1.7, 0, -row * 2.3)
 		e.rotation.y = 0.2
 		if i == 0:
 			e.carrying = true
@@ -54,10 +56,10 @@ func _ready() -> void:
 		if i == 9:
 			e.express("angry", 99)
 	var cam := Camera3D.new()
-	cam.position = Vector3(0, 3.4, 12.5)
+	cam.position = Vector3(0, 5.2, 12.5)
 	cam.fov = 55
 	add_child(cam)
-	cam.look_at(Vector3(0, 0.9, -1.3))
+	cam.look_at(Vector3(0, 0.9, -2.4))
 	cam.current = true
 	for i in 30:
 		await get_tree().process_frame

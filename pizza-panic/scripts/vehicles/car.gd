@@ -521,7 +521,7 @@ func _build_cockpit() -> void:
 		grip.position = Vector3(0.15 * side, 0.02, 0.0)
 		grip.rotation = Vector3(-PI / 2, 0.0, -0.5 * side)
 		_wheel.add_child(grip)
-		var built := EggBody.build_hand(grip, FpHands.SKIN, -float(side), 0.42, 0.005)
+		var built := EggBody.build_hand(grip, FpHands.SKIN, -float(side), 0.55, 0.005)
 		EggBody.curl_hand(built[1], 1.0)
 		_grips.append(grip)
 		# Real arms: shoulder (just below your eyes) -> elbow -> wrist on the wheel
