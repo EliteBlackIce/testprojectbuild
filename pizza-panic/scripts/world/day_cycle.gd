@@ -56,6 +56,8 @@ func _ready() -> void:
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 110.0
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
+	sun.shadow_bias = 0.3             # first person is close to the floor: avoid shadow acne stripes
+	sun.shadow_normal_bias = 3.0
 	add_child(sun)
 	_window_day = Toon.mat(Color("#8fb8c9"), 0.0)
 	_window_night = Toon.glow(Color("#ffd98a"), 1.1)

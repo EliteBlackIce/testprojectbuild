@@ -55,8 +55,9 @@ func _ready() -> void:
 			"carry":
 				e.carrying = true
 				var p := Pizza.new()
-				p.setup(3, "large", 1.0)
-				p.put_in_box(1.0)
+				p.setup(3)
+				p.auto_assemble({"size": "large", "sauce": "tomato", "toppings": ["pepperoni"]}, 1.0)
+				p.put_in_box(true)
 				e.hand_socket.add_child(p)
 			"tumble":
 				e.tumble(Vector3(1, 0, 0))

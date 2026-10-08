@@ -37,7 +37,12 @@ func spawn(count: int, rng: RandomNumberGenerator) -> void:
 		body.add_child(cs)
 		add_child(body)
 		_build_car(body, Color(colors[rng.randi() % colors.size()]), rng)
-		_cars.append({"body": body, "corners": corners, "seg": rng.randi() % 4, "t": rng.randf(), "speed": SPEED * rng.randf_range(0.8, 1.15), "honk": 0.0})
+		var c := {"body": body, "corners": corners, "seg": rng.randi() % 4, "t": rng.randf(), "speed": SPEED * rng.randf_range(0.8, 1.15), "honk": 0.0}
+		var a: Vector3 = corners[c.seg]
+		var b: Vector3 = corners[(c.seg + 1) % 4]
+		var d := (b - a).normalized()
+		body.position = a.lerp(b, c.t) + Vector3(-d.z, 0, d.x) * LANE
+		_cars.append(c)
 
 
 func _build_car(root: Node3D, col: Color, rng: RandomNumberGenerator) -> void:
@@ -71,7 +76,7 @@ func _physics_process(delta: float) -> void:
 				if (obstacle as Node3D).global_position.distance_to(ahead) < 3.6:
 					blocked = true
 		# Walk into the side of a car and you get bonked over like the egg you are.
-		if player and player.is_visible_in_tree() and player.has_method("tumble"):
+		if player and player.is_visible_in_tree() and player is PlayerEgg and (player as PlayerEgg).controls_enabled:
 			var to_p := player.global_position - body.global_position
 			to_p.y = 0.0
 			if to_p.length() < 1.7 and absf(player.global_position.y - body.global_position.y) < 2.0 and not player.is_tumbling():

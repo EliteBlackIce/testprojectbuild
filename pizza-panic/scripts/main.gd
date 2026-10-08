@@ -424,6 +424,7 @@ func _process(delta: float) -> void:
 		prompt = "[F] Get out   ·   [V] %s" % ("cockpit view" if chase_view else "chase cam") + ("   ·   [SHIFT] Rocket boost" if Game.has_upgrade("boost") else "")
 	hud.set_prompt(prompt)
 	hud.set_crosshair(not in_car and not kitchen.busy and not convo.active)
+	hud.visible = not kitchen.busy
 	hud.set_hint(_next_step())
 	Sfx.set_music_mood(day_cycle.night)
 	_update_arrow(delta)

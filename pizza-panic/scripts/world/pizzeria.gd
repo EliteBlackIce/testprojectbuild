@@ -155,6 +155,7 @@ func _label(text: String, pos: Vector3, size := 40, color := Color("#2b1c18"), r
 # --- floors, walls, ceiling ----------------------------------------------------------------
 
 func _build_floors() -> void:
+	# Floors sit 2cm above the town's block slab (top at 0.06) so they never z-fight.
 	var a: Array[Transform3D] = []
 	var b: Array[Transform3D] = []
 	# Dining: red + cream checker
@@ -163,7 +164,7 @@ func _build_floors() -> void:
 	while z < D * 0.5:
 		var x := -W * 0.5 + tile * 0.5
 		while x < W * 0.5:
-			var xf := Transform3D(Basis(), Vector3(x, 0.03, z))
+			var xf := Transform3D(Basis(), Vector3(x, 0.05, z))
 			if (int(floor(x / tile)) + int(floor(z / tile))) % 2 == 0:
 				a.append(xf)
 			else:
@@ -180,7 +181,7 @@ func _build_floors() -> void:
 	while z < PARTITION_Z:
 		var x := -W * 0.5 + qt * 0.5
 		while x < BACKROOM_X:
-			var xf := Transform3D(Basis(), Vector3(x, 0.03, z))
+			var xf := Transform3D(Basis(), Vector3(x, 0.05, z))
 			if (int(floor(x / qt * 1.0)) * 7 + int(floor(z / qt)) * 3) % 5 == 0:
 				q2.append(xf)
 			else:
@@ -190,11 +191,11 @@ func _build_floors() -> void:
 	var quarry := Shapes.box(Vector3(qt - 0.03, 0.06, qt - 0.03))
 	Toon.multimesh(self, quarry, Toon.mat(Color("#9c5137"), 0.0), q1)
 	Toon.multimesh(self, quarry, Toon.mat(Color("#8a4630"), 0.0), q2)
-	Toon.box(self, Vector3(BACKROOM_X + W * 0.5, 0.05, PARTITION_Z + D * 0.5), Vector3((BACKROOM_X - W * 0.5) * 0.5, 0.02, (PARTITION_Z - D * 0.5) * 0.5), Color("#5e3a2c"), 0.0)
+	Toon.box(self, Vector3(BACKROOM_X + W * 0.5, 0.05, PARTITION_Z + D * 0.5), Vector3((BACKROOM_X - W * 0.5) * 0.5, 0.04, (PARTITION_Z - D * 0.5) * 0.5), Color("#5e3a2c"), 0.0)
 	# Walk-in: diamond plate; office: wood planks
-	Toon.box(self, Vector3(W * 0.5 - BACKROOM_X, 0.06, 5.0), Vector3((BACKROOM_X + W * 0.5) * 0.5, 0.03, -6.5), Color("#9aa3ab"), 0.0)
+	Toon.box(self, Vector3(W * 0.5 - BACKROOM_X, 0.06, 5.0), Vector3((BACKROOM_X + W * 0.5) * 0.5, 0.05, -6.5), Color("#9aa3ab"), 0.0)
 	for i in 10:
-		Toon.box(self, Vector3(W * 0.5 - BACKROOM_X, 0.065, 0.42), Vector3((BACKROOM_X + W * 0.5) * 0.5, 0.032, -3.55 + i * 0.45), Color("#9b6b45") if i % 2 == 0 else Color("#8d603d"), 0.0)
+		Toon.box(self, Vector3(W * 0.5 - BACKROOM_X, 0.065, 0.42), Vector3((BACKROOM_X + W * 0.5) * 0.5, 0.052, -3.55 + i * 0.45), Color("#9b6b45") if i % 2 == 0 else Color("#8d603d"), 0.0)
 
 
 func _build_walls() -> void:
@@ -563,18 +564,24 @@ func _build_oven(pos: Vector3, index: int) -> void:
 	add_child(root)
 	if index == 0:
 		Toon.block(root, Vector3(2.6, 0.95, 1.8), Vector3(0, 0, -0.1), Color("#a0522d"), 0.05, 0.015)
-		Toon.mesh(root, Shapes.lathe(PackedVector2Array([Vector2(1.2, 0), Vector2(1.15, 0.45), Vector2(0.9, 0.95), Vector2(0.4, 1.25), Vector2(0, 1.3)]), 14, 0.5), Vector3(0, 0.95, -0.2), Color("#b5653d"), 0.02)
+		Toon.mesh(root, Shapes.lathe(PackedVector2Array([Vector2(1.05, 0), Vector2(1.0, 0.45), Vector2(0.8, 0.9), Vector2(0.35, 1.2), Vector2(0, 1.25)]), 14, 0.5), Vector3(0, 0.95, -0.35), Color("#b5653d"), 0.02)
 		# Brick pattern
 		var bricks: Array[Transform3D] = []
 		for row in 4:
 			for k in 6:
 				bricks.append(Transform3D(Basis(), Vector3(-1.1 + k * 0.44 + (0.22 if row % 2 == 1 else 0.0), 0.12 + row * 0.22, 0.81)))
 		Toon.multimesh(root, Shapes.box(Vector3(0.4, 0.18, 0.02)), Toon.mat(Color("#8e4424"), 0.0), bricks)
-		Toon.mesh(root, Shapes.lathe(PackedVector2Array([Vector2(0.55, 0), Vector2(0.55, 0.15), Vector2(0.3, 0.5), Vector2(0, 0.55)]), 10, 0.5), Vector3(0, 0.95, 0.75), Color("#1d1517"), 0.0).scale = Vector3(1, 1, 0.3)
-		_label("TONY'S\nOVEN", Vector3(0, 1.95, 0.55), 26, Color("#ffd166"), 0.0, 6).reparent(root, false)
+		# The mouth: a brick arch with a dark opening, and a stone ledge to slide pizzas onto
+		Toon.cyl(root, 0.66, 0.66, 0.08, Vector3(0, 0.95, 0.66), Color("#8e4424"), 0.012, 14).rotation.x = PI / 2
+		Toon.cyl(root, 0.52, 0.52, 0.06, Vector3(0, 0.95, 0.71), Color("#1d1517"), 0.0, 14).rotation.x = PI / 2
+		Toon.block(root, Vector3(1.4, 0.08, 0.5), Vector3(0, 0.88, 0.95), Color("#9a8f86"), 0.03, 0.01)
+		var lbl := _label("TONY'S\nOVEN", Vector3(0, 1.75, 0.62), 26, Color("#ffd166"), 0.0, 6)
+		lbl.reparent(root, false)
+		lbl.position = Vector3(0, 2.0, 0.5)
 	else:
 		Toon.block(root, Vector3(2.0, 1.6, 1.5), Vector3(0, 0, -0.2), Color("#c7ced4"), 0.06, 0.015)
 		Toon.box(root, Vector3(1.6, 0.35, 0.04), Vector3(0, 1.0, 0.56), Color("#1d1517"), 0.0)
+		Toon.block(root, Vector3(1.6, 0.06, 0.45), Vector3(0, 0.8, 0.76), Color("#9aa3ab"), 0.02, 0.008)
 		Toon.box(root, Vector3(1.7, 0.05, 0.08), Vector3(0, 1.25, 0.6), Color("#7f8c8d"), 0.0)
 		for k in 3:
 			var knob := Toon.cyl(root, 0.05, 0.05, 0.05, Vector3(-0.5 + k * 0.5, 0.45, 0.57), Color("#2d3436"), 0.0, 8)
@@ -808,7 +815,6 @@ func _refresh_ticket_rail() -> void:
 		txt.outline_size = 0
 		txt.autowrap_mode = TextServer.AUTOWRAP_WORD
 		txt.width = 46.0
-		txt.rotation.y = PI
 
 
 func _process(_delta: float) -> void:

@@ -14,7 +14,7 @@ const SPLAT_R := 0.055                       ## one sauce splat (meters)
 const SHRED_R := 0.04                        ## reach of one cheese pinch
 const PIECES_PER_PORTION := 4
 const DOUGH_COLOR := Color("#efd9a8")
-const CHEESE_COLOR := Color("#f8e08e")
+const CHEESE_COLOR := Color("#f7d56a")
 
 var data := {
 	"ticket": 0,
@@ -91,8 +91,8 @@ func _build() -> void:
 	_pie.add_child(_ball)
 	# The stretched crust: a unit-radius lathe with a puffy rim, scaled to size.
 	_crust = MeshInstance3D.new()
-	_crust.mesh = Shapes.lathe(PackedVector2Array([Vector2(0.98, 0.0), Vector2(1.02, 0.03), Vector2(0.99, 0.07), Vector2(0.9, 0.075), Vector2(0.86, 0.045), Vector2(0.0, 0.04)]), 18, 0.3)
-	_crust_mat = Toon.mat(DOUGH_COLOR, 0.006).duplicate()
+	_crust.mesh = Shapes.lathe(PackedVector2Array([Vector2(0.98, 0.0), Vector2(1.02, 0.03), Vector2(0.99, 0.065), Vector2(0.92, 0.07), Vector2(0.8, 0.046), Vector2(0.0, 0.04)]), 18, 0.3)
+	_crust_mat = Toon.mat(DOUGH_COLOR, 0.0).duplicate()   # no ink hull: the dish shape is concave
 	_crust.material_override = _crust_mat
 	_crust.visible = false
 	_pie.add_child(_crust)
@@ -100,7 +100,7 @@ func _build() -> void:
 	_sauce_mat = Toon.mat(Color("#c8321f"), 0.0).duplicate()
 	_sauce_mm = _make_mm(Shapes.cylinder(1.0, 1.0, 0.006, 7), _sauce_mat, MAX_SPLATS)
 	_cheese_mat = Toon.mat(CHEESE_COLOR, 0.0).duplicate()
-	_cheese_mm = _make_mm(Shapes.box(Vector3(0.05, 0.008, 0.011)), _cheese_mat, MAX_SHREDS)
+	_cheese_mm = _make_mm(Shapes.box(Vector3(0.04, 0.008, 0.01)), _cheese_mat, MAX_SHREDS)
 	_toppings_root = Node3D.new()
 	_pie.add_child(_toppings_root)
 	_cuts_root = Node3D.new()
@@ -108,7 +108,7 @@ func _build() -> void:
 	_build_samples()
 	for i in 3:
 		var puff := MeshInstance3D.new()
-		puff.mesh = Shapes.ball(0.05, 6, 4)
+		puff.mesh = Shapes.ball(0.03, 6, 4)
 		puff.material_override = Toon.mat(Color(1, 1, 1), 0.0)
 		puff.visible = false
 		add_child(puff)
@@ -162,7 +162,8 @@ func finish_stretch(wanted: String) -> void:
 			best = s
 	data.size = best
 	var want_r := float(Menu.SIZES[wanted].radius)
-	data.dough_q = clampf(1.0 - absf(radius() - want_r) / 0.09, 0.0, 1.0)
+	var tolerance := 0.09 + Game.level("dough_press") * 0.035   # Dough Press upgrade: easier sweet spot
+	data.dough_q = clampf(1.0 - absf(radius() - want_r) / tolerance, 0.0, 1.0)
 	data.stretched = true
 	_ball.visible = false
 	_crust.visible = true
@@ -186,7 +187,7 @@ func paint_sauce(local: Vector2, kind: String) -> bool:
 		_sauce_mat.set_shader_parameter("albedo", Color(Menu.SAUCES[kind].color))
 	var jitter := Vector2(_rng.randf_range(-1, 1), _rng.randf_range(-1, 1)) * 0.012
 	var p := local + jitter
-	var s := SPLAT_R * _rng.randf_range(0.75, 1.15)
+	var s := SPLAT_R * _rng.randf_range(0.75, 1.15) * (1.0 + Game.level("sauce_gun") * 0.3)   # Sauce Gun: bigger splats
 	var i := _sauce_mm.visible_instance_count
 	var b := Basis(Vector3.UP, _rng.randf() * TAU).scaled(Vector3(s, 1.0, s * _rng.randf_range(0.75, 1.0)))
 	var y := 0.046 + i * 0.000004
@@ -200,9 +201,9 @@ func paint_sauce(local: Vector2, kind: String) -> bool:
 
 
 func sprinkle_cheese(local: Vector2) -> bool:
-	if _cheese_mm.visible_instance_count >= MAX_SHREDS - 4 or not data.stretched:
+	if _cheese_mm.visible_instance_count >= MAX_SHREDS - 12 or not data.stretched:
 		return false
-	for k in 4:
+	for k in 4 + Game.level("sauce_gun") * 2:
 		var p := local + Vector2(_rng.randf_range(-1, 1), _rng.randf_range(-1, 1)) * SHRED_R
 		var i := _cheese_mm.visible_instance_count
 		var b := Basis(Vector3.UP, _rng.randf() * TAU) * Basis(Vector3.RIGHT, _rng.randf_range(-0.3, 0.3))
@@ -212,7 +213,7 @@ func sprinkle_cheese(local: Vector2) -> bool:
 			y = -0.002
 		_cheese_mm.set_instance_transform(i, Transform3D(b, Vector3(p.x, y, p.y)))
 		_cheese_mm.visible_instance_count = i + 1
-	_mark(_cheese_hits, local, SHRED_R * 1.5)
+	_mark(_cheese_hits, local, SHRED_R * (1.5 + Game.level("sauce_gun") * 0.3))
 	return true
 
 
@@ -388,8 +389,9 @@ func put_in_box(instant := false) -> void:
 	# Lid print: Tony's logo ring with a chef egg doodle + ticket number
 	Toon.cyl(lid_body, side * 0.33, side * 0.33, 0.004, Vector3(0, 0.037, 0), Color("#c0392b"), 0.0, 16)
 	Toon.cyl(lid_body, side * 0.27, side * 0.27, 0.006, Vector3(0, 0.038, 0), Color("#f6efe2"), 0.0, 16)
-	var egg := Toon.mesh(lid_body, Shapes.body_egg(0.22, 0.08, 0.02, 10, 7), Vector3(0, 0.04, 0.02), Color("#f2c9a0"), 0.0)
+	var egg := Toon.mesh(lid_body, Shapes.body_egg(0.16, 0.06, 0.02, 10, 7), Vector3(0, 0.04, 0.05), Color("#f2c9a0"), 0.0)
 	egg.rotation.x = -PI / 2
+	egg.scale = Vector3(1, 1, 0.25)
 	Toon.box(lid_body, Vector3(0.12, 0.004, 0.035), Vector3(0, 0.043, -0.09), Color("#f6f4ef"), 0.0)
 	var tag := Toon.label(lid_body, "TONY'S  #%d" % data.ticket, Vector3(0, 0.042, side * 0.4), 34, Color("#c0392b"), false)
 	tag.rotation.x = -PI / 2
@@ -425,7 +427,7 @@ func footprint() -> float:
 
 func _process(delta: float) -> void:
 	_t += delta
-	var hot: bool = data.baked and float(data.heat) > 45.0 and location != "oven"
+	var hot: bool = data.baked and not data.boxed and float(data.heat) > 45.0 and location != "oven"
 	for k in _steam.size():
 		var puff := _steam[k]
 		puff.visible = hot

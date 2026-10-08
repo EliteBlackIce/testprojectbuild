@@ -18,7 +18,7 @@ var on_tony: Callable
 
 const BAKE_SECONDS := [16.0, 12.5, 9.5, 7.0]   ## time to a perfect bake, by oven level
 const PASS_SIZE := 4
-const OVEN_SPOTS := [Vector3(0, 0.975, 0.55), Vector3(0, 0.9, 0.45)]
+const OVEN_SPOTS := [Vector3(0, 0.965, 0.92), Vector3(0, 0.87, 0.74)]
 
 var pizzeria: Pizzeria
 var player: PlayerEgg
@@ -241,7 +241,7 @@ func _enter(m: String) -> void:
 	busy = true
 	busy_changed.emit(true)
 	var spot := _board if m == "prep" else _cut_spot
-	var local := Transform3D(Basis(), spot.position + Vector3(0, 0.78, 0.46))
+	var local := Transform3D(Basis(), spot.position + Vector3(0, 1.02, 0.6))
 	local = local.looking_at(spot.position + Vector3(0, 0, -0.04), Vector3.UP)
 	player.enter_view(pizzeria.global_transform * local, 52.0)
 	_cursor.visible = true
@@ -504,7 +504,8 @@ func _work_process(delta: float) -> void:
 		if tool == "stretch":
 			var want := _cursor_local.length() + 0.03
 			if want > p.radius():
-				p.set_stretch(p.radius() + (want - p.radius()) * (1.0 - exp(-4.0 * delta)))
+				var rate := 4.0 * (1.0 + Game.level("dough_press") * 0.6)
+				p.set_stretch(p.radius() + (want - p.radius()) * (1.0 - exp(-rate * delta)))
 				_cursor_tool.rotation.y += delta * 6.0
 				if _sound_cd <= 0.0:
 					_sound_cd = 0.35
@@ -619,8 +620,6 @@ func _build_cursor() -> void:
 	var mitt := Toon.ball(_cursor, 0.06, Vector3(0, 0.07, 0.03), FpHands.SKIN, 0.008, 10)
 	mitt.scale = Vector3(1.0, 0.8, 1.2)
 	Toon.ball(_cursor, 0.028, Vector3(-0.05, 0.08, 0.0), FpHands.SKIN, 0.006, 8)
-	var arm := Toon.mesh(_cursor, Shapes.limb(0.5, 0.05, 0.045, 8), Vector3(0, 0.09, 0.08), FpHands.SKIN.darkened(0.04), 0.008)
-	arm.rotation.x = -1.1
 	_cursor_tool = Node3D.new()
 	_cursor.add_child(_cursor_tool)
 	_cursor.visible = false
@@ -693,8 +692,8 @@ func _build_ovens() -> void:
 		var fire := MeshInstance3D.new()
 		fire.mesh = Shapes.blob(0.3, 11 + i, 0.3)
 		fire.material_override = Toon.glow(Color("#ff8c42"), 2.6)
-		fire.position = Vector3(0, 1.05, 0.62) if i == 0 else Vector3(0, 1.0, 0.57)
-		fire.scale = Vector3(1.5, 0.45, 0.2)
+		fire.position = Vector3(0, 1.08, 0.75) if i == 0 else Vector3(0, 1.0, 0.59)
+		fire.scale = Vector3(1.2, 0.4, 0.08)
 		root.add_child(fire)
 		var light := OmniLight3D.new()
 		light.light_color = Color("#ff9e57")
@@ -710,7 +709,7 @@ func _build_ovens() -> void:
 			puff.visible = false
 			smoke.append(puff)
 		ovens.append({"root": root, "spot": spot, "pizza": null, "label": label, "fire": fire, "smoke": smoke, "index": i, "light": light})
-		Station.make(root, Vector3(0, 1.05, 0.75), _oven_prompt.bind(i), _oven_use.bind(i), 2.0, 0.6)
+		Station.make(root, Vector3(0, 1.05, 0.9), _oven_prompt.bind(i), _oven_use.bind(i), 2.2, 0.7)
 	_refresh_ovens()
 
 
@@ -810,7 +809,7 @@ func _process(delta: float) -> void:
 		var label := o.label as Label3D
 		var fire := o.fire as MeshInstance3D
 		var flick := sin(_t * 9.0 + o.index * 2.0) * 0.06 + sin(_t * 23.0) * 0.03
-		fire.scale = Vector3(1.5, 0.45 + flick, 0.2)
+		fire.scale = Vector3(1.2, 0.4 + flick, 0.08)
 		(o.light as OmniLight3D).light_energy = 0.35 + flick
 		var smoke: Array = o.smoke
 		var burning := p != null and float(p.data.bake) > 1.25
@@ -928,7 +927,7 @@ func pizzas_in_kitchen() -> Array[Pizza]:
 
 func add_puddle(local: Vector3, r: float, permanent: bool) -> void:
 	var puddle := Node3D.new()
-	puddle.position = local + Vector3(0, 0.012, 0)
+	puddle.position = local + Vector3(0, 0.084, 0)
 	puddle.set_meta("radius", r)
 	puddle.add_to_group("slippery")
 	pizzeria.add_child(puddle)

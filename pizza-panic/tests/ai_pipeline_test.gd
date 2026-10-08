@@ -14,7 +14,6 @@ func _ready() -> void:
 	Settings.proxy_token = "test-token"
 	Settings.tts_provider = "auto"
 	Settings.reply_mode = "voice"
-	MakelineUi.autoplay = true
 	Game.reset_save()
 	main = load("res://scenes/main.tscn").instantiate()
 	add_child(main)
@@ -55,15 +54,13 @@ func _ready() -> void:
 	# 4. Make it (fast-forward), deliver it, Claude accepts + tips
 	var p := Pizza.new()
 	add_child(p)
-	p.setup(t.id, "medium", 1.0)
-	p.add_sauce("tomato", 1.0)
-	p.add_cheese(1.0)
-	p.add_topping("pepperoni")
-	p.add_topping("onion")
+	p.setup(t.id)
+	p.auto_assemble(t.order, 1.0)
 	p.set_bake(1.0)
 	p.data.baked = true
 	p.data.heat = 100.0
-	p.put_in_box(1.0)
+	p.auto_cut(1.0)
+	p.put_in_box(true)
 	main.player.hold(p)
 	main.player.global_position = house.knock_spot.global_position + Vector3(0, -0.85, 0)
 	await get_tree().physics_frame

@@ -2,51 +2,85 @@
 
 *You are an egg. You deliver pizza. The customers are worse.*
 
-A goofy, faceted, cel-shaded 3D pizza shop game built in **Godot 4.7**. Everyone in Eggville is an
-egg, including you. You run Tony's Pizza: answer the phone, make pizzas in the kitchen, drive them
-across town, and **talk to customers with your real voice**. They're AI characters, and they
-answer back.
+A goofy, faceted, cel-shaded **first-person** pizza shop game built in **Godot 4.7**. Everyone in
+Eggville is an egg, including you (you can see your own chunky mittens). You work at Tony's Pizza:
+answer the phone, make every pizza **by hand**, drive it across town from the driver's seat, and
+**talk to customers with your real voice**. They're AI characters, and they answer back.
 
-![Driving through downtown](docs/screenshots/driving.png)
+![Making a pizza by hand](docs/screenshots/toppings.png)
 
 ## The game
 
 Each day runs from 10 AM to 10 PM (about 12 real minutes):
 
-1. **The phone rings.** A customer calls and orders in character. Gary orders "a pizza for his tuba".
-   The dog barks his order. The order appears as a ticket.
-2. **Make the pizza** in Tony's kitchen:
-   - **Dough fridge**: hold E to stretch the dough. Let go on the right size.
-   - **Prep table**: pick a sauce, squeeze it (hold E, let go in the green zone), mash E to grate
-     cheese, then add the toppings on the ticket with the number keys.
-   - **Oven**: take it out when it says PERFECT. Leave it in and it burns.
-   - **Cut & box**: tap E when the knife is in the zone.
-3. **Load the car** and **drive** across town. Follow the yellow arrow. Crashes smush the pizzas,
-   and pizzas cool down on the road.
-4. **Knock on the door** with the box held over your head, and **talk** to the customer. Play
-   along with their weirdness, and they pay and tip based on how good, hot, on-time and un-smushed
-   the pizza is.
-5. **Closing time**: see your day's report, then spend your money on upgrades.
+1. **The phone rings.** Run to the red phone by the pass window (or hire Pam to answer it). The
+   customer orders in character, and a ticket appears on the rail over the make-line.
+2. **Make the pizza with your hands.** Nothing is a button-press minigame:
+   - **Dough rack** (back left wall): grab a dough ball.
+   - **Prep board** (middle island): put it down and the camera looks down at the board.
+     - **Stretch**: hold left-click and drag out from the middle to the yellow ring. Right-click
+       **tosses** the dough in the air, which stretches it too. Sometimes it lands on your face.
+       Too thin and it rips.
+     - **Sauce**: hold the mouse and paint it on. Coverage counts, and slopping it off the edge
+       counts against you. Spill enough and there's a puddle on the floor to slip on.
+     - **Cheese**: hold and wiggle to sprinkle.
+     - **Toppings**: pick one (1-9 or click), then click to drop pieces. About 4 pieces is one
+       portion.
+   - **Oven** (back wall): slide it in and watch the crust brown. Pull it out when it says
+     PERFECT. Leave it in and it smokes, the alarm goes off, and it burns.
+   - **Cutting board** (right island): drag the pizza wheel across it. 4 straight cuts through the
+     middle make 8 perfect slices, and crooked cuts get noticed. Then fold the box shut.
+   - **Pass shelf**: boxed pizzas wait under the heat lamps.
+3. **Load the car and drive.** You drive from the cockpit, with your mittens on the wheel, a
+   wobbling Tony bobblehead and a pizza air freshener. Press V for the chase cam. Follow the
+   floating arrow. Crashes smush the pizzas, and pizzas cool down on the road.
+4. **Knock** with the box in your hands, and **talk** to the customer. Play along with their
+   weirdness, and they pay and tip based on how good, hot, on-time and un-smushed the pizza is.
+   Quality comes from what you actually did: dough size, sauce and cheese coverage, spills, toppings,
+   bake, and cuts.
+5. **Closing time**: see your day's report, pay wages, then spend money on upgrades and staff.
 
-**Upgrades** (Tony's PC in the kitchen, or after each day):
-- **Car**: engine, grippy tires, bouncy suspension, hot bag, roof rack (up to 6 pizzas), pizza
-  rocket boost, silly horns (clown, awooga, air horn, goat), paint jobs.
-- **Kitchen**: turbo oven, second oven, dough press, sauce gun, cordless headset (answer calls
-  anywhere, even while driving), neon sign (more calls), weird toppings (gummy bears!), heat lamp.
-- **You**: fast sneakers, and hats (beanie → propeller cap → cowboy → top hat → CROWN).
+**Hire help** (Tony's office PC). Cooks walk the kitchen and make whole pizzas start to finish, then
+put them on the pass shelf. Everyone has a quirk:
+- Lazy Larry naps, sometimes at the oven.
+- Clumsy Carla spills sauce on the floor.
+- Snacky Steve eats toppings.
+- Speedy Gonzalegg runs into walls.
+- Nonna Yolanda is slow but perfect.
+- Pam answers the phone politely.
+- Gary's Cousin Barry hangs up on people.
 
-Reputation (stars) goes up with great deliveries and down with late, cold or stolen ones, and
-missed calls. More stars means more calls and bigger tips. Your progress saves after every day.
+You can train staff, and you can fire them.
 
-**The town** has downtown shops, Yolk Park (pond, ducks, fountain, playground), the Shell-Out gas
-station, ~58 houses each with its own resident, traffic, egg pedestrians you can (accidentally)
-yeet, streetlights that switch on at sunset, power lines, hills, mountains and a water tower.
+**Goofy stuff**: click on nothing to **poke** whoever's in front of you (Tony hates it). You can slip
+on sauce or wet floors, and if you walk into traffic you get bonked over like an egg and wobble back up.
+- Sir Barksalot chases your car down the street.
+- Chad makes you **arm wrestle** him for the tip (mash E).
+- Dave the Wizard turns the pizza box into a frog.
+- Big Baby Bob crawls off mid-conversation.
+- Boo-ford the ghost floats right through his closed door.
+
+**Upgrades**:
+- **Car**: engine, tires, suspension, hot bag, roof rack, rocket boost, silly horns, paint.
+- **Kitchen**: turbo oven, second oven, dough press (faster stretching, bigger sweet spot), sauce gun
+  (bigger splats), cordless headset (answer anywhere), neon sign, weird toppings, heat lamps.
+- **You**: sneakers and hats.
+
+Reputation (stars) goes up with great deliveries and down with late, cold or stolen ones, and missed
+calls. More stars means more calls and bigger tips. Your progress (and staff) saves after every day.
+
+| | |
+|---|---|
+| ![Kitchen](docs/screenshots/kitchen.png) | ![Oven](docs/screenshots/oven.png) |
+| ![Cutting](docs/screenshots/cutting.png) | ![Cockpit](docs/screenshots/cockpit.png) |
+
+**The town** has downtown shops, Yolk Park, a gas station, ~58 houses each with its own resident,
+traffic, egg pedestrians, streetlights that switch on at sunset, and hills and mountains.
 
 **The cast**: 12 handmade characters (Gary the tuba guy, Grandma Edna who thinks you're Kevin,
 Sir Barksalot the dog, Chad Thunderbro, Conspiracy Carl, Dave the Wizard, Big Baby Bob, Boo-ford
 the ghost, Princess Sparkle-chan, Sensei Noodle, Mr. Synergy, Kyle who thinks this is a game),
-your boss Tony Pepperoni, plus dozens of generated weirdos (a pirate, an opera singer, a guy who
-thinks it's 1850, a robot (allegedly)...).
+your boss Tony Pepperoni, plus dozens of generated weirdos.
 
 ## Run it on your Mac
 
@@ -61,22 +95,31 @@ asks for microphone permission. Say yes.
 
 ## Controls
 
-| Action | Keyboard | Controller |
+| Action | Keyboard / mouse | Controller |
 |---|---|---|
+| Look around | Mouse | Right stick |
 | Walk / drive | WASD or arrows | Left stick, RT/LT |
-| Use / pick up / knock | **E** | X |
-| Get in / out of the car | **F** | L3 |
-| Hold to talk (voice chat) | **hold T** | hold Y |
+| Use / pick up / knock (what the crosshair is on) | **E** or left-click | X |
+| Poke (click on nothing) | Left-click | RB |
 | Hop | Space | A |
+| Get in / out of the car | **F** | L3 |
+| Cockpit / chase camera | **V** | D-pad down |
+| Hold to talk (voice chat) | **hold T** | hold Y |
 | Answer phone anywhere (headset upgrade) | Q | D-pad up |
 | Honk | H | B |
 | Rocket boost (upgrade) | Shift | R3 |
-| Turn camera | [ and ] | D-pad left/right |
 | Unflip car | R | Back |
-| Pause / hang up / leave | Esc | Start |
+| Pause / hang up / step away from a station | Esc | Start |
 
-In conversations you can also type and press Enter. In the kitchen, number keys pick sauces and
-toppings, and Enter finishes.
+**At a station** (prep board or cutting board) the mouse cursor shows up:
+- Left-click: stretch, paint, sprinkle, drop, or cut.
+- Right-click: toss the dough.
+- 1-9: pick a tool.
+- Tab: switch which ticket you're making.
+- E: done.
+- Esc: step away (your pizza waits for you).
+
+Mouse sensitivity is in Settings. In conversations you can also type and press Enter.
 
 ## AI setup (voice chat + AI customers)
 
@@ -122,16 +165,17 @@ files**. Even the music and sound effects are synthesized at startup.
 
 ```
 scenes/main.tscn              entry point
-scripts/main.gd               game flow: title → day → report → next day; input; car enter/exit; GPS arrow; hints
+scripts/main.gd               game flow: title → day → report → next day; input; mouse capture; car enter/exit; GPS arrow; hints
 scripts/autoload/             settings (keys, controls), game (money, clock, tickets, reputation, upgrades, save), sfx (synth sounds + music)
-scripts/data/                 characters.gd (★ THE CAST), menu.gd (sizes/sauces/toppings/prices), upgrades.gd
+scripts/data/                 characters.gd (★ THE CAST), menu.gd (sizes/sauces/toppings/prices), upgrades.gd, staff_data.gd (hireable eggs)
 scripts/art/                  shapes.gd (faceted meshes: egg, lathe, chamfered blocks, blobs), toon.gd (materials/builders)
-scripts/characters/           egg_body.gd (the egg character + animation), player.gd, pedestrians.gd
-scripts/kitchen/              kitchen.gd (all stations), pizza.gd (the pizza + quality scoring), phone_line.gd, station.gd
+scripts/characters/           egg_body.gd (the egg character + spring animation rig), player.gd (first-person egg), pedestrians.gd
+scripts/player/               fp_hands.gd (your mittens), game_camera.gd (title orbit + chase cam)
+scripts/kitchen/              kitchen.gd (hands-on stations), pizza.gd (sauce splats, cheese, cuts, box, scoring), worker.gd + staff.gd (hired eggs), phone_line.gd, station.gd
 scripts/vehicles/             car.gd (delivery car + upgrades + cargo), traffic.gd
-scripts/world/                town.gd (Eggville generator), house.gd, pizzeria.gd, landmarks.gd, day_cycle.gd
+scripts/world/                town.gd (Eggville generator), house.gd, pizzeria.gd (Tony's: dining room, kitchen, walk-in, office), gags.gd, landmarks.gd, day_cycle.gd
 scripts/ai/                   conversation.gd, claude_brain.gd, speech_to_text.gd, text_to_speech.gd, mic_recorder.gd, offline_brain.gd
-scripts/ui/                   hud, dialogue box, minigames, make-line, menus + upgrade shop, theme
+scripts/ui/                   hud (+ crosshair), dialogue box, station overlay, menus + upgrade/hiring shop, theme
 shaders/                      toon.gdshader (3-band faceted cel shading), outline.gdshader (ink lines)
 tests/                        automated play-throughs
 tools/                        screenshot + character lineup renderers
@@ -152,7 +196,7 @@ Open `scripts/data/characters.gd`, copy an entry in `ROSTER`, and change:
 ### Tests
 
 ```sh
-# A whole day: phone → kitchen → car → delivery → upgrade → closing → save
+# A whole day: phone → hand-made pizza → car → delivery → hired cook → closing + wages → save
 godot --headless --path pizza-panic res://tests/smoke_test.tscn
 
 # The AI pipeline against a fake AI server (no keys needed)
@@ -163,6 +207,6 @@ godot --headless --path pizza-panic res://tests/ai_pipeline_test.tscn
 ## Ideas for later
 
 Events (rush hour, a food critic, a pizza-hating mayor), more neighborhoods unlocked by
-reputation, hiring helpers, achievements, a photo mode, controller rumble, real music tracks, and
+reputation, delivery drivers you can hire, achievements, a photo mode, controller rumble, real music tracks, and
 exporting for Windows/Steam when you're ready (`export_presets.cfg` already has the macOS
 microphone permission set up).

@@ -34,6 +34,7 @@ var _master: HSlider
 var _voice_vol: HSlider
 var _music_vol: HSlider
 var _hints: CheckBox
+var _mouse: HSlider
 
 const MODES := ["auto", "offline", "direct"]
 const MODE_NAMES := ["Auto (AI if keys are set)", "Offline (no AI, free)", "AI with my own API keys"]
@@ -378,6 +379,9 @@ func _build_settings() -> void:
 	_master = _slider(v, "Master volume")
 	_voice_vol = _slider(v, "Voice volume")
 	_music_vol = _slider(v, "Music volume")
+	_mouse = _slider(v, "Mouse sensitivity")
+	_mouse.min_value = 0.2
+	_mouse.max_value = 3.0
 	_hints = CheckBox.new()
 	_hints.text = "Show 'what to do next' hints"
 	v.add_child(_hints)
@@ -443,6 +447,7 @@ func _open_settings(from: Control) -> void:
 	_master.value = Settings.master_volume
 	_voice_vol.value = Settings.voice_volume
 	_music_vol.value = Settings.music_volume
+	_mouse.value = Settings.mouse_sensitivity
 	_hints.button_pressed = Settings.show_hints
 	_test_status.text = "Current mode: %s" % Settings.effective_mode()
 	_hide_all()
@@ -466,6 +471,7 @@ func _save_settings() -> void:
 	Settings.master_volume = _master.value
 	Settings.voice_volume = _voice_vol.value
 	Settings.music_volume = _music_vol.value
+	Settings.mouse_sensitivity = _mouse.value
 	Settings.show_hints = _hints.button_pressed
 	Settings.save_settings()
 	Sfx.set_music_mood(0.0)

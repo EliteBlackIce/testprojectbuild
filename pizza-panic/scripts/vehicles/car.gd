@@ -328,7 +328,7 @@ func _build_body() -> void:
 	_rack = Node3D.new()
 	_rack.position = Vector3(0, 1.58, 0.45)
 	_visual.add_child(_rack)
-	Toon.box(_rack, Vector3(1.7, 0.06, 1.8), Vector3(0, 0.0, 0), Color("#555b61"), 0.01)
+	Toon.box(_rack, Vector3(1.7, 0.06, 1.8), Vector3(0, 0.0, 0), Color("#555b61"), 0.01).layers = SHELL_LAYER
 	var sign_root := Node3D.new()
 	sign_root.position = Vector3(0, 0.75, -0.95)
 	_rack.add_child(sign_root)
@@ -371,37 +371,37 @@ func _build_cockpit() -> void:
 		Toon.box(c, Vector3(0.14, 0.05, 0.02), Vector3(0.15 + k * 0.2, 1.25, -0.22), Color("#1d1517"), 0.0)
 	Toon.box(c, Vector3(0.4, 0.1, 0.02), Vector3(0.45, 1.13, -0.22), Color("#58493f"), 0.004)
 	# Speedometer with a wobbly needle
-	var gauge := Toon.cyl(c, 0.12, 0.12, 0.02, Vector3(-0.35, 1.3, -0.3), Color("#fff8e7"), 0.006, 14)
+	var gauge := Toon.cyl(c, 0.12, 0.12, 0.02, Vector3(0.02, 1.3, -0.3), Color("#fff8e7"), 0.006, 14)
 	gauge.rotation.x = PI / 2 - 0.5
 	_needle = Node3D.new()
-	_needle.position = Vector3(-0.35, 1.3, -0.285)
+	_needle.position = Vector3(0.02, 1.3, -0.285)
 	_needle.rotation.x = -0.5
 	c.add_child(_needle)
 	Toon.box(_needle, Vector3(0.012, 0.1, 0.006), Vector3(0, 0.045, 0), Color("#e63946"), 0.0)
-	var mph := Toon.label(c, "MPH", Vector3(-0.35, 1.25, -0.27), 18, Color("#2b1c18"), false)
+	var mph := Toon.label(c, "MPH", Vector3(0.02, 1.25, -0.27), 18, Color("#2b1c18"), false)
 	mph.outline_size = 0
 	mph.pixel_size = 0.003
 	mph.rotation.x = -0.5
 	# Steering wheel + your mittens on it
 	_wheel = Node3D.new()
-	_wheel.position = Vector3(-0.35, 1.27, -0.12)
-	_wheel.rotation.x = 1.15
+	_wheel.position = Vector3(-0.35, 1.38, -0.08)
+	_wheel.rotation.x = 1.0
 	c.add_child(_wheel)
 	var rim := MeshInstance3D.new()
 	var torus := TorusMesh.new()
-	torus.inner_radius = 0.16
-	torus.outer_radius = 0.2
+	torus.inner_radius = 0.13
+	torus.outer_radius = 0.165
 	torus.rings = 16
 	torus.ring_segments = 6
 	rim.mesh = torus
 	rim.material_override = Toon.mat(Color("#2d3436"), 0.006)
 	_wheel.add_child(rim)
-	Toon.box(_wheel, Vector3(0.34, 0.03, 0.04), Vector3.ZERO, Color("#2d3436"), 0.0)
+	Toon.box(_wheel, Vector3(0.28, 0.03, 0.04), Vector3.ZERO, Color("#2d3436"), 0.0)
 	Toon.cyl(_wheel, 0.05, 0.05, 0.04, Vector3.ZERO, Color("#e63946"), 0.004, 10)
 	for side: int in [-1, 1]:
-		var mitt := Toon.ball(_wheel, 0.06, Vector3(0.18 * side, 0.02, 0.0), FpHands.SKIN, 0.006, 10)
+		var mitt := Toon.ball(_wheel, 0.05, Vector3(0.15 * side, 0.02, 0.0), FpHands.SKIN, 0.006, 10)
 		mitt.scale = Vector3(1.0, 0.9, 1.2)
-		var arm := Toon.mesh(_wheel, Shapes.limb(0.45, 0.05, 0.045, 8), Vector3(0.2 * side, 0.03, 0.0), FpHands.SKIN.darkened(0.04), 0.006)
+		var arm := Toon.mesh(_wheel, Shapes.limb(0.45, 0.05, 0.045, 8), Vector3(0.16 * side, 0.03, 0.0), FpHands.SKIN.darkened(0.04), 0.006)
 		arm.rotation = Vector3(-0.3, 0.0, -0.4 * side)
 	# Pillars + roof edge frame the windshield
 	for side: int in [-1, 1]:
@@ -430,7 +430,7 @@ func _build_cockpit() -> void:
 	Toon.cyl(_bobble, 0.03, 0.035, 0.025, Vector3(0, 0.16, 0), Color("#f6f4ef"), 0.0, 8)
 	# The camera (your eyes)
 	cockpit_cam = Camera3D.new()
-	cockpit_cam.position = Vector3(-0.35, 1.6, 0.32)
+	cockpit_cam.position = Vector3(-0.35, 1.64, 0.42)
 	cockpit_cam.rotation.x = -0.1
 	cockpit_cam.fov = 78.0
 	cockpit_cam.near = 0.03
@@ -442,6 +442,7 @@ func _build_cockpit() -> void:
 
 func set_cockpit(on: bool) -> void:
 	(_visual.get_node("Cockpit") as Node3D).visible = on
+	_driver.visible = driving and not on
 	if on:
 		cockpit_cam.current = true
 		_look = Vector2.ZERO
@@ -465,9 +466,14 @@ func _update_cockpit(delta: float, fwd: float) -> void:
 	_prev_vel = velocity
 	var local_acc := global_basis.inverse() * acc
 	var force := Vector2(-local_acc.x, -local_acc.z) * 0.004
-	_bobble_v += (force - _bobble_p * 90.0 - _bobble_v * 4.0) * delta
-	_bobble_p += _bobble_v * delta
+	var h := minf(delta, 0.05) / 4.0
+	for k in 4:
+		_bobble_v += (force.limit_length(3.0) - _bobble_p * 90.0 - _bobble_v * 4.0) * h
+		_bobble_p += _bobble_v * h
 	_bobble_p = _bobble_p.limit_length(0.6)
+	if not _bobble_p.is_finite():
+		_bobble_p = Vector2.ZERO
+		_bobble_v = Vector2.ZERO
 	_bobble.rotation = Vector3(_bobble_p.y, 0, -_bobble_p.x)
 	_freshener.rotation = Vector3(_bobble_p.y * 1.4, 0, -_bobble_p.x * 1.4)
 	# Look around (recenters on its own), lean into turns, little road shake
@@ -477,7 +483,7 @@ func _update_cockpit(delta: float, fwd: float) -> void:
 	var look_pad := Input.get_vector("look_left", "look_right", "look_up", "look_down")
 	var lx := _look.x - look_pad.x * 1.2
 	var shake := clampf(absf(fwd) / max_speed(), 0.0, 1.0) * 0.004
-	cockpit_cam.rotation = Vector3(-0.1 + _look.y + randf_range(-1, 1) * shake, lx - _steer * 0.12, -_steer * 0.03)
+	cockpit_cam.rotation = Vector3(-0.13 + _look.y + randf_range(-1, 1) * shake, lx - _steer * 0.12, -_steer * 0.03)
 
 
 # --- engine noise ----------------------------------------------------------------------------------

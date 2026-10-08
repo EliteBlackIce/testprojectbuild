@@ -43,8 +43,9 @@ func _ready() -> void:
 		if i == 0:
 			e.carrying = true
 			var p := Pizza.new()
-			p.setup(7, "large", 1.0)
-			p.put_in_box(1.0)
+			p.setup(7)
+			p.auto_assemble({"size": "large", "sauce": "tomato", "toppings": ["pepperoni"]}, 1.0)
+			p.put_in_box(true)
 			e.hand_socket.add_child(p)
 		if i == 4:
 			e.waving = true

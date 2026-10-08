@@ -210,9 +210,14 @@ func _steps(delta: float, moving: float, on_floor: bool) -> void:
 
 func _process(delta: float) -> void:
 	# Landing / hop dip spring
-	var acc := -_dip * 120.0 - _dip_vel * 12.0
-	_dip_vel += acc * delta
-	_dip += _dip_vel * delta
+	var h := minf(delta, 0.05) / 4.0
+	for k in 4:
+		var acc := -_dip * 120.0 - _dip_vel * 12.0
+		_dip_vel += acc * h
+		_dip += _dip_vel * h
+	if not is_finite(_dip) or not is_finite(_dip_vel):
+		_dip = 0.0
+		_dip_vel = 0.0
 	if _look_lock != null:
 		var to: Vector3 = (_look_lock as Vector3) - head.global_position
 		var want_yaw := atan2(-to.x, -to.z)
@@ -395,15 +400,19 @@ func hold(item: Node3D) -> void:
 	if item is Pizza:
 		var p := item as Pizza
 		p.location = "carried"
-		hands.hold_width = clampf(p.footprint(), 0.22, 0.75)
-		# Bigger things sit a bit lower/further so they don't eat the screen.
-		item.position = Vector3(0, -0.04 * p.footprint(), -0.1 * p.footprint())
+		# Shown a bit smaller and lower so a large box doesn't eat the whole screen.
+		var shrink := 0.72 if p.footprint() > 0.7 else 0.85
+		item.scale = Vector3.ONE * shrink
+		hands.hold_width = clampf(p.footprint() * shrink, 0.22, 0.7)
+		item.position = Vector3(0, -0.05 * p.footprint(), -0.12 * p.footprint())
 	hands.play("grab")
 
 
 ## Hands the held item over (removes it from our hand, caller re-parents it).
 func take_held() -> Node3D:
 	var item := held
+	if item:
+		item.scale = Vector3.ONE
 	held = null
 	body.carrying = false
 	return item

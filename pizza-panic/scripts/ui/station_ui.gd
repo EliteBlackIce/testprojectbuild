@@ -15,7 +15,7 @@ var _title: Label
 var _instr: Label
 var _card_title: Label
 var _card_body: RichTextLabel
-var _tools: HBoxContainer
+var _tools: HFlowContainer
 var _meters: VBoxContainer
 var _done: Button
 var _splat: Control
@@ -51,7 +51,7 @@ func _ready() -> void:
 
 	# Ticket card (left)
 	var card := PanelContainer.new()
-	card.position = Vector2(20, 150)
+	card.position = Vector2(20, 130)
 	card.custom_minimum_size = Vector2(290, 0)
 	card.add_theme_stylebox_override("panel", UiTheme.box(Color("#fffdf5"), 4, 6, 14))
 	_root.add_child(card)
@@ -78,7 +78,7 @@ func _ready() -> void:
 	mp.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	mp.offset_left = -300
 	mp.offset_right = -20
-	mp.offset_top = 150
+	mp.offset_top = 130
 	mp.add_theme_stylebox_override("panel", UiTheme.box(UiTheme.CREAM, 4, 18, 14))
 	_root.add_child(mp)
 	_meters = VBoxContainer.new()
@@ -88,15 +88,16 @@ func _ready() -> void:
 	# Toolbar + buttons (bottom)
 	var bottom := VBoxContainer.new()
 	bottom.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	bottom.offset_left = -560
-	bottom.offset_right = 560
-	bottom.offset_top = -150
+	bottom.offset_left = -620
+	bottom.offset_right = 620
+	bottom.offset_top = -200
 	bottom.offset_bottom = -16
 	bottom.alignment = BoxContainer.ALIGNMENT_END
 	_root.add_child(bottom)
-	_tools = HBoxContainer.new()
-	_tools.alignment = BoxContainer.ALIGNMENT_CENTER
-	_tools.add_theme_constant_override("separation", 6)
+	_tools = HFlowContainer.new()
+	_tools.alignment = FlowContainer.ALIGNMENT_CENTER
+	_tools.add_theme_constant_override("h_separation", 6)
+	_tools.add_theme_constant_override("v_separation", 6)
 	bottom.add_child(_tools)
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -161,7 +162,7 @@ func set_tools(tools: Array) -> void:
 		var t: Array = tools[i]
 		var b := Button.new()
 		b.text = ("%d  %s" % [i + 1, t[1]]) if i < 9 else str(t[1])
-		b.add_theme_font_size_override("font_size", 18)
+		b.add_theme_font_size_override("font_size", 16)
 		var col: Color = t[2]
 		b.add_theme_stylebox_override("normal", UiTheme.box(col.lerp(Color.WHITE, 0.55), 3, 12, 8))
 		b.add_theme_stylebox_override("hover", UiTheme.box(col.lerp(Color.WHITE, 0.3), 3, 12, 8))

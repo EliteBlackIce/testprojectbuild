@@ -466,6 +466,10 @@ func _spring(name: String, target: float, delta: float, stiffness := 160.0, damp
 	var st: Array = _spr.get(name, [target, 0.0])
 	var x: float = st[0]
 	var v: float = st[1]
+	delta = minf(delta, 0.04)   # long frames would make the spring explode
+	if not is_finite(x) or not is_finite(v):
+		x = target
+		v = 0.0
 	v += (target - x) * stiffness * delta
 	v *= exp(-damping * delta)
 	x += v * delta

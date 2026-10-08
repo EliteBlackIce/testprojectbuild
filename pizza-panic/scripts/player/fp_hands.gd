@@ -69,8 +69,8 @@ func _ready() -> void:
 	Toon.ball(_phone, 0.035, Vector3(0.02, 0.15, -0.03), Color("#c0392b"), 0.006, 8)
 	_phone.visible = false
 	hold_socket = Node3D.new()
-	hold_socket.position = Vector3(0, -0.4, -0.62)
-	hold_socket.rotation.x = 0.12
+	hold_socket.position = Vector3(0, -0.5, -0.66)
+	hold_socket.rotation.x = 0.3
 	add_child(hold_socket)
 	for n in find_children("*", "VisualInstance3D", true, false):
 		(n as VisualInstance3D).layers = 4   # viewmodel layer
@@ -116,7 +116,7 @@ func _process(delta: float) -> void:
 		var finger := 0.0
 		match pose:
 			"carry":
-				target = Vector3(side * (hold_width * 0.5 + 0.02), -0.42, -0.62)
+				target = Vector3(side * (hold_width * 0.5 + 0.02), -0.47, -0.64)
 				rot = Vector3(0.6, 0.0, -1.2 * side)
 			"phone":
 				if i == 0:
@@ -144,10 +144,16 @@ func _process(delta: float) -> void:
 			target += a[0]
 			rot += a[1]
 			finger = a[2]
-		# Spring toward the target
-		var acc := (target - _pos[i]) * 260.0 - _vel[i] * 22.0
-		_vel[i] += acc * delta
-		_pos[i] += _vel[i] * delta
+		# Spring toward the target (sub-stepped so a long frame can't blow it up)
+		var steps := clampi(ceili(delta / 0.008), 1, 8)
+		var h := minf(delta, 0.064) / steps
+		for k in steps:
+			var acc := (target - _pos[i]) * 260.0 - _vel[i] * 22.0
+			_vel[i] += acc * h
+			_pos[i] += _vel[i] * h
+		if not _pos[i].is_finite() or not _vel[i].is_finite():
+			_pos[i] = target
+			_vel[i] = Vector3.ZERO
 		_rot[i] = _rot[i].lerp(rot, 1.0 - exp(-16.0 * delta))
 		_hands[i].position = _pos[i]
 		_hands[i].rotation = _rot[i]
@@ -156,7 +162,7 @@ func _process(delta: float) -> void:
 	if hold_socket:
 		var hb := Vector3(0, -absf(cos(_phase)) * 0.014 * moving - _land * 0.08, 0) + Vector3(-_sway.x, _sway.y, 0) * 0.5
 		_hold_bob = _hold_bob.lerp(hb, 1.0 - exp(-14.0 * delta))
-		hold_socket.position = Vector3(0, -0.4, -0.62) + _hold_bob
+		hold_socket.position = Vector3(0, -0.5, -0.66) + _hold_bob
 		hold_socket.rotation.z = -_sway.x * 1.5 + sin(_phase) * 0.02 * moving
 
 
