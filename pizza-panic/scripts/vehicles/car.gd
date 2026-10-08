@@ -1,7 +1,7 @@
 class_name PizzaCar
 extends CharacterBody3D
 ## The delivery car. Arcade handling, upgradeable, carries pizza boxes on a
-## roof rack, and has googly eyes on the hood. Forward is -Z.
+## roof rack, and a giant pizza slice on top. Forward is -Z.
 
 signal crashed(impact: float)
 
@@ -281,110 +281,108 @@ func _on_prop_hit(body: Node3D) -> void:
 # --- looks ---------------------------------------------------------------------------------------
 
 func _build_body() -> void:
-	# A cute, bubbly anime kei delivery van: two-tone paint, big round headlights,
-	# whitewall tires, googly eyes on the hood and a giant pizza slice on the roof.
+	# Tony's delivery van: a soft, rounded little "bread van". One big friendly
+	# rounded box with a red lower half, a cream upper half, a big windshield,
+	# round headlights, tucked-in wheels and a giant pizza slice on the roof rack.
 	_visual = Node3D.new()
 	add_child(_visual)
-	var cream := Color("#fff4e0")
-	var chrome := Color("#dfe6ee")
-	var glass := Color("#8fd3f4")
+	var cream := Color("#fff3df")
+	var chrome := Color("#e3e9f0")
+	var glass := Color("#7cc9ee")
 	var rubber := Color("#2d2a32")
-	# Lower body (painted) + a soft hood bump, all smooth-shaded
-	_paint(_soft(Shapes.chamfer_box(Vector3(2.1, 0.82, 3.95), 0.3)), Vector3(0, 0.34, 0), 0.025)
-	_paint(_soft(Shapes.chamfer_box(Vector3(1.86, 0.22, 1.3), 0.45)), Vector3(0, 1.0, -1.25), 0.018)
-	# Checker stripe along the sides + TONY'S logo
+	var rb := func(size: Vector3, r: float) -> ArrayMesh: return Shapes.rounded_box(size, r)
+	# Lower body (paint) and upper body (cream, hidden from the cockpit)
+	_paint(rb.call(Vector3(2.04, 0.78, 3.96), 0.3), Vector3(0, 0.74, 0), 0.022)
+	_shell(Toon.mesh(_visual, rb.call(Vector3(1.94, 1.0, 3.6), 0.42), Vector3(0, 1.45, 0.12), cream, 0.022))
+	# Belt-line stripe where the two colors meet
+	_paint(rb.call(Vector3(2.05, 0.05, 3.9), 0.025), Vector3(0, 1.13, 0.0), 0.0, true)
+	# Glass: big windshield, front side windows (driver), small rear side windows, rear window
+	_shell(Toon.mesh(_visual, rb.call(Vector3(1.62, 0.58, 0.06), 0.05), Vector3(0, 1.5, -1.66), glass, 0.0))
+	_shell(Toon.mesh(_visual, rb.call(Vector3(1.2, 0.42, 0.06), 0.05), Vector3(0, 1.52, 1.93), glass, 0.0))
 	for side: int in [-1, 1]:
-		for k in 10:
-			var sq := Toon.box(_visual, Vector3(0.02, 0.09, 0.18), Vector3(1.055 * side, 0.62 + (k % 2) * 0.09, -1.5 + k * 0.33), Color.WHITE if k % 2 == 0 else Color("#2d2a32"), 0.0)
-			sq.layers = SHELL_LAYER | 1
-		var logo := Toon.label(_visual, "TONY'S PIZZA", Vector3(1.06 * side, 0.9, 0.05), 28, Color("#ffd166"), false)
+		_shell(Toon.mesh(_visual, rb.call(Vector3(0.06, 0.5, 1.0), 0.05), Vector3(0.95 * side, 1.5, -0.92), glass, 0.0))
+		_shell(Toon.mesh(_visual, rb.call(Vector3(0.06, 0.36, 0.7), 0.05), Vector3(0.95 * side, 1.55, 1.3), glass, 0.0))
+		# Logo on the cargo side: a red circle with a pizza + lettering
+		var logo := Node3D.new()
+		logo.position = Vector3(0.985 * side, 1.48, 0.25)
 		logo.rotation.y = PI / 2 * side
-	# Cabin bubble (cream) with wraparound glass. Hidden from the cockpit camera.
-	_shell(Toon.mesh(_visual, _soft(Shapes.chamfer_box(Vector3(1.92, 0.9, 2.2), 0.25)), Vector3(0, 1.08, 0.45), cream, 0.022))
-	_shell(Toon.box(_visual, Vector3(1.42, 0.4, 0.03), Vector3(0, 1.53, -0.66), glass, 0.0))
-	_shell(Toon.box(_visual, Vector3(1.3, 0.36, 0.03), Vector3(0, 1.53, 1.56), glass, 0.0))
-	for side: int in [-1, 1]:
-		_shell(Toon.box(_visual, Vector3(0.03, 0.38, 1.6), Vector3(0.965 * side, 1.53, 0.45), glass, 0.0))
-	# Wheels: fat tires, white walls, chrome hubcaps, painted fender flares
+		_visual.add_child(logo)
+		_shell(Toon.cyl(logo, 0.3, 0.3, 0.02, Vector3.ZERO, Color("#e63946"), 0.0, 20)).rotation.x = PI / 2
+		_shell(Toon.cyl(logo, 0.24, 0.24, 0.025, Vector3(0, 0, 0.005), Color("#ffcf5c"), 0.0, 20)).rotation.x = PI / 2
+		for pp: Vector2 in [Vector2(-0.08, 0.06), Vector2(0.09, 0.04), Vector2(0.0, -0.1)]:
+			_shell(Toon.cyl(logo, 0.045, 0.045, 0.03, Vector3(pp.x, pp.y, 0.01), Color("#d63031"), 0.0, 10)).rotation.x = PI / 2
+		var lbl := Toon.label(_visual, "TONY'S PIZZA", Vector3(1.03 * side, 0.82, 0.0), 24, Color("#ffd166"), false)
+		lbl.rotation.y = PI / 2 * side
+	# Wheels: tucked under, whitewalls, chrome hubcaps, dark wheel wells
 	for x: int in [-1, 1]:
 		for z: int in [-1, 1]:
-			var arch := _paint(_soft(Shapes.cylinder(0.56, 0.56, 0.34, 16)), Vector3(1.0 * x, 0.46, 1.3 * z), 0.015, true)
-			arch.rotation.z = PI / 2
+			var well := Toon.mesh(_visual, rb.call(Vector3(0.3, 0.7, 1.0), 0.15), Vector3(0.9 * x, 0.55, 1.25 * z), Color("#3a2e3d"), 0.0)
+			well.layers = 1
 			var pivot := Node3D.new()
-			pivot.position = Vector3(1.02 * x, 0.42, 1.3 * z)
+			pivot.position = Vector3(0.9 * x, 0.4, 1.25 * z)
 			_visual.add_child(pivot)
 			var spinner := Node3D.new()
 			pivot.add_child(spinner)
-			var tire := Toon.mesh(spinner, _soft(Shapes.cylinder(0.42, 0.42, 0.34, 18)), Vector3.ZERO, rubber, 0.015)
+			var tire := Toon.mesh(spinner, Shapes.smoothed(Shapes.cylinder(0.4, 0.4, 0.32, 20)), Vector3.ZERO, rubber, 0.012)
 			tire.rotation.z = PI / 2
-			var wall := Toon.cyl(spinner, 0.3, 0.3, 0.355, Vector3.ZERO, Color("#f6f4ef"), 0.0, 18)
+			var wall := Toon.cyl(spinner, 0.28, 0.28, 0.335, Vector3.ZERO, Color("#f6f4ef"), 0.0, 20)
 			wall.rotation.z = PI / 2
-			var hub := Toon.mesh(spinner, _soft(Shapes.cylinder(0.2, 0.22, 0.38, 14)), Vector3.ZERO, chrome, 0.0)
+			var hub := Toon.mesh(spinner, Shapes.smoothed(Shapes.cylinder(0.18, 0.2, 0.36, 16)), Vector3.ZERO, chrome, 0.0)
 			hub.rotation.z = PI / 2
-			for n in 5:
-				var a := TAU * n / 5.0
-				Toon.ball(spinner, 0.03, Vector3(0.2 * x, sin(a) * 0.1, cos(a) * 0.1), Color("#ffd166"), 0.0, 6)
+			Toon.ball(spinner, 0.05, Vector3(0.18 * x, 0, 0), Color("#e63946"), 0.0, 8)
 			_wheels.append(spinner)
 			if z == -1:
 				_front_wheels.append(pivot)
-	# Front: big round headlights with chrome rims, a smiling grille, chrome bumper
+	# Face of the van: round headlights, a little smiling grille, chrome bumpers
 	for side: int in [-1, 1]:
-		var rim := Toon.cyl(_visual, 0.21, 0.21, 0.08, Vector3(0.66 * side, 0.86, -1.95), chrome, 0.01, 18)
+		var rim := Toon.mesh(_visual, Shapes.smoothed(Shapes.cylinder(0.2, 0.2, 0.08, 20)), Vector3(0.64 * side, 0.78, -1.97), chrome, 0.008)
 		rim.rotation.x = PI / 2
 		var lens := MeshInstance3D.new()
-		lens.mesh = Shapes.smoothed(Shapes.ball(0.17, 16, 8))
-		lens.material_override = Toon.glow(Color("#fff6c8"), 1.6)
-		lens.position = Vector3(0.66 * side, 0.86, -1.98)
-		lens.scale = Vector3(1, 1, 0.45)
+		lens.mesh = Shapes.smoothed(Shapes.ball(0.16, 16, 8))
+		lens.material_override = Toon.glow(Color("#fff6c8"), 1.5)
+		lens.position = Vector3(0.64 * side, 0.78, -2.0)
+		lens.scale = Vector3(1, 1, 0.4)
 		_visual.add_child(lens)
-		var sig := Toon.ball(_visual, 0.06, Vector3(0.95 * side, 0.68, -1.93), Color("#ffb020"), 0.0, 10)
-		sig.scale = Vector3(1, 0.7, 0.5)
-	var grille := Toon.mesh(_visual, _soft(Shapes.chamfer_box(Vector3(0.7, 0.16, 0.06), 0.45)), Vector3(0, 0.56, -1.97), Color("#3a2e3d"), 0.0)
-	grille.rotation.x = 0.0
-	Toon.mesh(_visual, _soft(Shapes.chamfer_box(Vector3(2.0, 0.16, 0.16), 0.45)), Vector3(0, 0.3, -1.97), chrome, 0.01)
-	Toon.mesh(_visual, _soft(Shapes.chamfer_box(Vector3(2.0, 0.16, 0.16), 0.45)), Vector3(0, 0.3, 1.97), chrome, 0.01)
-	# Googly eyes on the hood (the brand)
+		var sig := Toon.mesh(_visual, rb.call(Vector3(0.16, 0.08, 0.04), 0.03), Vector3(0.64 * side, 0.52, -1.98), Color("#ffb020"), 0.0)
+		sig.material_override = Toon.glow(Color("#ffb020"), 0.8)
+	var smile := Toon.mesh(_visual, rb.call(Vector3(0.5, 0.1, 0.04), 0.05), Vector3(0, 0.6, -1.99), Color("#3a2e3d"), 0.0)
+	smile.rotation.x = 0.0
+	Toon.mesh(_visual, rb.call(Vector3(0.12, 0.12, 0.04), 0.05), Vector3(0, 0.84, -1.99), Color("#ffd166"), 0.0)   # little "T" badge
+	Toon.mesh(_visual, rb.call(Vector3(1.96, 0.16, 0.18), 0.07), Vector3(0, 0.36, -1.98), chrome, 0.01)
+	Toon.mesh(_visual, rb.call(Vector3(1.96, 0.16, 0.18), 0.07), Vector3(0, 0.36, 1.98), chrome, 0.01)
+	# Rear: tall rounded tail lights, door seam, plate, exhaust
 	for side: int in [-1, 1]:
-		Toon.ball(_visual, 0.24, Vector3(0.45 * side, 1.16, -1.2), Color("#fffdf8"), 0.012, 14)
-		Toon.ball(_visual, 0.11, Vector3(0.45 * side, 1.2, -1.42), Color("#1a1020"), 0.0, 10)
-		var gl := MeshInstance3D.new()
-		gl.mesh = Shapes.ball(0.035, 8, 4)
-		gl.material_override = Toon.glow(Color.WHITE, 1.0)
-		gl.position = Vector3(0.45 * side + 0.04, 1.26, -1.5)
-		_visual.add_child(gl)
-	# Rear: tail lights, plate, exhaust
-	for side: int in [-1, 1]:
-		var tl := Toon.mesh(_visual, _soft(Shapes.chamfer_box(Vector3(0.36, 0.22, 0.06), 0.45)), Vector3(0.68 * side, 0.74, 1.96), Color("#ff3b4e"), 0.0)
+		var tl := Toon.mesh(_visual, rb.call(Vector3(0.18, 0.4, 0.06), 0.06), Vector3(0.8 * side, 0.85, 1.97), Color("#ff3b4e"), 0.0)
 		tl.material_override = Toon.glow(Color("#ff3b4e"), 0.9)
-	Toon.box(_visual, Vector3(0.5, 0.2, 0.02), Vector3(0, 0.6, 2.0), Color("#fff4c2"), 0.004)
-	var plate := Toon.label(_visual, "PIZZA 1", Vector3(0, 0.6, 2.015), 28, Color("#2b1c18"), false)
+	_shell(Toon.box(_visual, Vector3(0.02, 0.9, 0.02), Vector3(0, 1.45, 1.93), Color("#c9bda8"), 0.0))
+	Toon.mesh(_visual, rb.call(Vector3(0.5, 0.2, 0.03), 0.04), Vector3(0, 0.7, 1.99), Color("#fff4c2"), 0.004)
+	var plate := Toon.label(_visual, "PIZZA 1", Vector3(0, 0.7, 2.01), 15, Color("#2b1c18"), false)
 	plate.outline_size = 0
-	var pipe := Toon.cyl(_visual, 0.06, 0.06, 0.3, Vector3(-0.6, 0.3, 2.05), chrome, 0.006, 10)
+	var pipe := Toon.cyl(_visual, 0.06, 0.06, 0.3, Vector3(-0.6, 0.32, 2.05), chrome, 0.006, 10)
 	pipe.rotation.x = PI / 2
-	# Side mirrors on stalks (you can see them from the driver's seat)
+	# Side mirrors on short stalks by the front corners (you see them from the seat)
 	for side: int in [-1, 1]:
-		var stalk := Toon.cyl(_visual, 0.025, 0.025, 0.26, Vector3(1.04 * side, 1.38, -0.42), chrome, 0.0, 6)
+		var stalk := Toon.cyl(_visual, 0.025, 0.025, 0.2, Vector3(1.04 * side, 1.3, -1.4), chrome, 0.0, 6)
 		stalk.rotation.z = PI / 2
-		var housing := Toon.mesh(_visual, _soft(Shapes.chamfer_box(Vector3(0.1, 0.16, 0.22), 0.45)), Vector3(1.2 * side, 1.3, -0.42), Color("#fff4e0"), 0.006)
-		housing.rotation.y = 0.2 * side
-		var face := Toon.box(_visual, Vector3(0.01, 0.12, 0.17), Vector3(1.2 * side - 0.055 * side, 1.38, -0.42), Color("#bfe7ff"), 0.0)
+		var housing := Toon.mesh(_visual, rb.call(Vector3(0.09, 0.2, 0.16), 0.04), Vector3(1.16 * side, 1.32, -1.4), Color("#e63946"), 0.006)
+		var face := Toon.box(_visual, Vector3(0.01, 0.15, 0.12), Vector3(1.16 * side, 1.32, -1.32), Color("#bfe7ff"), 0.0)
+		face.rotation.y = PI / 2
 		face.material_override = Toon.glow(Color("#bfe7ff"), 0.6)
-		face.rotation.y = 0.2 * side
-	# Roof rack + a giant spinning-ish pizza slice sign
+	# Roof rack + a giant pizza slice sign
 	_rack = Node3D.new()
-	_rack.position = Vector3(0, 1.96, 0.55)
+	_rack.position = Vector3(0, 1.96, 0.45)
 	_visual.add_child(_rack)
 	for side: int in [-1, 1]:
-		Toon.cyl(_rack, 0.03, 0.03, 1.8, Vector3(0.7 * side, 0.05, 0), chrome, 0.006, 6).rotation.x = PI / 2
-	for z in [-0.75, 0.75]:
-		Toon.cyl(_rack, 0.03, 0.03, 1.4, Vector3(0, 0.05, z), chrome, 0.006, 6).rotation.z = PI / 2
+		Toon.cyl(_rack, 0.03, 0.03, 2.4, Vector3(0.7 * side, 0.06, 0), chrome, 0.006, 6).rotation.x = PI / 2
+	for z in [-1.1, 0.0, 1.1]:
+		Toon.cyl(_rack, 0.03, 0.03, 1.4, Vector3(0, 0.06, z), chrome, 0.006, 6).rotation.z = PI / 2
 	var sign_root := Node3D.new()
 	sign_root.name = "Slice"
-	sign_root.position = Vector3(0, 0.62, -0.95)
+	sign_root.position = Vector3(0, 0.62, -1.15)
 	_rack.add_child(sign_root)
 	var slice := Toon.mesh(sign_root, Shapes.prism(Vector3(1.0, 0.95, 0.12)), Vector3.ZERO, Color("#ffcf5c"), 0.014)
 	slice.rotation.z = PI
-	Toon.mesh(sign_root, _soft(Shapes.chamfer_box(Vector3(1.08, 0.16, 0.18), 0.45)), Vector3(0, 0.4, 0), Color("#d98b3a"), 0.012)
+	Toon.mesh(sign_root, rb.call(Vector3(1.08, 0.16, 0.18), 0.07), Vector3(0, 0.48, 0), Color("#d98b3a"), 0.012)
 	for pp: Vector3 in [Vector3(-0.15, 0.15, 0.07), Vector3(0.17, 0.12, 0.07), Vector3(0.0, -0.15, 0.07), Vector3(-0.15, 0.15, -0.07), Vector3(0.17, 0.12, -0.07), Vector3(0.0, -0.15, -0.07)]:
 		var pep := Toon.cyl(sign_root, 0.08, 0.08, 0.02, pp, Color("#d63031"), 0.0, 10)
 		pep.rotation.x = PI / 2
@@ -403,7 +401,7 @@ func _build_body() -> void:
 	look.hat = Game.current_hat()
 	_driver.build(look)
 	_driver.scale = Vector3.ONE * 0.55
-	_driver.position = Vector3(-0.35, 0.86, 0.35)
+	_driver.position = Vector3(-0.4, 0.95, -0.75)
 	_driver.rotation.y = PI
 	_driver.visible = false
 	for n in _driver.find_children("*", "VisualInstance3D", true, false):
@@ -435,12 +433,15 @@ func _shell(mi: MeshInstance3D) -> MeshInstance3D:
 # --- first-person cockpit ------------------------------------------------------------------------
 
 var _gps: GpsScreen
+var _grips: Array[Node3D] = []
+var _arms: Array = []
 var _speed_label: Label3D
 var _lines: Control
 
 func _build_cockpit() -> void:
 	var c := Node3D.new()
 	c.name = "Cockpit"
+	c.position = Vector3(0, 0, -0.97)    # the driver sits up front in the van
 	_visual.add_child(c)
 	var dash := Color("#e9dcc6")
 	var dash_dark := Color("#5b4a5e")
@@ -522,8 +523,15 @@ func _build_cockpit() -> void:
 		_wheel.add_child(grip)
 		var built := EggBody.build_hand(grip, FpHands.SKIN, -float(side), 0.42, 0.005)
 		EggBody.curl_hand(built[1], 1.0)
-		var arm := Toon.mesh(_wheel, Shapes.limb(0.45, 0.045, 0.04, 8), Vector3(0.16 * side, 0.03, 0.0), FpHands.SKIN.darkened(0.04), 0.006)
-		arm.rotation = Vector3(-0.3, 0.0, -0.4 * side)
+		_grips.append(grip)
+		# Real arms: shoulder (just below your eyes) -> elbow -> wrist on the wheel
+		var upper := Node3D.new()
+		c.add_child(upper)
+		Toon.mesh(upper, Shapes.smoothed(Shapes.limb(1.0, 0.055, 0.05, 10)), Vector3.ZERO, FpHands.SKIN.darkened(0.03), 0.005)
+		var fore := Node3D.new()
+		c.add_child(fore)
+		Toon.mesh(fore, Shapes.smoothed(Shapes.limb(1.0, 0.05, 0.042, 10)), Vector3.ZERO, FpHands.SKIN, 0.005)
+		_arms.append([upper, fore, float(side)])
 	# Doors: inside panels with armrests and window frames
 	for side: int in [-1, 1]:
 		Toon.mesh(c, _soft(Shapes.chamfer_box(Vector3(0.08, 0.5, 1.9), 0.3)), Vector3(0.93 * side, 0.82, 0.45), dash_dark, 0.006)
@@ -534,8 +542,8 @@ func _build_cockpit() -> void:
 		pillar.rotation.x = -0.3
 		Toon.box(c, Vector3(0.07, 0.6, 0.08), Vector3(0.94 * side, 1.58, 1.4), Color("#fff4e0"), 0.006)
 	# Roof liner, header, sun visors, rear-view mirror + pizza air freshener
-	Toon.box(c, Vector3(1.8, 0.1, 0.14), Vector3(0, 1.9, -0.5), Color("#fff4e0"), 0.006)
-	Toon.box(c, Vector3(1.86, 0.04, 2.1), Vector3(0, 1.97, 0.45), Color("#f3e7d3"), 0.0)
+	Toon.box(c, Vector3(1.8, 0.1, 0.14), Vector3(0, 1.84, -0.55), Color("#fff4e0"), 0.006)
+	Toon.box(c, Vector3(1.86, 0.04, 2.1), Vector3(0, 1.9, 0.45), Color("#f3e7d3"), 0.0)
 	for side: int in [-1, 1]:
 		var visor := Toon.mesh(c, _soft(Shapes.chamfer_box(Vector3(0.6, 0.03, 0.22), 0.4)), Vector3(0.42 * side, 1.88, -0.38), Color("#e9dcc6"), 0.006)
 		visor.rotation.x = 0.15
@@ -614,6 +622,7 @@ func _update_cockpit(delta: float, fwd: float) -> void:
 	if not driving or cockpit_cam == null or not cockpit_cam.current:
 		return
 	_wheel.rotation.z = lerp_angle(_wheel.rotation.z, _steer * 1.8, 1.0 - exp(-12.0 * delta))
+	_update_arms()
 	var speed01 := clampf(absf(fwd) / (max_speed() * 1.4), 0.0, 1.0)
 	_needle.rotation.z = lerpf(1.9, -1.9, speed01) + sin(Time.get_ticks_msec() * 0.05) * 0.02 * clampf(absf(fwd), 0.0, 1.0)
 	_speed_label.text = "%d" % int(absf(fwd) * 2.237)
@@ -651,6 +660,41 @@ func _update_cockpit(delta: float, fwd: float) -> void:
 	cockpit_cam.fov = lerpf(cockpit_cam.fov, 76.0 + speed01 * 14.0 + (8.0 if _boosting else 0.0), 1.0 - exp(-4.0 * delta))
 	_speed_t = move_toward(_speed_t, 1.0 if (speed01 > 0.62 or _boosting) else 0.0, delta * 2.5)
 	_lines.queue_redraw()
+
+
+## Two-bone arms from your shoulders to your hands on the wheel, so they stay
+## attached however the wheel turns.
+func _update_arms() -> void:
+	var c := _visual.get_node("Cockpit") as Node3D
+	var cam := cockpit_cam.position
+	for k in _arms.size():
+		var upper: Node3D = _arms[k][0]
+		var fore: Node3D = _arms[k][1]
+		var side: float = _arms[k][2]
+		var sh := Vector3(cam.x + 0.22 * side, cam.y - 0.3, cam.z + 0.12)
+		var hand := c.to_local(_grips[k].global_position)
+		var l1 := 0.3
+		var l2 := 0.33
+		var to := hand - sh
+		var d := clampf(to.length(), 0.05, l1 + l2 - 0.002)
+		var dir := to.normalized()
+		var a := (l1 * l1 - l2 * l2 + d * d) / (2.0 * d)
+		var h := sqrt(maxf(l1 * l1 - a * a, 0.0))
+		var hint := Vector3(side, -1.0, 0.2)
+		var pole := (hint - dir * hint.dot(dir)).normalized()
+		var elbow := sh + dir * a + pole * h
+		_limb_between(upper, sh, elbow, l1)
+		_limb_between(fore, elbow, hand, (hand - elbow).length())
+
+
+func _limb_between(node: Node3D, from: Vector3, to: Vector3, length: float) -> void:
+	var y := (from - to).normalized()      # limb meshes hang down -Y
+	var x := y.cross(Vector3.FORWARD)
+	if x.length() < 0.01:
+		x = y.cross(Vector3.RIGHT)
+	x = x.normalized()
+	var z := x.cross(y).normalized()
+	node.transform = Transform3D(Basis(x, y * length, z), from)
 
 
 func _draw_speed_lines() -> void:

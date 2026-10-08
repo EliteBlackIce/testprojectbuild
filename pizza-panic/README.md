@@ -31,8 +31,8 @@ Each day runs from 10 AM to 10 PM (about 12 real minutes):
    - **Cutting board** (right island): drag the pizza wheel across it. 4 straight cuts through the
      middle make 8 perfect slices, and crooked cuts get noticed. Then fold the box shut.
    - **Pass shelf**: boxed pizzas wait under the heat lamps.
-3. **Load the car and drive.** Tony's little delivery van has googly eyes on the hood and a
-   giant pizza slice on the roof. You drive it from the driver's seat:
+3. **Load the car and drive.** Tony's little delivery van is a rounded two-tone bread van
+   with a giant pizza slice on the roof. You drive it from the driver's seat:
    - Your hands are on the wheel, Tony bobbles on the dash, and a pizza air freshener swings.
    - The **dashboard GPS** shows a live map, the route along real streets, "Turn left in 40 m",
      and how far you have left.

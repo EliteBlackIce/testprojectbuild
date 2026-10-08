@@ -309,6 +309,43 @@ static func shoe(width := 0.3, height := 0.2, length := 0.46) -> ArrayMesh:
 	return m
 
 
+## A properly rounded box (all edges and corners rounded with radius r), smooth
+## normals, centered on the origin. Great for soft toy-like cars and props.
+static func rounded_box(size: Vector3, r: float, segments := 20, rings := 12) -> ArrayMesh:
+	var key := "rbox|%s|%s|%d|%d" % [size, r, segments, rings]
+	if _cache.has(key):
+		return _cache[key]
+	r = minf(r, minf(size.x, minf(size.y, size.z)) * 0.5 - 0.001)
+	var inner := size * 0.5 - Vector3(r, r, r)
+	var sm := SphereMesh.new()
+	sm.radius = 1.0
+	sm.height = 2.0
+	sm.radial_segments = segments
+	sm.rings = rings
+	var arrays := sm.surface_get_arrays(0)
+	var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var idx: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+	var out_v := PackedVector3Array()
+	var out_n := PackedVector3Array()
+	for t in range(0, idx.size() - 2, 3):
+		var tri: Array[Vector3] = []
+		var nn: Array[Vector3] = []
+		for k in 3:
+			var d := verts[idx[t + k]].normalized()
+			var corner := Vector3(signf(d.x) * inner.x, signf(d.y) * inner.y, signf(d.z) * inner.z)
+			tri.append(corner + d * r)
+			nn.append(d)
+		var fn := (tri[1] - tri[0]).cross(tri[2] - tri[0])
+		if fn.length_squared() < 1e-14:
+			fn = nn[0] + nn[1] + nn[2]
+		if fn.dot(nn[0] + nn[1] + nn[2]) < 0.0:
+			fn = -fn
+		_emit_smooth(out_v, out_n, tri, nn, fn)
+	var m := _commit(out_v, out_n)
+	_cache[key] = m
+	return m
+
+
 ## Chunky chamfered block (boots, crates, counters). Origin at the bottom center.
 static func chamfer_box(size: Vector3, bevel := 0.15) -> ArrayMesh:
 	var key := "cbox|%s|%s" % [size, bevel]
