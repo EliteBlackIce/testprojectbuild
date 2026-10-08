@@ -44,6 +44,8 @@ var _deck_y := 0.0         ## porch floor height (residents stand on it)
 var _front := 3.5          ## z of the front wall
 var _porch_depth := 2.6
 var _lot_half := 7.5
+var _drive_x := 0.0
+var _drive_w := 0.0
 var _hw := 8.0             ## width of the main house
 var _porch_w := 4.0
 
@@ -608,6 +610,8 @@ func _garage(gx: float, d: float, h: float, wall: Color, gw: float) -> void:
 		lamp.material_override = Toon.glow(Color("#d9d2c0"), 1.2)
 		lamp.add_to_group("lamp_glow")
 	# driveway out to the street: short slabs that follow the slope of the lot
+	_drive_x = gx
+	_drive_w = dw + 0.4
 	var dz0 := front
 	var dz1 := 9.0
 	var zz := dz0
@@ -878,32 +882,45 @@ func _yard(has_garage: bool, gw: float, style: String) -> void:
 	_b.cyl(mp + Vector3(0, 1.37, 0), 0.22, 0.72, mc, Vector3(PI / 2, 0, 0))
 	_b.box(mp + Vector3(0.26, 1.35, 0.1), Vector3(0.04, 0.3, 0.1), Color("#e63946"))
 	Signs.board(_root, str(number), mp + Vector3(0, 1.2 + _gr(mp.x, mp.z), 0.37), Vector2(0.4, 0.26), Color("#fff4dc"), Color("#2b1c18"), 0.0, "wall", mc.darkened(0.3))
-	# picket fence along the sidewalk (gaps for the path and the driveway)
+	# picket fence along the sidewalk: stays inside this lot, with gaps for the path and the driveway
 	if rng.randf() < 0.55:
 		var fence_col := Color(["#f6f4ef", "#f6f4ef", "#a1785a", "#d9c7a0"][rng.randi() % 4])
-		var fx := -7.2
-		while fx <= 7.2:
-			var wx := fx + _ox
-			var in_gap := absf(wx) < 1.1 or (has_garage and wx > _hw * 0.5 + _ox - 0.1 - 0.0 and wx < _hw * 0.5 + _ox + gw + 0.2 and false)
-			if has_garage and fx > _hw * 0.5 - 1.2 and fx < _hw * 0.5 + gw - 0.3:
-				in_gap = true
-			if not in_gap:
+		var lo := -7.1 - _ox
+		var hi := 7.1 - _ox
+		var gaps: Array[Vector2] = [Vector2(-1.1, 1.1)]
+		if has_garage:
+			gaps.append(Vector2(_drive_x - _drive_w * 0.5 - 0.3, _drive_x + _drive_w * 0.5 + 0.3))
+		var in_gap := func(x: float) -> bool:
+			for g in gaps:
+				if x > g.x and x < g.y:
+					return true
+			return false
+		var fx := lo
+		while fx <= hi:
+			if not in_gap.call(fx):
 				_b.box(Vector3(fx, 0.45, 8.9), Vector3(0.14, 0.9, 0.05), fence_col)
 				_b.box(Vector3(fx, 0.93, 8.9), Vector3(0.1, 0.1, 0.05), fence_col, Vector3(0, 0, 0.78))
 			fx += 0.36
 		for ry: float in [0.3, 0.7]:
-			var rx := -7.2
-			while rx < 7.2:
-				var rgap := absf(rx + 0.5 + _ox) < 1.1 or (has_garage and rx + 0.5 > _hw * 0.5 - 1.2 and rx + 0.5 < _hw * 0.5 + gw - 0.3)
-				if not rgap:
-					_b.box(Vector3(rx + 0.5, ry, 8.86), Vector3(1.0, 0.07, 0.04), fence_col)
+			var rx := lo
+			while rx < hi:
+				var rend := minf(rx + 1.0, hi)
+				var rmid := (rx + rend) * 0.5
+				if not in_gap.call(rmid):
+					_b.box(Vector3(rmid, ry, 8.86), Vector3(rend - rx, 0.07, 0.04), fence_col)
 				rx += 1.0
-		for pxx: float in [-7.2, -1.2, 1.2, 7.2]:
-			_b.box(Vector3(pxx, 0.55, 8.9), Vector3(0.18, 1.1, 0.18), fence_col)
-			_b.ball(Vector3(pxx, 1.15, 8.9), 0.1, fence_col)
+		# one post at each end of the lot and one beside every gap (never two posts in the same spot)
+		var posts: Array[float] = [lo, hi]
+		for g in gaps:
+			posts.append(g.x)
+			posts.append(g.y)
+		for pxx in posts:
+			if pxx >= lo - 0.01 and pxx <= hi + 0.01 and not in_gap.call(pxx + 0.0):
+				_b.box(Vector3(pxx, 0.55, 8.9), Vector3(0.18, 1.1, 0.18), fence_col)
+				_b.ball(Vector3(pxx, 1.15, 8.9), 0.1, fence_col)
 	# a tree in the lawn
 	if rng.randf() < 0.65:
-		var tpx := (-1 if rng.randf() < 0.5 else 1) * rng.randf_range(4.2, 6.2)
+		var tpx := (-1 if rng.randf() < 0.5 else 1) * rng.randf_range(3.8, 5.0)
 		var tp := _lx(Vector3(tpx, 0, rng.randf_range(5.6, 7.4)))
 		tp.y = _gr(tp.x, tp.z)
 		Toon.cyl(_root, 0.2, 0.3, 2.8, tp + Vector3(0, 1.4, 0), Color("#8b5e3c"), 0.015, 6)

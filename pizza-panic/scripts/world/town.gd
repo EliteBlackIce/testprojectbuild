@@ -462,6 +462,8 @@ func _build_edges() -> void:
 		var a := rng.randf() * TAU
 		var r := rng.randf_range(1.05, 1.2)
 		var tp := c + Vector3(cos(a) * (half.x + 8.0) * r, 0, sin(a) * (half.z + 8.0) * r)
+		if Terrain.outside(tp.x, tp.z) < 14.0:
+			continue       # never inside the town, never in a road
 		tp.y = Terrain.ground_y(tp.x, tp.z)
 		Landmarks.tree(self, tp, rng)
 	var ws := c + Vector3(0, 6.0, half.z + 6.0)

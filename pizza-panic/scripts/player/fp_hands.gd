@@ -81,6 +81,8 @@ func _ready() -> void:
 		wrist.rotation = Vector3(PI / 2 + 0.3, -0.3 * side, 0.5 * side)
 		hand.add_child(wrist)
 		var built := EggBody.build_hand(wrist, SKIN, -float(side), 0.95, 0.006)
+		# a rounded wrist that sits inside both the forearm and the palm, so there is no visible seam
+		Toon.ball(hand, 0.047, Vector3.ZERO, SKIN, 0.006, 16)
 		_fingers.append(built[1])
 		_wrists.append(wrist)
 		_hands.append(hand)
@@ -220,7 +222,6 @@ func _process(delta: float) -> void:
 		rot += Vector3(clampf(_vel[i].y * 0.18, -0.35, 0.35), clampf(_vel[i].x * 0.12, -0.25, 0.25), clampf(-_vel[i].x * 0.25, -0.4, 0.4))
 		_rot[i] = _rot[i].lerp(rot, 1.0 - exp(-16.0 * delta))
 		_hands[i].position = _pos[i]
-		_hands[i].rotation = _rot[i]
 		# Fingers: each curl chases its grip, a touch loose and alive.
 		var c: Array = _curl[i]
 		for k in 3:
@@ -247,8 +248,13 @@ func _solve_arm(i: int, side: float) -> void:
 	var pole := (hint - dir * hint.dot(dir)).normalized()
 	var elbow := sh + dir * a + pole * h
 	_limb_between(_upper[i], sh, elbow, UPPER)
-	_limb_between(_fore[i], elbow, wrist + (wrist - elbow).normalized() * 0.01, FORE)
+	_limb_between(_fore[i], elbow, wrist + (wrist - elbow).normalized() * 0.02, FORE)
 	_elbow_balls[i].position = elbow
+	# The hand continues the line of the forearm (so it is always visibly attached to it); the pose's
+	# own tilts and rolls are applied relative to that.
+	var fd := (wrist - elbow).normalized()
+	var aim := Basis.looking_at(fd, Vector3.UP)
+	_hands[i].basis = aim * Basis.from_euler(_rot[i] * 0.85)
 
 
 func _limb_between(node: Node3D, from: Vector3, to: Vector3, length: float) -> void:

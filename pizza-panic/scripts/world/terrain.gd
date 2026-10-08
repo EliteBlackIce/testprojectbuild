@@ -216,7 +216,7 @@ static func _build_town_mesh(parent: Node3D) -> void:
 				var hz1 := _grid[gi * w + mini(gj + 1, _gn_z)]
 				var hz0 := _grid[gi * w + maxi(gj - 1, 0)]
 				ns.append(Vector3(-(hx1 - hx0) / (2.0 * TC), 1.0, -(hz1 - hz0) / (2.0 * TC)).normalized())
-			var order := [0, 3, 2, 0, 2, 1] if (i + j) % 2 == 0 else [0, 3, 1, 1, 3, 2]
+			var order := [0, 1, 2, 0, 2, 3] if (i + j) % 2 == 0 else [0, 1, 3, 1, 2, 3]
 			for k in order:
 				verts.append(ps[k])
 				norms.append(ns[k])
@@ -235,7 +235,7 @@ static func _build_town_mesh(parent: Node3D) -> void:
 		var b: Vector3 = e[1]
 		var a2 := a - Vector3(0, 3.0, 0)
 		var b2 := b - Vector3(0, 3.0, 0)
-		for t in [[a, b, b2], [a, b2, a2]]:
+		for t in [[a, b, b2], [a, b2, a2], [a, b2, b], [a, a2, b2]]:
 			for p in t:
 				verts.append(p)
 				norms.append(Vector3.UP)

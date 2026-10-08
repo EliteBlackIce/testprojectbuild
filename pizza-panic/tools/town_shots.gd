@@ -54,6 +54,16 @@ func _ready() -> void:
 	await _look(t.block_origin(2, 1) + Vector3(15, 4.0, 28.0), t.block_origin(2, 1) + Vector3(15, 5.0, 20.0), "t6_plaza")
 	await _look(Vector3(c0.x + 30.0, 14.0, c0.z + 95.0), Vector3(c0.x - 60.0, 3.0, c0.z - 30.0), "t7_hills_wide")
 	await _look(Vector3(c0.x + 118.0, 16.0, c0.z + 20.0), Vector3(c0.x - 20.0, 2.0, c0.z - 10.0), "t8_hills_east")
+	var rp := Vector3(t.road_x(2), 0.0, t.road_z(2))
+	await _look(rp + Vector3(8, 6, 14), rp + Vector3(0, 0, 0), "t9_road_close")
+	var tg := t.get_node("TownGround") as MeshInstance3D
+	var ot := t.get_node("Terrain") as MeshInstance3D
+	ot.visible = false
+	await _look(rp + Vector3(8, 6, 14), rp + Vector3(0, 0, 0), "t9_no_outer")
+	ot.visible = true
+	tg.visible = false
+	await _look(rp + Vector3(8, 6, 14), rp + Vector3(0, 0, 0), "t9_no_town")
+	tg.visible = true
 	await _look(t.block_origin(0, 2) + Vector3(15, 3.0, 0.5), t.block_origin(0, 2) + Vector3(15, 3.5, 30), "t3_suburb_street")
 	get_tree().quit()
 
