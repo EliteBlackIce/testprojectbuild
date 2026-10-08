@@ -202,7 +202,7 @@ static func egg_profile(yn: float) -> float:
 	return 0.0
 
 
-static func body_egg(height := 1.45, radius := 0.5, belly := 0.1, segments := 20, rings := 18) -> ArrayMesh:
+static func body_egg(height := 1.45, radius := 0.5, belly := 0.1, segments := 36, rings := 30) -> ArrayMesh:
 	var key := "begg|%s|%s|%s|%d|%d" % [height, radius, belly, segments, rings]
 	if _cache.has(key):
 		return _cache[key]
@@ -239,16 +239,16 @@ static func body_egg(height := 1.45, radius := 0.5, belly := 0.1, segments := 20
 
 
 ## Low-poly capsule along -Y from the origin (arms, legs). Rounder than a cylinder.
-static func limb(length: float, r_top: float, r_bottom: float, segments := 10) -> ArrayMesh:
+static func limb(length: float, r_top: float, r_bottom: float, segments := 16) -> ArrayMesh:
 	var key := "limb|%s|%s|%s|%d" % [length, r_top, r_bottom, segments]
 	if _cache.has(key):
 		return _cache[key]
 	var p := PackedVector2Array()
-	for k in 4:
-		var a := PI * 0.5 * float(k) / 3.0
+	for k in 7:
+		var a := PI * 0.5 * float(k) / 6.0
 		p.append(Vector2(sin(a) * r_bottom, -length + r_bottom - cos(a) * r_bottom))
-	for k in 4:
-		var a := PI * 0.5 + PI * 0.5 * float(k) / 3.0
+	for k in 7:
+		var a := PI * 0.5 + PI * 0.5 * float(k) / 6.0
 		p.append(Vector2(sin(a) * r_top, -cos(a) * r_top))
 	var m := lathe(p, segments, 0.5)
 	_cache[key] = m
@@ -289,7 +289,7 @@ static func shoe(width := 0.3, height := 0.2, length := 0.46) -> ArrayMesh:
 		return _cache[key]
 	var prof := PackedVector2Array([Vector2(0, 0), Vector2(0.94, 0), Vector2(1.0, 0.1), Vector2(1.0, 0.55),
 		Vector2(0.88, 0.88), Vector2(0.55, 1.0), Vector2(0, 1.0)])
-	var base := lathe(prof, 10, 0.5)
+	var base := lathe(prof, 20, 0.5)
 	var arrays := base.surface_get_arrays(0)
 	var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
 	var out_v := PackedVector3Array()

@@ -91,6 +91,11 @@ mustaches, aprons and the rest go on top, and the faces animate.
 
 ![Egg model](docs/screenshots/egg_model.png)
 
+![Rolling hills around town](docs/screenshots/hills.png)
+
+**The land**: Eggville sits in a bowl of rolling hills with pine and autumn forests, rocks, a lake,
+a windmill and red barn up on a ridge, and snow-capped mountains on the horizon.
+
 **The town** has downtown shops, Yolk Park, a gas station, ~58 houses each with its own resident,
 traffic, egg pedestrians, streetlights that switch on at sunset, and hills and mountains.
 
@@ -227,3 +232,19 @@ Events (rush hour, a food critic, a pizza-hating mayor), more neighborhoods unlo
 reputation, delivery drivers you can hire, achievements, a photo mode, controller rumble, real music tracks, and
 exporting for Windows/Steam when you're ready (`export_presets.cfg` already has the macOS
 microphone permission set up).
+
+
+## Exporting the models
+
+Every model in the game is built by code, so there are no model files in the project. To get real
+files for Blender, Unity, Unreal and so on, run:
+
+```sh
+godot --headless --path pizza-panic res://tools/export_assets.tscn -- out=/some/folder
+```
+
+That writes about 48 `.glb` files: every character (plus T-poses with a joint hierarchy), the
+staff, the delivery van, traffic cars, all the pizza stages, Tony's pizzeria, house styles, trees,
+the terrain and the whole town. A ready-made copy is in `pizza-panic-assets.zip` next to this
+project. Colors are flat; the cel shading and ink outlines are shader effects, so you recreate them
+in your own tool.

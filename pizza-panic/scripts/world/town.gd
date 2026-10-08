@@ -28,6 +28,7 @@ var lamps: Array[OmniLight3D] = []
 var rng := RandomNumberGenerator.new()
 var _origin := Vector3.ZERO
 var _clouds: Array[Node3D] = []
+var _blades: Node3D
 
 
 func generate(seed_value := 1234) -> void:
@@ -79,7 +80,9 @@ func house_by_number(num: int) -> House:
 
 func _build_ground() -> void:
 	var c := center()
-	Toon.box(self, Vector3(1400, 1.0, 1400), c + Vector3(0, -0.5, 0), Color("#7bbf68"), 0.0)
+	# Flat slab under the town (top at -0.1: the terrain mesh handles anything above).
+	Toon.box(self, Vector3(1800, 1.0, 1800), c + Vector3(0, -0.6, 0), Color("#7bbf68"), 0.0)
+	Toon.box(self, Vector3(size().x + ROAD + 56.0, 0.1, size().y + ROAD + 56.0), c + Vector3(0, -0.05, 0), Color("#7bbf68"), 0.0)
 	var floor_body := StaticBody3D.new()
 	var shape := CollisionShape3D.new()
 	shape.shape = WorldBoundaryShape3D.new()
@@ -385,7 +388,7 @@ func _build_edges() -> void:
 		rails.append(Transform3D(Basis(), c + Vector3(half.x + 2.0, 0.5, z)))
 		z += 2.5
 	Toon.multimesh(self, Shapes.chamfer_box(Vector3(0.3, 1.0, 0.3), 0.3), Toon.mat(Color("#f6f4ef"), 0.01), rails)
-	Landmarks.hills(self, c, Vector2(half.x, half.z), rng)
+	_blades = Landmarks.hills(self, c, Vector2(half.x, half.z), rng)
 	Landmarks.water_tower(self, c + Vector3(-half.x - 14.0, 0, half.z - 20.0))
 	for k in 40:
 		var a := rng.randf() * TAU
@@ -407,6 +410,8 @@ func _build_clouds() -> void:
 
 
 func _process(delta: float) -> void:
+	if _blades:
+		_blades.rotation.z += delta * 0.8
 	for cl in _clouds:
 		cl.position.x += delta * 1.2
 		if cl.position.x > 300.0:

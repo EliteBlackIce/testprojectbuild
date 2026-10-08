@@ -111,6 +111,7 @@ func build(l: Dictionary) -> void:
 	_leg_len = 0.0 if ghost else (0.3 if look.get("baby", false) else 0.66)
 
 	_rig = Node3D.new()
+	_rig.name = "Rig"
 	add_child(_rig)
 	_hips = Node3D.new()
 	_hips.position = Vector3(0, _leg_len, 0)
@@ -118,7 +119,9 @@ func build(l: Dictionary) -> void:
 	if not ghost:
 		_build_legs(Color(look.get("legs", skin.darkened(0.06))), Color(look.get("boots", "#6b4a35")))
 
+	_hips.name = "Hips"
 	_torso = Node3D.new()
+	_torso.name = "Torso"
 	_hips.add_child(_torso)
 	var body := Toon.mesh(_torso, Shapes.body_egg(_h, _r, _belly), Vector3(0, -0.08, 0), skin, 0.018)
 	body.name = "Egg"
@@ -188,12 +191,14 @@ func _build_legs(leg_color: Color, boot_color: Color) -> void:
 	for side: int in [-1, 1]:
 		var pivot := Node3D.new()
 		pivot.position = Vector3(spread * side, 0.1, 0.0)
+		pivot.name = "Leg_L" if side == -1 else "Leg_R"
 		_hips.add_child(pivot)
 		_leg_splay.append(0.07 * side)
 		var thick := 0.132 if not look.get("baby", false) else 0.1
-		Toon.mesh(pivot, Shapes.limb(_leg_len + 0.02, thick, thick * 0.9, 10), Vector3.ZERO, leg_color, 0.01)
+		Toon.mesh(pivot, Shapes.limb(_leg_len + 0.02, thick, thick * 0.9, 16), Vector3.ZERO, leg_color, 0.01)
 		var boot := Node3D.new()
 		boot.position = Vector3(0, -_leg_len - 0.1, 0)
+		boot.name = "Foot_L" if side == -1 else "Foot_R"
 		pivot.add_child(boot)
 		var shoe := Toon.mesh(boot, Shapes.shoe(0.38, 0.25, 0.6), Vector3.ZERO, boot_color, 0.014)
 		shoe.rotation.y = 0.5 * side        # toes point out, duck-footed
@@ -214,14 +219,17 @@ func _build_arms(skin: Color) -> void:
 	for side: int in [-1, 1]:
 		var shoulder := Node3D.new()
 		shoulder.position = Vector3((_egg_r(shoulder_y) - 0.07) * side, shoulder_y - 0.08, 0.0)
+		shoulder.name = "Shoulder_L" if side == -1 else "Shoulder_R"
 		_torso.add_child(shoulder)
-		Toon.mesh(shoulder, Shapes.limb(upper + 0.04, 0.112, 0.074, 9), Vector3.ZERO, arm_color, 0.01)
+		Toon.mesh(shoulder, Shapes.limb(upper + 0.04, 0.112, 0.074, 16), Vector3.ZERO, arm_color, 0.01)
 		var elbow := Node3D.new()
 		elbow.position = Vector3(0, -upper, 0)
+		elbow.name = "Elbow_L" if side == -1 else "Elbow_R"
 		shoulder.add_child(elbow)
-		Toon.mesh(elbow, Shapes.limb(fore + 0.03, 0.073, 0.056, 9), Vector3.ZERO, skin, 0.01)
+		Toon.mesh(elbow, Shapes.limb(fore + 0.03, 0.073, 0.056, 16), Vector3.ZERO, skin, 0.01)
 		var wrist := Node3D.new()
 		wrist.position = Vector3(0, -fore, 0)
+		wrist.name = "Wrist_L" if side == -1 else "Wrist_R"
 		elbow.add_child(wrist)
 		var built := build_hand(wrist, skin, float(side), 0.9 if baby else 1.15, 0.009)
 		_shoulders.append(shoulder)
@@ -243,7 +251,7 @@ static func build_hand(parent: Node3D, skin: Color, side: float, size := 1.0, ou
 	var root := Node3D.new()
 	root.scale = Vector3.ONE * size
 	parent.add_child(root)
-	var palm := Toon.ball(root, 0.078, Vector3(0, -0.065, 0), skin, outline, 10)
+	var palm := Toon.ball(root, 0.078, Vector3(0, -0.065, 0), skin, outline, 20)
 	palm.scale = Vector3(1.12, 1.0, 0.6)
 	var pivots: Array[Node3D] = []
 	var xs := [-0.05, 0.0, 0.05]
@@ -253,13 +261,13 @@ static func build_hand(parent: Node3D, skin: Color, side: float, size := 1.0, ou
 		f.position = Vector3(float(xs[k]) * side, -0.12, 0.0)
 		f.rotation.z = float(xs[k]) * side * 3.2      # fanned out a little
 		root.add_child(f)
-		Toon.mesh(f, Shapes.limb(lengths[k], 0.029, 0.024, 7), Vector3.ZERO, skin, outline)
+		Toon.mesh(f, Shapes.limb(lengths[k], 0.029, 0.024, 16), Vector3.ZERO, skin, outline)
 		pivots.append(f)
 	var thumb := Node3D.new()
 	thumb.position = Vector3(0.06 * side, -0.05, 0.012)
 	thumb.rotation = Vector3(0.0, 0.0, 1.0 * side)
 	root.add_child(thumb)
-	Toon.mesh(thumb, Shapes.limb(0.11, 0.03, 0.025, 7), Vector3.ZERO, skin, outline)
+	Toon.mesh(thumb, Shapes.limb(0.11, 0.03, 0.025, 16), Vector3.ZERO, skin, outline)
 	pivots.append(thumb)
 	return [root, pivots]
 

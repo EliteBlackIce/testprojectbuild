@@ -177,21 +177,105 @@ static func water_tower(parent: Node3D, pos: Vector3) -> void:
 
 
 ## Rolling low-poly hills ringing the town, plus far mountains for depth.
-static func hills(parent: Node3D, center: Vector3, half: Vector2, rng: RandomNumberGenerator) -> void:
-	var greens := ["#6fae5b", "#7bbf68", "#5e9e4f", "#86c06c"]
-	var rx := half.x + 30.0
-	var rz := half.y + 30.0
-	for i in 40:
-		var a := TAU * i / 40.0 + rng.randf_range(-0.05, 0.05)
-		var p := center + Vector3(cos(a) * rx * rng.randf_range(1.0, 1.25), -2.0, sin(a) * rz * rng.randf_range(1.0, 1.25))
-		var r := rng.randf_range(18.0, 32.0)
-		var hill := Toon.mesh(parent, Shapes.blob(r, i, 0.12), p, Color(greens[i % greens.size()]), 0.0)
-		hill.scale = Vector3(1.0, rng.randf_range(0.35, 0.6), 1.0)
-		if rng.randf() < 0.5:
-			tree(parent, p + Vector3(rng.randf_range(-6, 6), r * 0.3, rng.randf_range(-6, 6)), rng)
-	for i in 14:
-		var a := TAU * i / 14.0
-		var p := center + Vector3(cos(a) * (rx + 180.0), -5.0, sin(a) * (rz + 180.0))
-		var m := Toon.cyl(parent, 0.0, rng.randf_range(45.0, 70.0), rng.randf_range(60.0, 110.0), p, Color("#8e9fb5"), 0.0, 5)
+## The hills, forests, rocks, lake, windmill, barn and mountains around town.
+## Returns the windmill's blade hub so Town can spin it.
+static func hills(parent: Node3D, center: Vector3, half: Vector2, rng: RandomNumberGenerator) -> Node3D:
+	Terrain.setup(center, half, rng.randi())
+	Terrain.build(parent)
+	# --- forests (pines + round trees + autumn trees in clusters) -----------------
+	var trunks: Array[Transform3D] = []
+	var pines_a: Array[Transform3D] = []
+	var pines_b: Array[Transform3D] = []
+	var rounds: Array[Transform3D] = []
+	var autumn: Array[Transform3D] = []
+	var rocks: Array[Transform3D] = []
+	var tries := 0
+	var placed := 0
+	while placed < 1500 and tries < 9000:
+		tries += 1
+		var x := center.x + rng.randf_range(-Terrain.EXTENT, Terrain.EXTENT) * 0.95
+		var z := center.z + rng.randf_range(-Terrain.EXTENT, Terrain.EXTENT) * 0.95
+		var d := Terrain.outside(x, z)
+		if d < 22.0:
+			continue
+		var h := Terrain.height(x, z)
+		if h < 0.8 or h > 50.0:
+			continue
+		# Clumpy: only plant where a low-frequency noise is high.
+		var clump := Terrain._ridge.get_noise_2d(x * 0.9 + 500.0, z * 0.9)
+		if clump < -0.05 and rng.randf() < 0.9:
+			continue
+		var sc := rng.randf_range(0.8, 1.9) * (1.0 + h * 0.004)
+		var base := Vector3(x, h - 0.2, z)
+		var yaw := Basis(Vector3.UP, rng.randf() * TAU)
+		var kind := rng.randf()
+		if kind < 0.55:
+			trunks.append(Transform3D(yaw.scaled(Vector3(sc, sc, sc)), base + Vector3(0, 0.9 * sc, 0)))
+			pines_a.append(Transform3D(yaw.scaled(Vector3(sc, sc, sc)), base + Vector3(0, 2.2 * sc, 0)))
+			pines_b.append(Transform3D(yaw.scaled(Vector3(sc * 0.72, sc * 0.9, sc * 0.72)), base + Vector3(0, 3.9 * sc, 0)))
+		elif kind < 0.88:
+			trunks.append(Transform3D(yaw.scaled(Vector3(sc, sc, sc)), base + Vector3(0, 0.9 * sc, 0)))
+			(rounds if rng.randf() < 0.8 else autumn).append(Transform3D(yaw.scaled(Vector3(sc, sc, sc)), base + Vector3(0, 2.7 * sc, 0)))
+		else:
+			rocks.append(Transform3D(yaw.scaled(Vector3(sc * 1.4, sc * rng.randf_range(0.6, 1.2), sc * 1.4)), base + Vector3(0, 0.2, 0)))
+		placed += 1
+	Toon.multimesh(parent, Shapes.cylinder(0.2, 0.28, 1.8, 6), Toon.mat(Color("#8b5e3c"), 0.0), trunks)
+	Toon.multimesh(parent, Shapes.cylinder(0.0, 1.5, 3.2, 7), Toon.mat(Color("#2f7d55"), 0.0), pines_a)
+	Toon.multimesh(parent, Shapes.cylinder(0.0, 1.2, 2.6, 7), Toon.mat(Color("#3b9468"), 0.0), pines_b)
+	Toon.multimesh(parent, Shapes.blob(1.7, 3, 0.18), Toon.mat(Color("#58b86a"), 0.0), rounds)
+	Toon.multimesh(parent, Shapes.blob(1.7, 4, 0.18), Toon.mat(Color("#f0a23a"), 0.0), autumn)
+	Toon.multimesh(parent, Shapes.blob(1.0, 9, 0.25), Toon.mat(Color("#9aa4ad"), 0.0), rocks)
+	# --- a windmill on a ridge, with a little barn below it -----------------------
+	var blades := Node3D.new()
+	var wp := _hill_spot(center, half, rng, 28.0, 38.0, Vector2(1, -1))
+	var wm := Node3D.new()
+	wm.position = wp
+	parent.add_child(wm)
+	Toon.mesh(wm, Shapes.lathe(PackedVector2Array([Vector2(3.2, 0), Vector2(2.8, 4), Vector2(2.0, 11), Vector2(0, 12)]), 10, 0.0), Vector3(0, 0, 0), Color("#f4e7d0"), 0.0)
+	Toon.mesh(wm, Shapes.cylinder(0.0, 2.6, 3.0, 10), Vector3(0, 0, 0), Color("#c0392b"), 0.0).position = Vector3(0, 13.2, 0)
+	Toon.box(wm, Vector3(1.0, 1.6, 0.1), Vector3(0, 1.0, 3.1), Color("#6d4c41"), 0.0)
+	blades.position = Vector3(0, 9.5, 3.0)
+	wm.add_child(blades)
+	for k in 4:
+		var arm := Node3D.new()
+		arm.rotation.z = TAU * k / 4.0
+		blades.add_child(arm)
+		Toon.box(arm, Vector3(0.25, 7.6, 0.12), Vector3(0, 4.0, 0), Color("#8b5e3c"), 0.0)
+		Toon.box(arm, Vector3(1.5, 4.8, 0.06), Vector3(0.9, 5.0, 0.05), Color("#fff8e7"), 0.0)
+	Toon.ball(blades, 0.6, Vector3.ZERO, Color("#6d4c41"), 0.0, 8)
+	var bp := wp + Vector3(-22.0, 0, 16.0)
+	bp.y = Terrain.height(bp.x, bp.z)
+	var barn := Node3D.new()
+	barn.position = bp
+	parent.add_child(barn)
+	Toon.block(barn, Vector3(9.0, 5.0, 12.0), Vector3.ZERO, Color("#b3372c"), 0.0, 0.0)
+	var roof := Toon.mesh(barn, Shapes.prism(Vector3(10.0, 3.6, 13.0)), Vector3(0, 6.8, 0), Color("#7b2a24"), 0.0)
+	roof.rotation.z = 0.0
+	Toon.box(barn, Vector3(3.2, 4.0, 0.2), Vector3(0, 2.0, 6.05), Color("#f6efe2"), 0.0)
+	# --- far mountains ---------------------------------------------------------------
+	for i in 18:
+		var a := TAU * i / 18.0 + rng.randf_range(-0.08, 0.08)
+		var dist := rng.randf_range(0.97, 1.06) * (Terrain.EXTENT - 40.0)
+		var p := center + Vector3(cos(a) * dist, -6.0, sin(a) * dist)
+		var hgt := rng.randf_range(120.0, 210.0)
+		var rad := rng.randf_range(90.0, 140.0)
+		var m := Toon.cyl(parent, 0.0, rad, hgt, p + Vector3(0, hgt * 0.5, 0), Color("#7e8fb0"), 0.0, 6)
 		m.rotation.y = rng.randf() * TAU
-		Toon.cyl(parent, 0.0, 12.0, 20.0, p + Vector3(0, m.mesh.get_aabb().size.y * 0.5 - 9.8, 0), Color("#f6f4ef"), 0.0, 5)
+		Toon.cyl(parent, 0.0, rad * 0.33, hgt * 0.3, p + Vector3(0, hgt * 0.85, 0), Color("#f6f7fb"), 0.0, 6).rotation.y = m.rotation.y
+	return blades
+
+
+## A spot on a hill with a roughly-flat top, away from the lake.
+static func _hill_spot(center: Vector3, half: Vector2, rng: RandomNumberGenerator, min_h: float, max_h: float, side: Vector2) -> Vector3:
+	var best := center + Vector3(side.x * (half.x + 100.0), 0, side.y * (half.y + 100.0))
+	var best_score := -INF
+	for k in 160:
+		var x := center.x + side.x * rng.randf_range(half.x + 50.0, half.x + 260.0)
+		var z := center.z + side.y * rng.randf_range(half.y + 30.0, half.y + 220.0)
+		var h := Terrain.height(x, z)
+		var slope := absf(Terrain.height(x + 6.0, z) - h) + absf(Terrain.height(x, z + 6.0) - h)
+		var score := -absf(h - (min_h + max_h) * 0.5) - slope * 4.0
+		if score > best_score and h > min_h * 0.6:
+			best_score = score
+			best = Vector3(x, h - 0.3, z)
+	return best
