@@ -50,6 +50,7 @@ func _process(delta: float) -> void:
 		# After a tumble they stand up wherever they landed and stroll back onto the sidewalk.
 		w.off = (w.off as Vector3).move_toward(Vector3.ZERO, 1.6 * delta)
 		egg.position = (w.path_pos as Vector3) + (w.off as Vector3)
+		egg.position.y = Terrain.ground_y(egg.position.x, egg.position.z) + 0.02
 		var dir := (b - a).normalized()
 		egg.rotation.y = lerp_angle(egg.rotation.y, atan2(dir.x, dir.z), 1.0 - exp(-8.0 * delta))
 		egg.speed = w.speed / 1.4

@@ -180,8 +180,6 @@ static func water_tower(parent: Node3D, pos: Vector3) -> void:
 ## The hills, forests, rocks, lake, windmill, barn and mountains around town.
 ## Returns the windmill's blade hub so Town can spin it.
 static func hills(parent: Node3D, center: Vector3, half: Vector2, rng: RandomNumberGenerator) -> Node3D:
-	Terrain.setup(center, half, rng.randi())
-	Terrain.build(parent)
 	# --- forests (pines + round trees + autumn trees in clusters) -----------------
 	var trunks: Array[Transform3D] = []
 	var pines_a: Array[Transform3D] = []

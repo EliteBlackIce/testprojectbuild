@@ -31,6 +31,7 @@ func _ready() -> void:
 	add_child(cam)
 	cam.current = true
 	var t: Town = main.town
+	var c0 := t.center()
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("weather="):
 			main.day_cycle.set_weather(a.substr(8))
@@ -51,6 +52,8 @@ func _ready() -> void:
 	await _look(pz.to_global(Vector3(0, 3.5, 16.0)), pz.to_global(Vector3(0, 4.5, 9.0)), "t5_pizzeria_front")
 	await _look(dt + Vector3(-10, 3.0, 24.0), dt + Vector3(-8, 4.0, 15.0), "t4_shop_signs")
 	await _look(t.block_origin(2, 1) + Vector3(15, 4.0, 28.0), t.block_origin(2, 1) + Vector3(15, 5.0, 20.0), "t6_plaza")
+	await _look(Vector3(c0.x + 30.0, 14.0, c0.z + 95.0), Vector3(c0.x - 60.0, 3.0, c0.z - 30.0), "t7_hills_wide")
+	await _look(Vector3(c0.x + 118.0, 16.0, c0.z + 20.0), Vector3(c0.x - 20.0, 2.0, c0.z - 10.0), "t8_hills_east")
 	await _look(t.block_origin(0, 2) + Vector3(15, 3.0, 0.5), t.block_origin(0, 2) + Vector3(15, 3.5, 30), "t3_suburb_street")
 	get_tree().quit()
 

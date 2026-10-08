@@ -11,6 +11,7 @@ const KINDS := ["box", "cyl", "cone", "taper", "ball"]
 var _items: Dictionary = {"box": [], "cyl": [], "cone": [], "taper": [], "ball": []}
 var _glass_lit: Array[Transform3D] = []
 var _glass_dim: Array[Transform3D] = []
+var ground := Callable()      ## optional (x, z) -> y offset: while set, every item rides the ground (yards on hills)
 static var _mat: ShaderMaterial
 static var _meshes: Dictionary = {}
 
@@ -41,6 +42,8 @@ static func mesh_for(kind: String) -> Mesh:
 
 
 func _add(kind: String, xf: Transform3D, color: Color) -> void:
+	if ground.is_valid():
+		xf.origin.y += float(ground.call(xf.origin.x, xf.origin.z))
 	_items[kind].append([xf, color.srgb_to_linear()])
 
 
@@ -71,6 +74,8 @@ func ball(pos: Vector3, radius: float, color: Color, squash := Vector3.ONE) -> v
 ## A window pane: lit ones switch to a warm glow at night.
 func glass(pos: Vector3, size: Vector3, lit: bool, rot := Vector3.ZERO) -> void:
 	var xf := Transform3D(Basis.from_euler(rot) * Basis.from_scale(size), pos)
+	if ground.is_valid():
+		xf.origin.y += float(ground.call(xf.origin.x, xf.origin.z))
 	if lit:
 		_glass_lit.append(xf)
 	else:

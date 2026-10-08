@@ -300,7 +300,9 @@ func _do_ufo() -> void:
 			car.respawn_at(Vector3(car.global_position.x, 0.4 + k * 4.5, car.global_position.z), car.rotation.y + 0.15), 0.0, 1.0, 1.6)
 	tw.tween_callback(func() -> void:
 		var t: Town = main.town
-		var dest := Vector3(t.road_x(randi() % (Town.COLS + 1)), 0.5, t.road_z(randi() % (Town.ROWS + 1)))
+		var dx := t.road_x(randi() % (Town.COLS + 1))
+		var dz := t.road_z(randi() % (Town.ROWS + 1))
+		var dest := Vector3(dx, Terrain.ground_y(dx, dz) + 0.5, dz)
 		car.respawn_at(dest, randf() * TAU)
 		Game.say_toast("Your van got dumped in the middle of the street. Rude.", UiTheme.YELLOW))
 	tw.tween_property(_ufo, "global_position:y", 40.0, 1.2)

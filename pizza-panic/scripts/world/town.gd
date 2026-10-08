@@ -35,6 +35,7 @@ var _blades: Node3D
 func generate(seed_value := 1234) -> void:
 	rng.seed = seed_value
 	_origin = Vector3(-COLS * PITCH * 0.5, 0, -ROWS * PITCH * 0.5)
+	_setup_terrain(seed_value)
 	_build_ground()
 	_build_roads()
 	_build_blocks()
@@ -79,54 +80,113 @@ func house_by_number(num: int) -> House:
 
 # --- ground + roads -----------------------------------------------------------------------------
 
+func _setup_terrain(seed_value: int) -> void:
+	var s := size()
+	var half := Vector2(s.x * 0.5 + ROAD * 0.5, s.y * 0.5 + ROAD * 0.5)
+	# Downtown, the plaza, the park, the gas station and Tony's block stay level; the suburbs roll.
+	var flats: Array[Rect2] = []
+	for key in ZONES:
+		var o := block_origin(key.x, key.y)
+		flats.append(Rect2(o.x - 7.0, o.z - 7.0, BLOCK + 14.0, BLOCK + 14.0))
+	Terrain.setup(center(), half, seed_value, flats, ground_color)
+
+
+## Colour of the ground at (x, z): asphalt, sidewalk, lawn or paving. The terrain mesh paints itself with this.
+func ground_color(x: float, z: float) -> Color:
+	var asphalt := Color("#56535c")
+	var rx := roundi((x - _origin.x) / PITCH)
+	var rz := roundi((z - _origin.z) / PITCH)
+	var z_lo := road_z(0) - ROAD * 0.5
+	var z_hi := road_z(ROWS) + ROAD * 0.5
+	var x_lo := road_x(0) - ROAD * 0.5
+	var x_hi := road_x(COLS) + ROAD * 0.5
+	if rx >= 0 and rx <= COLS and absf(x - road_x(rx)) < ROAD * 0.5 and z > z_lo and z < z_hi:
+		return asphalt
+	if rz >= 0 and rz <= ROWS and absf(z - road_z(rz)) < ROAD * 0.5 and x > x_lo and x < x_hi:
+		return asphalt
+	var bi := floori((x - _origin.x - ROAD * 0.5) / PITCH)
+	var bj := floori((z - _origin.z - ROAD * 0.5) / PITCH)
+	if bi >= 0 and bi < COLS and bj >= 0 and bj < ROWS:
+		var o := block_origin(bi, bj)
+		var u := x - o.x
+		var v := z - o.z
+		if u >= 0.0 and u <= BLOCK and v >= 0.0 and v <= BLOCK:
+			if u < 2.0 or u > BLOCK - 2.0 or v < 2.0 or v > BLOCK - 2.0:
+				return Color("#cfc9c2")
+			match zone(bi, bj):
+				"houses", "park":
+					var stripe := (int(floorf(x / 2.0)) + int(floorf(z / 2.0))) % 2 == 0
+					return Color("#86c56f") if stripe else Color("#7fbe69")
+				"downtown", "plaza":
+					return Color("#d6d1c9")
+				_:
+					return Color("#cfc9c2")
+	return Color("#7bbf68")
+
+
 func _build_ground() -> void:
 	var c := center()
-	# Flat slab under the town (top at -0.1: the terrain mesh handles anything above).
-	Toon.box(self, Vector3(1800, 1.0, 1800), c + Vector3(0, -0.6, 0), Color("#7bbf68"), 0.0)
-	Toon.box(self, Vector3(size().x + ROAD + 56.0, 0.1, size().y + ROAD + 56.0), c + Vector3(0, -0.05, 0), Color("#7bbf68"), 0.0)
+	Terrain.build(self)
+	# Deep base so you never see through the world, and a safety floor far below the hills.
+	Toon.box(self, Vector3(1800, 1.0, 1800), c + Vector3(0, -14.0, 0), Color("#4f8f45"), 0.0)
 	var floor_body := StaticBody3D.new()
 	var shape := CollisionShape3D.new()
 	shape.shape = WorldBoundaryShape3D.new()
+	floor_body.position = Vector3(0, -30.0, 0)
 	floor_body.add_child(shape)
 	add_child(floor_body)
 
 
 func _build_roads() -> void:
-	var asphalt := Color("#56535c")
-	var s := size()
-	var c := center()
+	# The roads themselves are painted into the terrain; this adds lane dashes, crosswalks and curbs on top,
+	# each laid along the ground so they follow the hills.
 	var dashes: Array[Transform3D] = []
 	var stripes: Array[Transform3D] = []
+	var curbs: Array[Transform3D] = []
 	for i in COLS + 1:
 		var x := road_x(i)
-		Toon.box(self, Vector3(ROAD, 0.04, s.y + ROAD), Vector3(x, 0.02, c.z), asphalt, 0.0)
 		for j in ROWS:
 			var z0 := road_z(j) + ROAD * 0.5
 			var z := z0 + 2.0
 			while z < z0 + BLOCK - 2.0:
-				dashes.append(Transform3D(Basis.from_scale(Vector3(0.22, 1.0, 2.0)), Vector3(x, 0.05, z)))
+				dashes.append(Transform3D(Terrain.ground_basis(x, z, 0.0).scaled_local(Vector3(0.22, 1.0, 2.0)), Vector3(x, Terrain.ground_y(x, z) + 0.04, z)))
 				z += 4.5
+			# curbs along both edges of this stretch of road
+			var zc := z0 + 1.0
+			while zc < z0 + BLOCK - 0.5:
+				for side: int in [-1, 1]:
+					var cx := x + side * (ROAD * 0.5 + 0.15)
+					curbs.append(Transform3D(Terrain.ground_basis(cx, zc, 0.0).scaled_local(Vector3(0.3, 1.0, 2.0)), Vector3(cx, Terrain.ground_y(cx, zc) + 0.02, zc)))
+				zc += 2.0
 	for j in ROWS + 1:
 		var z := road_z(j)
-		Toon.box(self, Vector3(s.x + ROAD, 0.042, ROAD), Vector3(c.x, 0.021, z), asphalt, 0.0)
 		for i in COLS:
 			var x0 := road_x(i) + ROAD * 0.5
 			var x := x0 + 2.0
 			while x < x0 + BLOCK - 2.0:
-				dashes.append(Transform3D(Basis.from_scale(Vector3(2.0, 1.0, 0.22)), Vector3(x, 0.052, z)))
+				dashes.append(Transform3D(Terrain.ground_basis(x, z, PI * 0.5).scaled_local(Vector3(0.22, 1.0, 2.0)), Vector3(x, Terrain.ground_y(x, z) + 0.04, z)))
 				x += 4.5
+			var xc := x0 + 1.0
+			while xc < x0 + BLOCK - 0.5:
+				for side: int in [-1, 1]:
+					var cz := z + side * (ROAD * 0.5 + 0.15)
+					curbs.append(Transform3D(Terrain.ground_basis(xc, cz, PI * 0.5).scaled_local(Vector3(0.3, 1.0, 2.0)), Vector3(xc, Terrain.ground_y(xc, cz) + 0.02, cz)))
+				xc += 2.0
 	# Crosswalk stripes on every side of every intersection.
 	for i in COLS + 1:
 		for j in ROWS + 1:
-			var p := Vector3(road_x(i), 0.055, road_z(j))
+			var p := Vector3(road_x(i), 0, road_z(j))
 			for k in 5:
 				var off := -2.4 + k * 1.2
 				for side: int in [-1, 1]:
-					stripes.append(Transform3D(Basis.from_scale(Vector3(0.6, 1.0, 2.2)), p + Vector3(off, 0, side * (ROAD * 0.5 + 1.3))))
-					stripes.append(Transform3D(Basis.from_scale(Vector3(2.2, 1.0, 0.6)), p + Vector3(side * (ROAD * 0.5 + 1.3), 0, off)))
+					var q1 := p + Vector3(off, 0, side * (ROAD * 0.5 + 1.3))
+					var q2 := p + Vector3(side * (ROAD * 0.5 + 1.3), 0, off)
+					stripes.append(Transform3D(Terrain.ground_basis(q1.x, q1.z, 0.0).scaled_local(Vector3(0.6, 1.0, 2.2)), Vector3(q1.x, Terrain.ground_y(q1.x, q1.z) + 0.045, q1.z)))
+					stripes.append(Transform3D(Terrain.ground_basis(q2.x, q2.z, PI * 0.5).scaled_local(Vector3(0.6, 1.0, 2.2)), Vector3(q2.x, Terrain.ground_y(q2.x, q2.z) + 0.045, q2.z)))
 	var flat := Shapes.box(Vector3(1, 0.02, 1))
 	Toon.multimesh(self, flat, Toon.mat(Color("#f2c94c"), 0.0), dashes)
 	Toon.multimesh(self, flat, Toon.mat(Color("#f6f4ef"), 0.0), stripes)
+	Toon.multimesh(self, Shapes.box(Vector3(1, 0.16, 1)), Toon.mat(Color("#b7b1aa"), 0.0), curbs)
 
 
 # --- blocks ----------------------------------------------------------------------------------------
@@ -139,11 +199,6 @@ func _build_blocks() -> void:
 		for i in COLS:
 			var o := block_origin(i, j)
 			var z := zone(i, j)
-			# Curb + sidewalk slab + (lawn for green blocks)
-			Toon.box(self, Vector3(BLOCK + 0.3, 0.05, BLOCK + 0.3), o + Vector3(BLOCK * 0.5, 0.025, BLOCK * 0.5), Color("#8f8a85"), 0.0)
-			Toon.box(self, Vector3(BLOCK, 0.06, BLOCK), o + Vector3(BLOCK * 0.5, 0.03, BLOCK * 0.5), Color("#cfc9c2"), 0.0)
-			if z in ["houses", "park"]:
-				Toon.box(self, Vector3(BLOCK - 3.0, 0.07, BLOCK - 3.0), o + Vector3(BLOCK * 0.5, 0.035, BLOCK * 0.5), Color("#86c56f"), 0.0)
 			match z:
 				"downtown":
 					Downtown.block(self, o, i, j, rng, i == 2 or j == 0)
@@ -189,10 +244,14 @@ func _place_house(i: int, j: int, lot: int, c: Dictionary) -> void:
 	var h := House.new()
 	var south := lot >= 2
 	var x := 7.5 + (lot % 2) * 15.0
-	if south:
-		h.position = o + Vector3(x, 0.0, 20.0)
-	else:
-		h.position = o + Vector3(x, 0.0, 10.0)
+	var dir := 1.0 if south else -1.0          # which way the front door looks (world z)
+	var pos := o + Vector3(x, 0.0, 20.0 if south else 10.0)
+	# The house sits level at the height of its doorstep side; the downhill side is held up by its foundation.
+	var g_center := Terrain.ground_y(pos.x, pos.z)
+	var g_front := Terrain.ground_y(pos.x, pos.z + dir * 6.0)
+	pos.y = maxf(g_center, g_front) - 0.05
+	h.position = pos
+	if not south:
 		h.rotation.y = PI
 	add_child(h)
 	var number := 100 + (j * COLS + i) * 10 + lot * 2 + (1 if south else 0)
@@ -212,6 +271,8 @@ func _build_street_furniture() -> void:
 			var p := Vector3(road_x(i), 0, road_z(j))
 			for corner: Vector2 in [Vector2(1, 1), Vector2(-1, -1)]:
 				var lp := p + Vector3(corner.x * (ROAD * 0.5 + 0.8), 0, corner.y * (ROAD * 0.5 + 0.8))
+				var gy := Terrain.ground_y(lp.x, lp.z)
+				lp.y = gy
 				posts.append(Transform3D(Basis(), lp + Vector3(0, 2.7, 0)))
 				var head := lp + Vector3(-corner.x * 0.6, 5.4, -corner.y * 0.6)
 				heads.append(Transform3D(Basis(), head))
@@ -225,9 +286,11 @@ func _build_street_furniture() -> void:
 				lamps.append(light)
 				Toon.solid_box(self, Vector3(0.4, 5.0, 0.4), lp + Vector3(0, 2.5, 0))
 			if rng.randf() < 0.5:
-				hydrants.append(Transform3D(Basis(), p + Vector3(ROAD * 0.5 + 0.7, 0.45, -(ROAD * 0.5 + 2.5))))
+				var hp := p + Vector3(ROAD * 0.5 + 0.7, 0.0, -(ROAD * 0.5 + 2.5))
+				hydrants.append(Transform3D(Basis(), hp + Vector3(0, Terrain.ground_y(hp.x, hp.z) + 0.45, 0)))
 			if i < COLS and j < ROWS and rng.randf() < 0.6:
 				var sp := p + Vector3(-(ROAD * 0.5 + 0.8), 0, ROAD * 0.5 + 0.8)
+				sp.y = Terrain.ground_y(sp.x, sp.z)
 				Toon.cyl(self, 0.05, 0.05, 3.0, sp + Vector3(0, 1.5, 0), Color("#3f6b4f"), 0.006, 5)
 				var sb := Signs.board(self, STREETS_X[i % STREETS_X.size()], sp + Vector3(0, 3.05, 0), Vector2(1.6, 0.34), Color("#1f6b4a"), Color("#f6f4ef"), PI / 2, "none", Color("#f6f4ef"))
 				sb.scale = Vector3.ONE
@@ -244,7 +307,7 @@ func _build_street_furniture() -> void:
 			var x := block_origin(i, 0).x + 5.0 + k * 9.0
 			var z := road_z(1) - ROAD * 0.5 + 1.4
 			if rng.randf() < 0.7:
-				_parked_car(Vector3(x, 0, z), Color(car_colors[rng.randi() % car_colors.size()]))
+				_parked_car(Vector3(x, Terrain.ground_y(x, z), z), Color(car_colors[rng.randi() % car_colors.size()]))
 
 
 func _parked_car(p: Vector3, col: Color) -> void:
@@ -269,7 +332,7 @@ func _build_power_lines() -> void:
 		var poles: Array[Vector3] = []
 		var x := _origin.x + 4.0
 		while x < _origin.x + size().x:
-			poles.append(Vector3(x, 0, z))
+			poles.append(Vector3(x, Terrain.ground_y(x, z), z))
 			x += 16.0
 		for p in poles:
 			Toon.cyl(self, 0.16, 0.2, 9.0, p + Vector3(0, 4.5, 0), Color("#7a5236"), 0.012, 6)
@@ -314,6 +377,7 @@ func _build_props() -> void:
 				p = o + Vector3(0.6, 0.0, t)
 			_:
 				p = o + Vector3(BLOCK - 0.6, 0.0, t)
+		p.y = Terrain.ground_y(p.x, p.z)
 		match rng.randi() % 4:
 			0, 1:
 				_prop_cone(p)
@@ -369,34 +433,40 @@ func _build_edges() -> void:
 	var s := size()
 	var c := center()
 	var half := Vector3(s.x * 0.5 + ROAD * 0.5, 0, s.y * 0.5 + ROAD * 0.5)
+	# Tall invisible walls (the hills rise past the town edge, so they go up high).
 	var walls := [
-		[Vector3(s.x + 30, 10, 2), c + Vector3(0, 5, -half.z - 3)],
-		[Vector3(s.x + 30, 10, 2), c + Vector3(0, 5, half.z + 3)],
-		[Vector3(2, 10, s.y + 30), c + Vector3(-half.x - 3, 5, 0)],
-		[Vector3(2, 10, s.y + 30), c + Vector3(half.x + 3, 5, 0)],
+		[Vector3(s.x + 30, 60, 2), c + Vector3(0, 20, -half.z - 3)],
+		[Vector3(s.x + 30, 60, 2), c + Vector3(0, 20, half.z + 3)],
+		[Vector3(2, 60, s.y + 30), c + Vector3(-half.x - 3, 20, 0)],
+		[Vector3(2, 60, s.y + 30), c + Vector3(half.x + 3, 20, 0)],
 	]
 	for w in walls:
 		Toon.solid_box(self, w[0], w[1])
 	var rails: Array[Transform3D] = []
 	var x := -half.x - 2.0
 	while x <= half.x + 2.0:
-		rails.append(Transform3D(Basis(), c + Vector3(x, 0.5, -half.z - 2.0)))
-		rails.append(Transform3D(Basis(), c + Vector3(x, 0.5, half.z + 2.0)))
+		for zz: float in [-half.z - 2.0, half.z + 2.0]:
+			rails.append(Transform3D(Basis(), Vector3(c.x + x, Terrain.ground_y(c.x + x, c.z + zz) + 0.5, c.z + zz)))
 		x += 2.5
 	var z := -half.z - 2.0
 	while z <= half.z + 2.0:
-		rails.append(Transform3D(Basis(), c + Vector3(-half.x - 2.0, 0.5, z)))
-		rails.append(Transform3D(Basis(), c + Vector3(half.x + 2.0, 0.5, z)))
+		for xx: float in [-half.x - 2.0, half.x + 2.0]:
+			rails.append(Transform3D(Basis(), Vector3(c.x + xx, Terrain.ground_y(c.x + xx, c.z + z) + 0.5, c.z + z)))
 		z += 2.5
 	Toon.multimesh(self, Shapes.chamfer_box(Vector3(0.3, 1.0, 0.3), 0.3), Toon.mat(Color("#f6f4ef"), 0.01), rails)
 	_blades = Landmarks.hills(self, c, Vector2(half.x, half.z), rng)
-	Landmarks.water_tower(self, c + Vector3(-half.x - 14.0, 0, half.z - 20.0))
+	var wt := c + Vector3(-half.x - 14.0, 0, half.z - 20.0)
+	wt.y = Terrain.ground_y(wt.x, wt.z)
+	Landmarks.water_tower(self, wt)
 	for k in 40:
 		var a := rng.randf() * TAU
 		var r := rng.randf_range(1.05, 1.2)
 		var tp := c + Vector3(cos(a) * (half.x + 8.0) * r, 0, sin(a) * (half.z + 8.0) * r)
+		tp.y = Terrain.ground_y(tp.x, tp.z)
 		Landmarks.tree(self, tp, rng)
-	Signs.board(self, "WELCOME TO EGGVILLE\npop. a lot of eggs", c + Vector3(0, 6.0, half.z + 6.0), Vector2(14.0, 4.2), Color("#2a6f4f"), Color("#ffd166"), PI, "posts", Color("#5a3d28"))
+	var ws := c + Vector3(0, 6.0, half.z + 6.0)
+	ws.y = Terrain.ground_y(ws.x, ws.z) + 6.0
+	Signs.board(self, "WELCOME TO EGGVILLE\npop. a lot of eggs", ws, Vector2(14.0, 4.2), Color("#2a6f4f"), Color("#ffd166"), PI, "posts", Color("#5a3d28"))
 
 
 func _build_clouds() -> void:

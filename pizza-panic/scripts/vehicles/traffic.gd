@@ -42,6 +42,7 @@ func spawn(count: int, rng: RandomNumberGenerator) -> void:
 		var b: Vector3 = corners[(c.seg + 1) % 4]
 		var d := (b - a).normalized()
 		body.position = a.lerp(b, c.t) + Vector3(-d.z, 0, d.x) * LANE
+		body.position.y = Terrain.ground_y(body.position.x, body.position.z)
 		_cars.append(c)
 
 
@@ -95,6 +96,9 @@ func _physics_process(delta: float) -> void:
 			c.t = 0.0
 			c.seg = (c.seg + 1) % 4
 		var pos := a.lerp(b, c.t) + right * LANE
+		pos.y = Terrain.ground_y(pos.x, pos.z)
 		body.global_position = pos
+		var slope := (Terrain.ground_y(pos.x + dir.x * 2.0, pos.z + dir.z * 2.0) - Terrain.ground_y(pos.x - dir.x * 2.0, pos.z - dir.z * 2.0)) / 4.0
+		body.rotation.x = lerpf(body.rotation.x, atan(slope), 1.0 - exp(-6.0 * delta))
 		var yaw := atan2(-dir.x, -dir.z)
 		body.rotation.y = lerp_angle(body.rotation.y, yaw, 1.0 - exp(-8.0 * delta))

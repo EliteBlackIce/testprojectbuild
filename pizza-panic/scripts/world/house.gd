@@ -81,7 +81,7 @@ func build(num: int, c: Dictionary, rng: RandomNumberGenerator) -> void:
 	door_spot.position = Vector3(_ox, _deck_y, _front + 1.1)
 	add_child(door_spot)
 	knock_spot = Node3D.new()
-	knock_spot.position = Vector3(_ox, 0.9, _front + _porch_depth + 1.0)
+	knock_spot.position = Vector3(_ox, 0.9 + _gy(_ox, _front + _porch_depth + 1.0), _front + _porch_depth + 1.0)
 	add_child(knock_spot)
 	curb_spot = Node3D.new()
 	curb_spot.position = Vector3(0, 0, 9.5)
@@ -203,6 +203,19 @@ func _knock_use(player: Node) -> void:
 
 # --- shared pieces ------------------------------------------------------------------------------
 
+## Ground height at a house-local point, relative to the house's own base level.
+func _gy(x: float, z: float) -> float:
+	if not is_inside_tree():
+		return 0.0
+	var gp := to_global(Vector3(x, 0, z))
+	return Terrain.ground_y(gp.x, gp.z) - global_position.y
+
+
+## Same, for points in the main house frame (_root is shifted sideways when there is a garage).
+func _gr(x: float, z: float) -> float:
+	return _gy(x + _ox, z)
+
+
 func _c(key: String) -> Color:
 	return Color(_pal[key])
 
@@ -215,7 +228,12 @@ func _shell(w: float, d: float, h: float, floors: int, wall: Color, stone_base :
 	Toon.solid_box(_root, Vector3(w, h, d), Vector3(0, h * 0.5, 0))
 	var trim := _c("trim")
 	var base_h := 0.95 if stone_base else 0.6
-	_b.box(Vector3(0, base_h * 0.5, 0), Vector3(w + 0.14, base_h, d + 0.14), Color("#9b968a") if stone_base else wall.darkened(0.4))
+	# The foundation reaches down to the lowest ground under the house (taller on the downhill side).
+	var drop := 0.0
+	for cx: float in [-w * 0.5, w * 0.5]:
+		for cz: float in [-d * 0.5, d * 0.5, d * 0.5 + 1.5]:
+			drop = maxf(drop, -_gr(cx, cz))
+	_b.box(Vector3(0, (base_h - drop - 0.35) * 0.5, 0), Vector3(w + 0.14, base_h + drop + 0.35, d + 0.14), Color("#9b968a") if stone_base else wall.darkened(0.4))
 	if stone_base:
 		var sy := 0.2
 		while sy < base_h:
@@ -388,26 +406,35 @@ func _porch(x: float, width: float, depth: float, kind: Dictionary) -> void:
 	while k * 0.3 < depth - 0.1:
 		_b.box(Vector3(x, dy + 0.004, _front + 0.15 + k * 0.3), Vector3(width - 0.05, 0.012, 0.02), deck_col.darkened(0.3))
 		k += 1
-	# lattice skirt on the front face
+	# under-deck fill + lattice skirt that reach whatever the ground does in front of the porch
+	var pdrop := 0.0
+	for cx: float in [x - width * 0.5, x + width * 0.5]:
+		for cz: float in [_front, _front + depth]:
+			pdrop = maxf(pdrop, -_gr(cx, cz))
+	_b.box(Vector3(x, -pdrop * 0.5 - 0.1, zc), Vector3(width - 0.1, pdrop + 0.2, depth - 0.1), Color("#4a4540"))
+	var gl := _gr(x, _front + depth)
 	var lx := -width * 0.5 + 0.15
 	while lx < width * 0.5:
-		_b.box(Vector3(x + lx, dy * 0.5, _front + depth + 0.012), Vector3(0.025, dy - 0.08, 0.02), trim)
+		var gl_x := _gr(x + lx, _front + depth)
+		_b.box(Vector3(x + lx, (dy - 0.04 + gl_x) * 0.5, _front + depth + 0.012), Vector3(0.025, dy - 0.04 - gl_x, 0.02), trim)
 		lx += 0.22
 	_b.box(Vector3(x, dy - 0.04, _front + depth + 0.02), Vector3(width + 0.06, 0.08, 0.06), trim)
-	_b.box(Vector3(x, 0.05, _front + depth + 0.02), Vector3(width + 0.06, 0.1, 0.06), trim)
+	_b.box(Vector3(x, gl + 0.05, _front + depth + 0.02), Vector3(width + 0.06, 0.1, 0.06), trim)
 	# steps: three treads with risers, a hidden ramp to walk up
 	var sw := 1.9
+	var gl2 := _gr(x, _front + depth + 1.1)
+	var rise := maxf(dy - gl2, 0.2)
 	for s in 3:
-		var sh := dy * (3 - s) / 4.0
-		_b.box(Vector3(x, sh * 0.5, _front + depth + 0.17 + s * 0.34), Vector3(sw, sh, 0.34), deck_col)
-		_b.box(Vector3(x, sh + 0.01, _front + depth + 0.2 + s * 0.34), Vector3(sw + 0.06, 0.04, 0.4), deck_col.lightened(0.12))
+		var sh := rise * (3 - s) / 4.0
+		_b.box(Vector3(x, gl2 + sh * 0.5 - 0.05, _front + depth + 0.17 + s * 0.34), Vector3(sw, sh + 0.1, 0.34), deck_col)
+		_b.box(Vector3(x, gl2 + sh + 0.01, _front + depth + 0.2 + s * 0.34), Vector3(sw + 0.06, 0.04, 0.4), deck_col.lightened(0.12))
 	var ramp := StaticBody3D.new()
 	ramp.collision_layer = 1
 	var cs := CollisionShape3D.new()
 	var cp := ConvexPolygonShape3D.new()
 	var z0 := _front + depth
 	var z1 := _front + depth + 1.1
-	cp.points = PackedVector3Array([Vector3(x - sw * 0.5, 0, z1), Vector3(x + sw * 0.5, 0, z1), Vector3(x - sw * 0.5, dy, z0), Vector3(x + sw * 0.5, dy, z0), Vector3(x - sw * 0.5, 0, z0), Vector3(x + sw * 0.5, 0, z0)])
+	cp.points = PackedVector3Array([Vector3(x - sw * 0.5, gl2, z1), Vector3(x + sw * 0.5, gl2, z1), Vector3(x - sw * 0.5, dy, z0), Vector3(x + sw * 0.5, dy, z0), Vector3(x - sw * 0.5, gl2, z0), Vector3(x + sw * 0.5, gl2, z0)])
 	cs.shape = cp
 	ramp.add_child(cs)
 	_root.add_child(ramp)
@@ -425,8 +452,8 @@ func _porch(x: float, width: float, depth: float, kind: Dictionary) -> void:
 			Toon.solid_box(_root, Vector3(0.12, 1.0, depth - 0.2), Vector3(x + sd * rx, dy + 0.5, zc))
 		# stair handrails
 		for sd: int in [-1, 1]:
-			_b.box(Vector3(x + sd * (sw * 0.5 + 0.05), dy * 0.5 + 0.55, _front + depth + 0.55), Vector3(0.07, 0.07, 1.25), trim, Vector3(0.38, 0, 0))
-			_b.box(Vector3(x + sd * (sw * 0.5 + 0.05), dy * 0.5 + 0.2, _front + depth + 0.55), Vector3(0.05, 0.9, 0.05), trim)
+			_b.box(Vector3(x + sd * (sw * 0.5 + 0.05), (dy + gl2) * 0.5 + 0.55, _front + depth + 0.55), Vector3(0.07, 0.07, 1.25), trim, Vector3(atan2(dy - gl2, 1.1), 0, 0))
+			_b.box(Vector3(x + sd * (sw * 0.5 + 0.05), (dy + gl2) * 0.5 + 0.2, _front + depth + 0.55), Vector3(0.05, 0.9, 0.05), trim)
 	# columns
 	var posts: String = kind.get("posts", "round")
 	var col_h := 2.55
@@ -557,6 +584,11 @@ func _garage(gx: float, d: float, h: float, wall: Color, gw: float) -> void:
 	var front := gz + gd * 0.5
 	Toon.block(_root, Vector3(gw, h, gd), Vector3(gx, 0, gz), wall, 0.05, 0.03)
 	Toon.solid_box(_root, Vector3(gw, h, gd), Vector3(gx, h * 0.5, gz))
+	var gdrop := 0.0
+	for cx: float in [gx - gw * 0.5, gx + gw * 0.5]:
+		for cz: float in [gz - gd * 0.5, gz + gd * 0.5]:
+			gdrop = maxf(gdrop, -_gr(cx, cz))
+	_b.box(Vector3(gx, (0.3 - gdrop - 0.35) * 0.5, gz), Vector3(gw + 0.1, 0.3 + gdrop + 0.35, gd + 0.1), wall.darkened(0.4))
 	var trim := _c("trim")
 	var pr := Toon.mesh(_root, Shapes.prism(Vector3(gw + 0.9, 1.5, gd + 0.9)), Vector3(gx, h + 0.75, gz), _c("roof"), 0.03)
 	pr.rotation.y = 0.0
@@ -575,15 +607,20 @@ func _garage(gx: float, d: float, h: float, wall: Color, gw: float) -> void:
 		var lamp := Toon.box(_root, Vector3(0.16, 0.26, 0.16), Vector3(gx + sd * (dw * 0.5 + 0.35), 2.6, front + 0.15), Color("#fff1c9"), 0.0)
 		lamp.material_override = Toon.glow(Color("#d9d2c0"), 1.2)
 		lamp.add_to_group("lamp_glow")
-	# driveway out to the street, with joints
+	# driveway out to the street: short slabs that follow the slope of the lot
 	var dz0 := front
 	var dz1 := 9.0
-	var dlen := dz1 - dz0
-	Toon.box(_root, Vector3(dw + 0.4, 0.05, dlen), Vector3(gx, 0.075, (dz0 + dz1) * 0.5), Color("#c4bfb8"), 0.0)
-	var jz := dz0 + 1.8
-	while jz < dz1:
-		_b.box(Vector3(gx, 0.1, jz), Vector3(dw + 0.4, 0.012, 0.04), Color("#9e9a94"))
-		jz += 3.0
+	var zz := dz0
+	while zz < dz1:
+		var z2 := minf(zz + 1.5, dz1)
+		var y0 := _gr(gx, zz)
+		var y1 := _gr(gx, z2)
+		var pitch := -atan2(y1 - y0, z2 - zz)
+		_b.box(Vector3(gx, (y0 + y1) * 0.5 + 0.07, (zz + z2) * 0.5), Vector3(dw + 0.4, 0.05, (z2 - zz) + 0.02), Color("#c4bfb8"), Vector3(pitch, 0, 0))
+		if int((zz - dz0) / 1.5) % 2 == 1:
+			_b.box(Vector3(gx, (y0 + y1) * 0.5 + 0.1, zz), Vector3(dw + 0.4, 0.012, 0.04), Color("#9e9a94"), Vector3(pitch, 0, 0))
+		zz = z2
+	_b.ground = Callable(self, "_gr")
 	# basketball hoop sometimes
 	if _rng.randf() < 0.4:
 		_b.cyl(Vector3(gx + dw * 0.5 + 0.7, 1.6, 6.5), 0.05, 3.2, Color("#444a50"))
@@ -593,6 +630,7 @@ func _garage(gx: float, d: float, h: float, wall: Color, gw: float) -> void:
 	for bi in 2:
 		_b.box(Vector3(gx + gw * 0.5 + 0.45 + bi * 0.55, 0.45, front - 0.2), Vector3(0.5, 0.9, 0.55), Color("#2e5d9f" if bi == 0 else "#2f7a46"))
 		_b.box(Vector3(gx + gw * 0.5 + 0.45 + bi * 0.55, 0.92, front - 0.2), Vector3(0.54, 0.06, 0.6), Color("#22446f" if bi == 0 else "#215c34"))
+	_b.ground = Callable()
 
 
 func _craftsman(gw: float) -> void:
@@ -800,13 +838,7 @@ func _yard(has_garage: bool, gw: float, style: String) -> void:
 	var rng := _rng
 	var trim := _c("trim")
 	var path_z0 := _front + _porch_depth + 1.1
-	# mowing stripes across the front lawn
-	var sx := -7.0
-	var alt := 0
-	while sx < 7.2:
-		_b.box(_lx(Vector3(sx + 0.5, 0.078, (_front + 8.4) * 0.5 + 0.2)), Vector3(1.0, 0.01, 8.4 - _front - 0.2), Color("#7fbf68") if alt % 2 == 0 else Color("#8ccb74"))
-		sx += 1.0
-		alt += 1
+	_b.ground = Callable(self, "_gr")     # everything in the yard rides the ground
 	# stepping-stone path to the sidewalk
 	var pz := path_z0 + 0.2
 	var k := 0
@@ -845,7 +877,7 @@ func _yard(has_garage: bool, gw: float, style: String) -> void:
 	_b.box(mp + Vector3(0, 1.2, 0), Vector3(0.45, 0.35, 0.72), mc)
 	_b.cyl(mp + Vector3(0, 1.37, 0), 0.22, 0.72, mc, Vector3(PI / 2, 0, 0))
 	_b.box(mp + Vector3(0.26, 1.35, 0.1), Vector3(0.04, 0.3, 0.1), Color("#e63946"))
-	Signs.board(_root, str(number), mp + Vector3(0, 1.2, 0.37), Vector2(0.4, 0.26), Color("#fff4dc"), Color("#2b1c18"), 0.0, "wall", mc.darkened(0.3))
+	Signs.board(_root, str(number), mp + Vector3(0, 1.2 + _gr(mp.x, mp.z), 0.37), Vector2(0.4, 0.26), Color("#fff4dc"), Color("#2b1c18"), 0.0, "wall", mc.darkened(0.3))
 	# picket fence along the sidewalk (gaps for the path and the driveway)
 	if rng.randf() < 0.55:
 		var fence_col := Color(["#f6f4ef", "#f6f4ef", "#a1785a", "#d9c7a0"][rng.randi() % 4])
@@ -860,8 +892,12 @@ func _yard(has_garage: bool, gw: float, style: String) -> void:
 				_b.box(Vector3(fx, 0.93, 8.9), Vector3(0.1, 0.1, 0.05), fence_col, Vector3(0, 0, 0.78))
 			fx += 0.36
 		for ry: float in [0.3, 0.7]:
-			for sd: int in [-1, 1]:
-				_b.box(Vector3(sd * 4.2 - _ox * 0.0, ry, 8.86), Vector3(6.0, 0.07, 0.04), fence_col)
+			var rx := -7.2
+			while rx < 7.2:
+				var rgap := absf(rx + 0.5 + _ox) < 1.1 or (has_garage and rx + 0.5 > _hw * 0.5 - 1.2 and rx + 0.5 < _hw * 0.5 + gw - 0.3)
+				if not rgap:
+					_b.box(Vector3(rx + 0.5, ry, 8.86), Vector3(1.0, 0.07, 0.04), fence_col)
+				rx += 1.0
 		for pxx: float in [-7.2, -1.2, 1.2, 7.2]:
 			_b.box(Vector3(pxx, 0.55, 8.9), Vector3(0.18, 1.1, 0.18), fence_col)
 			_b.ball(Vector3(pxx, 1.15, 8.9), 0.1, fence_col)
@@ -869,6 +905,7 @@ func _yard(has_garage: bool, gw: float, style: String) -> void:
 	if rng.randf() < 0.65:
 		var tpx := (-1 if rng.randf() < 0.5 else 1) * rng.randf_range(4.2, 6.2)
 		var tp := _lx(Vector3(tpx, 0, rng.randf_range(5.6, 7.4)))
+		tp.y = _gr(tp.x, tp.z)
 		Toon.cyl(_root, 0.2, 0.3, 2.8, tp + Vector3(0, 1.4, 0), Color("#8b5e3c"), 0.015, 6)
 		var crown := Color(["#52b788", "#40916c", "#95d5b2", "#e8a0bf", "#f4a261"][rng.randi() % 5])
 		Toon.mesh(_root, Shapes.blob(1.7, rng.randi(), 0.2), tp + Vector3(0, 3.8, 0), crown, 0.03)
@@ -878,7 +915,7 @@ func _yard(has_garage: bool, gw: float, style: String) -> void:
 	if rng.randf() < 0.4:
 		var lp := _lx(Vector3(_ox + 1.2, 0, 8.4))
 		_b.cyl(lp + Vector3(0, 0.6, 0), 0.04, 1.2, Color("#2d3436"))
-		var lg := Toon.ball(_root, 0.14, lp + Vector3(0, 1.3, 0), Color("#fff1c9"), 0.0, 8)
+		var lg := Toon.ball(_root, 0.14, lp + Vector3(0, 1.3 + _gr(lp.x, lp.z), 0), Color("#fff1c9"), 0.0, 8)
 		lg.material_override = Toon.glow(Color("#d9d2c0"), 1.2)
 		lg.add_to_group("lamp_glow")
 	# little extras so no two lawns match
@@ -915,7 +952,7 @@ func _yard(has_garage: bool, gw: float, style: String) -> void:
 			_b.box(ex + Vector3(0.4, 0.8, 0), Vector3(0.04, 0.04, 0.45), Color("#2d3436"))
 		5:   # doghouse + bowl
 			_b.box(ex + Vector3(0, 0.4, 0), Vector3(0.9, 0.8, 1.0), Color("#a9743e"))
-			var dh := Toon.mesh(_root, Shapes.prism(Vector3(1.2, 0.6, 1.2)), ex + Vector3(0, 1.1, 0), Color("#7a3b2e"), 0.02)
+			var dh := Toon.mesh(_root, Shapes.prism(Vector3(1.2, 0.6, 1.2)), ex + Vector3(0, 1.1 + _gr(ex.x, ex.z), 0), Color("#7a3b2e"), 0.02)
 			dh.rotation.y = 0.0
 			_b.box(ex + Vector3(0, 0.3, 0.52), Vector3(0.4, 0.6, 0.03), Color("#2b1d33"))
 			_b.cyl(ex + Vector3(0.7, 0.05, 0.9), 0.15, 0.1, Color("#e63946"))
@@ -933,6 +970,8 @@ func _yard(has_garage: bool, gw: float, style: String) -> void:
 			_b.box(ex + Vector3(0, 2.0, 0), Vector3(1.2, 0.07, 0.07), Color("#f6f4ef"))
 			for q in 8:
 				_b.ball(ex + Vector3((q % 2) * 0.1 + (-0.55 if q < 4 else 0.55), 0.4 + (q % 4) * 0.45, 0), 0.1, Color("#ff6b9d" if q % 3 else "#ffd166"))
+
+	_b.ground = Callable()
 
 
 ## Small details vanish at a distance (fog hides the pop), which keeps the

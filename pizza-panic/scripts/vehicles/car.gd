@@ -59,7 +59,7 @@ func _ready() -> void:
 	var box := BoxShape3D.new()
 	box.size = Vector3(2.1, 1.3, 4.0)
 	shape.shape = box
-	shape.position = Vector3(0, 0.8, 0)
+	shape.position = Vector3(0, 0.65, 0)
 	add_child(shape)
 	_build_body()
 	_build_cockpit()
@@ -203,8 +203,14 @@ func _process(delta: float) -> void:
 	_vis_prev = velocity
 	if not lacc.is_finite() or lacc.length() > 400.0:
 		lacc = Vector3.ZERO
-	var pitch_t := clampf(-lacc.z * 0.006, -0.1, 0.1) + clampf(velocity.y * 0.03, -0.3, 0.3)
-	var roll_t := clampf(lacc.x * 0.0085, -0.13, 0.13) - _steer * clampf(absf(fwd) / max_speed(), 0.0, 1.0) * 0.06
+	var floor_pitch := 0.0
+	var floor_roll := 0.0
+	if is_on_floor():
+		var ln := global_basis.inverse() * get_floor_normal()
+		floor_pitch = atan2(ln.z, maxf(ln.y, 0.2))
+		floor_roll = -atan2(ln.x, maxf(ln.y, 0.2))
+	var pitch_t := clampf(-lacc.z * 0.006, -0.1, 0.1) + (floor_pitch if is_on_floor() else clampf(velocity.y * 0.03, -0.3, 0.3))
+	var roll_t := clampf(lacc.x * 0.0085, -0.13, 0.13) - _steer * clampf(absf(fwd) / max_speed(), 0.0, 1.0) * 0.06 + floor_roll
 	_pitch = lerpf(_pitch, pitch_t, 1.0 - exp(-9.0 * delta))
 	_roll = lerpf(_roll, roll_t, 1.0 - exp(-9.0 * delta))
 	var lean := _roll
