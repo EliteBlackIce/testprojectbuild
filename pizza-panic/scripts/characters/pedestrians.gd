@@ -25,6 +25,7 @@ func spawn(count: int, rng: RandomNumberGenerator) -> void:
 		var egg := EggBody.new()
 		add_child(egg)
 		egg.build(Characters.random_pedestrian_look(rng))
+		egg.set_meta("on_bonk", _bonked.bind(egg))
 		_walkers.append({"egg": egg, "corners": corners, "seg": rng.randi() % 4, "t": rng.randf(),
 			"speed": rng.randf_range(1.0, 1.6), "fly": Vector3.ZERO, "flying": false, "spin": 0.0, "pause": 0.0})
 
@@ -71,3 +72,15 @@ func _process(delta: float) -> void:
 				egg.express("scared", 3.0)
 				Sfx.play("scream", randf_range(0.8, 1.3))
 				yeeted.emit()
+
+
+## Hit by a thrown prop: launched like a car hit, just smaller.
+func _bonked(dir: Vector3, strength: float, egg: EggBody) -> void:
+	for w in _walkers:
+		if w.egg == egg and not w.flying:
+			w.flying = true
+			w.fly = dir * 6.0 * strength + Vector3(0, 7.0 + 2.0 * strength, 0)
+			w.spin = randf_range(8.0, 16.0)
+			egg.flailing = true
+			egg.express("scared", 3.0)
+			Sfx.play("scream", randf_range(1.0, 1.5), -4.0)

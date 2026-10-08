@@ -224,6 +224,7 @@ const BINDINGS := {
 	"steer_left": [KEY_A, KEY_LEFT],
 	"steer_right": [KEY_D, KEY_RIGHT],
 	"hop": [KEY_SPACE],
+	"grab": [KEY_G],
 	"interact": [KEY_E],
 	"push_to_talk": [KEY_T],
 	"honk": [KEY_H],

@@ -26,6 +26,11 @@ var hands: FpHands
 var controls_enabled := true
 ## The thing held in front of you (a Pizza, usually). null when empty-handed.
 var held: Node3D = null
+var chaos_held: Throwable = null    ## a grabbed prop (thrown with CLICK)
+var chaos_focus: Throwable = null   ## the prop you're looking at
+var gravity_mult := 1.0             ## day mutators tweak these
+var accel_mult := 1.0
+var speed_mult := 1.0
 var focus: Interactable = null
 var yaw := 0.0
 var pitch := -0.1
@@ -53,6 +58,7 @@ func _ready() -> void:
 	collision_layer = 4
 	collision_mask = 1 | 2
 	add_to_group("door_pushers")
+	add_to_group("player")
 	var shape := CollisionShape3D.new()
 	var cap := CapsuleShape3D.new()
 	cap.radius = 0.4
@@ -91,7 +97,7 @@ func rebuild_look() -> void:
 
 
 func speed() -> float:
-	return WALK_SPEED + Game.level("sneakers") * 0.8
+	return (WALK_SPEED + Game.level("sneakers") * 0.8) * speed_mult
 
 
 # --- looking -------------------------------------------------------------------------------------
@@ -160,7 +166,7 @@ func _physics_process(delta: float) -> void:
 	if held:
 		target *= 0.9
 	var hv := Vector3(velocity.x, 0, velocity.z)
-	hv = hv.move_toward(target, (ACCEL if is_on_floor() else AIR_ACCEL) * delta)
+	hv = hv.move_toward(target, (ACCEL if is_on_floor() else AIR_ACCEL) * accel_mult * delta)
 	if _tumble > 0.0:
 		hv = hv.move_toward(Vector3.ZERO, 6.0 * delta)
 	velocity.x = hv.x
@@ -168,12 +174,12 @@ func _physics_process(delta: float) -> void:
 	if is_on_floor():
 		velocity.y = maxf(velocity.y, -1.0)
 		if active and Input.is_action_just_pressed("hop"):
-			velocity.y = JUMP
+			velocity.y = JUMP / sqrt(gravity_mult) * (0.75 if gravity_mult < 1.0 else 1.0)
 			body.hop()
 			_dip_vel = 1.2
 			Sfx.play("boing", randf_range(1.25, 1.45), -9.0)
 	else:
-		velocity.y -= GRAVITY * delta
+		velocity.y -= GRAVITY * gravity_mult * delta
 		_fall_speed = maxf(_fall_speed, -velocity.y)
 	move_and_slide()
 	var on_floor := is_on_floor()
@@ -196,6 +202,7 @@ func _physics_process(delta: float) -> void:
 	_steps(delta, moving, on_floor)
 	_check_slip(hv)
 	_update_focus()
+	_update_chaos_focus()
 
 
 func _steps(delta: float, moving: float, on_floor: bool) -> void:
@@ -254,7 +261,7 @@ func _process(delta: float) -> void:
 		hands.pose = "hidden"
 	elif Game.in_dialogue and _look_lock != null:
 		hands.pose = "carry" if held else "talk"
-	elif held:
+	elif held or chaos_held:
 		hands.pose = "carry"
 	elif body.phone_mode:
 		hands.pose = "phone"
@@ -416,3 +423,65 @@ func take_held() -> Node3D:
 	held = null
 	body.carrying = false
 	return item
+
+
+# --- grab & throw anything -----------------------------------------------------------------------------
+
+func _update_chaos_focus() -> void:
+	var best: Throwable = null
+	if controls_enabled and not in_view and _tumble <= 0.0 and chaos_held == null and held == null:
+		var eye := camera.global_position
+		var fwd := forward()
+		var best_ang := 0.5
+		for n in get_tree().get_nodes_in_group("throwable"):
+			var t := n as Throwable
+			if t == null or t.grabbed:
+				continue
+			var to := t.global_position - eye
+			var d := to.length()
+			if d > 2.7 or d < 0.05:
+				continue
+			var ang := fwd.angle_to(to / d) - atan2(t.radius, d)
+			if ang < best_ang:
+				best_ang = ang
+				best = t
+	chaos_focus = best
+	if chaos_held and (not controls_enabled or in_view):
+		drop_chaos()
+
+
+func chaos_prompt() -> String:
+	if chaos_held:
+		return "[CLICK] THROW the %s   ·   [RIGHT CLICK / G] drop" % chaos_held.nice_name()
+	if chaos_focus:
+		return "[RIGHT CLICK / G] Grab the %s" % chaos_focus.nice_name()
+	return ""
+
+
+## Grab what you're looking at, or put down what you're holding.
+func chaos_toggle() -> void:
+	if chaos_held:
+		drop_chaos()
+	elif chaos_focus and held == null:
+		chaos_held = chaos_focus
+		chaos_held.grab(self)
+		hands.play("grab")
+		Sfx.play("pickup", 1.4, -8.0)
+
+
+func drop_chaos() -> void:
+	if chaos_held == null:
+		return
+	var t := chaos_held
+	chaos_held = null
+	t.release(self, forward() * 1.5 + velocity)
+
+
+func throw_chaos() -> void:
+	if chaos_held == null:
+		return
+	var t := chaos_held
+	chaos_held = null
+	hands.play("push")
+	Sfx.play("whoosh", randf_range(0.9, 1.3), -6.0)
+	t.release(self, forward() * t.throw_speed() + Vector3(0, 2.2, 0) + velocity * 0.5, true)

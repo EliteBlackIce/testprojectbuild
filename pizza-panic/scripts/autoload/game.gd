@@ -20,6 +20,7 @@ const SECONDS_PER_MINUTE := 1.0
 const PROMISE_MINUTES := 75.0
 
 var money := 40
+var bonks := 0                 ## eggs bonked today (just for bragging)
 var day := 1
 var reputation := 2.5             ## 0..5 stars
 var upgrades: Dictionary = {}     ## id -> level
@@ -51,6 +52,7 @@ func _process(delta: float) -> void:
 
 func start_day() -> void:
 	clock = float(OPEN_MINUTE)
+	bonks = 0
 	day_running = true
 	in_dialogue = false
 	tickets.clear()

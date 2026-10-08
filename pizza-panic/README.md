@@ -104,6 +104,20 @@ Sir Barksalot the dog, Chad Thunderbro, Conspiracy Carl, Dave the Wizard, Big Ba
 the ghost, Princess Sparkle-chan, Sensei Noodle, Mr. Synergy, Kyle who thinks this is a game),
 your boss Tony Pepperoni, plus dozens of generated weirdos.
 
+## Chaos (the slapstick layer)
+
+- **Grab and throw anything.** Loose props lie around the pizzeria: rubber chickens, frying pans,
+  tomatoes, cones, mop buckets, watermelons, plungers, rolling pins, baguettes and one very heavy
+  anvil. **Right click / G** grabs what you are looking at, **click** throws it, right click again drops it.
+  Anything fast bonks the egg it hits: pedestrians get launched, workers sprawl and lie there confused,
+  Tony yells. Tomatoes and watermelons splat.
+- **A silly rule every day.** Moon Pizza Day (low gravity), Ice Floor Friday (everything slides),
+  Sugar Rush (you are very fast).
+- **A disaster every minute or so:** rubber chicken rain, a grease spill across the kitchen, the oven
+  catching fire (mash **E** to stomp it out, or throw a mop bucket at it), a goat that charges at
+  everybody, a blackout, and aliens stealing your van and dumping it somewhere else in town.
+- Code: `scripts/chaos/` (`throwable.gd`, `disasters.gd`, `chaos.gd`). Preview shots: `tools/chaos_shots.tscn`.
+
 ## Run it on your Mac
 
 1. Download **Godot 4.7** (standard, not .NET) from https://godotengine.org/download/macos
@@ -122,7 +136,8 @@ asks for microphone permission. Say yes.
 | Look around | Mouse | Right stick |
 | Walk / drive | WASD or arrows | Left stick, RT/LT |
 | Use / pick up / knock (what the crosshair is on) | **E** or left-click | X |
-| Poke (click on nothing) | Left-click | RB |
+| Poke (click on nothing) / throw what you hold | Left-click | RB |
+| Grab a loose prop / drop it | **Right-click** or **G** | not bound yet |
 | Hop (on foot) / handbrake drift (driving) | Space | A |
 | Get in / out of the car | **F** | L3 |
 | Cockpit / chase camera | **V** | D-pad down |

@@ -721,7 +721,8 @@ func hop() -> void:
 ## Fall over and roll like an egg, then wobble back up dizzy.
 func tumble(direction: Vector3, strength := 1.0) -> void:
 	_tumble = 1.1 + strength * 0.5
-	_tumble_dir = Vector3(direction.x, 0, direction.z).normalized() if direction.length() > 0.01 else Vector3.FORWARD
+	var flat := Vector3(direction.x, 0, direction.z)
+	_tumble_dir = flat.normalized() if flat.length() > 0.01 else Vector3.FORWARD
 	_getup = 0.0
 	_action = ""
 	express("scared", 2.5)

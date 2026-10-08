@@ -1006,6 +1006,7 @@ func _build_tony() -> void:
 	tony.build(Characters.TONY.look)
 	tony.position = Pizzeria.ANCHORS.tony
 	tony.set_meta("on_poked", _tony_poked)
+	tony.set_meta("tony", true)
 	_tony_target = tony.position
 	var talk := Station.make(tony, Vector3(0, 1.1, 0), _tony_prompt, _tony_use, 2.0, 0.5)
 	talk.name = "TonyTalk"

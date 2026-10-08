@@ -210,6 +210,38 @@ func _ready() -> void:
 	await _seconds(0.2)
 	check(Game.today.missed_calls == missed + 1, "unanswered phone counts as missed")
 
+	# 14b. Slapstick: props lying around, grab + throw bonks an egg, every disaster runs
+	check(get_tree().get_nodes_in_group("throwable").size() >= 10, "loose props are scattered around")
+	main.player.global_position = main.town.pizzeria.to_global(Vector3(-6.0, 0.05, 3.5))
+	var open_to: Vector3 = main.town.pizzeria.to_global(Vector3(-6.0, 0, 8.0)) - main.player.global_position
+	main.player.face(atan2(-open_to.x, -open_to.z), 0.0)
+	await _frames(2)
+	var prop: Throwable = main.disasters.spawn_prop("pan", main.player.global_position + main.player.forward() * 1.5 + Vector3(0, 1.0, 0))
+	await _seconds(1.0)
+	prop.global_position = main.player.camera.global_position + main.player.forward() * 1.2
+	prop.linear_velocity = Vector3.ZERO
+	await _frames(2)
+	main.player.chaos_focus = prop
+	main.player.chaos_toggle()
+	check(main.player.chaos_held == prop, "grabbed the frying pan")
+	var victim := EggBody.new()
+	main.add_child(victim)
+	victim.build({})
+	victim.global_position = main.player.global_position + Vector3(main.player.forward().x, 0, main.player.forward().z).normalized() * 3.0
+	var bonks_before := Game.bonks
+	main.player.throw_chaos()
+	await _seconds(1.2)
+	check(Game.bonks > bonks_before, "thrown pan bonked an egg")
+	victim.queue_free()
+	for ev in ["chicken_rain", "grease", "oven_fire", "goat", "blackout"]:
+		main.disasters.trigger(ev)
+		await _seconds(1.5)
+		main.disasters._cleanup_events()
+	main.disasters.set_mutator("low_gravity")
+	check(main.player.gravity_mult < 1.0, "day mutator applies")
+	main.disasters.set_mutator("")
+	await _frames(2)
+
 	# 15. End of day: wages + save/load
 	var money_pre := Game.money
 	Game.clock = Game.CLOSE_MINUTE - 0.01

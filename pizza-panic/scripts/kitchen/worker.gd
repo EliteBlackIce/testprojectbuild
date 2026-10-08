@@ -58,6 +58,7 @@ func setup(worker_id: String, k: Kitchen, ph: PhoneLine, slot: int) -> void:
 	add_child(body)
 	body.build(info.look)
 	body.set_meta("on_poked", _poked)
+	body.set_meta("on_bonk", _bonked)
 	_zzz = Toon.label(self, "", Vector3(0, 2.0, 0), 40, Color("#a29bfe"))
 	var name_tag := Toon.label(self, info.name, Vector3(0, 1.85, 0), 22, Color("#ffeaa7"))
 	name_tag.pixel_size = 0.006
@@ -92,7 +93,26 @@ func _poked() -> void:
 
 # --- moving -----------------------------------------------------------------------------------
 
+var _stun := 0.0
+var _slide := Vector3.ZERO
+
+
+## Hit by something thrown: sprawl, skid a little, and lie there confused.
+func _bonked(dir: Vector3, strength: float) -> void:
+	body.tumble(dir, strength)
+	_stun = 1.8 + strength
+	var local := get_parent_node_3d().global_basis.inverse() * dir
+	_slide = Vector3(local.x, 0, local.z).normalized() * 3.5 * strength
+	Game.say_toast("%s: \"%s\"" % [info.name.split(" ")[0], ["ow.", "WHY.", "I felt that in my yolk.", "that's coming out of your tip jar"].pick_random()], Color("#ff9f1c"))
+
+
 func _process(delta: float) -> void:
+	if _stun > 0.0:
+		_stun -= delta
+		position += _slide * delta
+		_slide = _slide.move_toward(Vector3.ZERO, 6.0 * delta)
+		body.velocity_hint = Vector3.ZERO
+		return
 	if Game.in_dialogue:
 		body.velocity_hint = Vector3.ZERO
 		return

@@ -23,6 +23,7 @@ var convo: Conversation
 var menus: Menus
 var arrow: Node3D
 var in_car := false
+var disasters: Disasters
 var chase_view := false
 var _on_title := true
 
@@ -62,6 +63,10 @@ func _ready() -> void:
 	add_child(pedestrians)
 	pedestrians.spawn(22, rng)
 	pedestrians.yeeted.connect(_on_yeet)
+
+	disasters = Disasters.new()
+	add_child(disasters)
+	disasters.setup(self)
 
 	phone = PhoneLine.new()
 	phone.town = town
@@ -277,8 +282,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event.is_action_pressed("interact") and not in_car:
 		player.interact()
+	elif (event.is_action_pressed("grab") or event.is_action_pressed("tool_alt")) and not in_car and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+		player.chaos_toggle()
 	elif event.is_action_pressed("poke") and not in_car and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-		if player.focus:
+		if player.chaos_held:
+			player.throw_chaos()
+		elif player.focus:
 			player.interact()
 		else:
 			player.poke()
@@ -420,6 +429,8 @@ func _process(delta: float) -> void:
 	var prompt := ""
 	if not convo.active and not kitchen.busy and not in_car and player.focus:
 		prompt = player.focus.prompt(player)
+	if prompt == "" and not in_car and not convo.active and not kitchen.busy:
+		prompt = player.chaos_prompt()
 	if in_car and not convo.active:
 		prompt = "[F] Get out   ·   [SPACE] Drift   ·   [V] %s" % ("cockpit view" if chase_view else "chase cam") + ("   ·   [SHIFT] Rocket boost" if Game.has_upgrade("boost") else "")
 	hud.set_prompt(prompt)

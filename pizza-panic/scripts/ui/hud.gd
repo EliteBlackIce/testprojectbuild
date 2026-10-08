@@ -133,7 +133,7 @@ func _ready() -> void:
 	_mode_badge.offset_bottom = -12
 	root.add_child(_mode_badge)
 
-	var help := UiTheme.label("MOUSE look · WASD walk · E / CLICK use · CLICK poke · F car · V car camera · SPACE hop · T talk · Q phone (headset) · H honk · ESC pause", 16, Color.WHITE, 6)
+	var help := UiTheme.label("MOUSE look · WASD walk · E / CLICK use · CLICK poke/throw · RIGHT CLICK grab props · F car · V car camera · SPACE hop · T talk · Q phone (headset) · H honk · ESC pause", 16, Color.WHITE, 6)
 	help.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	help.offset_left = 16
 	help.offset_right = 1100
